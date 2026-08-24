@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kandypack Logistics - User Accounts</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed-dim": "#c5c0ff",
+                      "on-primary-container": "#b2aeff",
+                      "tertiary-container": "#46484c",
+                      "surface-container-lowest": "#ffffff",
+                      "background": "#f9f9ff",
+                      "outline-variant": "#c8c4d5",
+                      "on-primary-fixed-variant": "#3c32ac",
+                      "secondary-container": "#6c61e8",
+                      "tertiary": "#303235",
+                      "on-tertiary-fixed": "#1a1c1f",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed": "#110068",
+                      "on-surface": "#121c2c",
+                      "on-tertiary-container": "#b6b7bb",
+                      "secondary-fixed": "#e3dfff",
+                      "outline": "#777585",
+                      "tertiary-fixed": "#e2e2e7",
+                      "surface": "#f9f9ff",
+                      "tertiary-fixed-dim": "#c6c6cb",
+                      "on-secondary-container": "#fffbff",
+                      "primary-container": "#3d33ad",
+                      "surface-container-highest": "#d9e3f9",
+                      "inverse-primary": "#c4c0ff",
+                      "surface-tint": "#554dc5",
+                      "secondary": "#5346ce",
+                      "on-tertiary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "inverse-surface": "#273141",
+                      "on-tertiary-fixed-variant": "#45474b",
+                      "on-surface-variant": "#474553",
+                      "surface-container": "#e7eeff",
+                      "primary": "#251297",
+                      "primary-fixed-dim": "#c4c0ff",
+                      "primary-fixed": "#e3dfff",
+                      "inverse-on-surface": "#ebf1ff",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#dee8ff",
+                      "on-secondary-fixed": "#140067",
+                      "surface-bright": "#f9f9ff",
+                      "on-background": "#121c2c",
+                      "surface-container-low": "#f0f3ff",
+                      "on-error-container": "#93000a",
+                      "surface-variant": "#d9e3f9",
+                      "on-secondary-fixed-variant": "#3d2cb8",
+                      "on-error": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "surface-dim": "#d0daf0",
+                      
+                      // Custom brand colors based on prompt requirements
+                      "brand-sidebar": "#5A4FE0",
+                      "brand-sidebar-active": "#6E63EA",
+                      "brand-bg": "#F5F5FA"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-gap": "16px",
+                      "margin-mobile": "16px",
+                      "card-padding": "24px",
+                      "sidebar-width": "260px",
+                      "gutter": "24px",
+                      "margin-desktop": "32px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "22px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              },
+              "boxShadow": {
+                  "ambient": "0px 4px 20px rgba(0, 0, 0, 0.05)",
+                  "elevated": "0px 8px 30px rgba(0, 0, 0, 0.08)"
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #F5F5FA;
+        }
+        /* Custom scrollbar for tables/content */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c8c4d5; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777585; 
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md text-on-surface antialiased bg-brand-bg flex overflow-hidden h-screen">
+<!-- SideNavBar -->
+<nav class="fixed w-[260px] h-full left-0 top-0 bg-brand-sidebar shadow-sm flex flex-col h-full py-6 px-4 z-20 text-on-primary">
+<!-- Brand Logo -->
+<div class="mb-8 px-2">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-sidebar">
+<span class="material-symbols-outlined font-bold text-xl" data-icon="local_shipping" data-weight="fill" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold leading-tight">Kandypack</h1>
+<p class="font-label-md text-label-md opacity-80 leading-none">Logistics Suite</p>
+</div>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto pr-2">
+<ul class="space-y-1">
+<!-- Group 1 -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="package_2">package_2</span>
+<span>Orders</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="train">train</span>
+<span>Train Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+<span>Truck Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span>Deliveries</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+<span>Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span>Reports</span>
+</a>
+</li>
+<!-- Admin Group Divider -->
+<li class="pt-6 pb-2 px-3">
+<span class="text-[12px] font-bold uppercase tracking-wider text-on-primary/50">Admin</span>
+</li>
+<!-- Admin Items (Expanded) -->
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>System Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-brand-sidebar-active text-white font-bold transition-colors scale-95 active:scale-90 transition-transform shadow-sm" href="#">
+<span class="material-symbols-outlined" data-icon="group" data-weight="fill" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>User Accounts</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+<span>Roles &amp; Permissions</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- User quick profile at bottom of sidebar -->
+<div class="mt-auto pt-4 border-t border-white/10 px-2 flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover border border-white/20" data-alt="Professional headshot of a female logistics administrator in a modern office setting, smiling slightly, bright natural lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWrmenB9QO3D5IzthCVbCpB7jxpPTitu_7cGNzzNJw_db6mS7I54BDaX5xrFVW3_u_MoT4wxeIzM9l-srfzIvg3lfwOf_mSTeuhXOqC4t_QrgHjMK7mzFOp9om7f3SlVn3JI5dQcai81zaUIF9Kj0O-W_X5OETJltzvavKcMlCGnOWK5KKySWdhallGH4S0KfZ6KZ_s49hzbkF458f7DcinMETp0hzqHtZoBGTrUWSg-xqQYcsayJnXw"/>
+<div class="flex-1 overflow-hidden">
+<p class="font-label-lg text-label-lg text-white truncate">Admin User</p>
+<p class="font-label-md text-label-md text-white/70 truncate">admin@kandypack.com</p>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 ml-[260px] flex flex-col h-full bg-brand-bg relative">
+<!-- TopNavBar -->
+<header class="h-16 bg-surface shadow-sm flex justify-between items-center px-gutter w-full sticky top-0 z-10 shrink-0">
+<!-- Search -->
+<div class="flex-1 max-w-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-full font-body-sm text-body-sm focus:outline-none focus:border-brand-sidebar focus:ring-1 focus:ring-brand-sidebar transition-colors text-on-surface" placeholder="Search users..." type="text"/>
+</div>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-primary hover:bg-surface-container-low transition-colors relative opacity-80 active:opacity-100">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-error"></span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-primary hover:bg-surface-container-low transition-colors opacity-80 active:opacity-100">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right hidden md:block">
+<p class="font-label-lg text-label-lg text-on-surface">John Doe</p>
+<p class="font-label-md text-label-md text-on-surface-variant">Administrator</p>
+</div>
+<img class="w-8 h-8 rounded-full object-cover" data-alt="Headshot of a professional male administrator in a bright office environment, sharp focus, wearing a blue shirt." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHY4mNx-WspFtaeguaLpdxCK6yojiM40qQcYotLB8OR6vFrS4ZWe9y9yJKMiyZMGe2XkkD7gcT5Dm6PbZlov2_UHy_TxWf8TreeFGhaA5d2HAbFj7yI1oQXeGkLXcPfgM8v0pngtiUaQ-I55VKBT94vkdAJhAjkcwqGaTJXqKXm41ofqgZ8-c1ZRs-NrkIzhVoFegaTH9lsJg94IuR_DS0-gjAnYOfcG2Zctt9lJR2aZ7Z9WwEYgl7bg"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto p-gutter relative">
+<!-- Decorative background element for subtle depth -->
+<div class="absolute top-0 right-0 w-96 h-96 bg-primary-container/5 rounded-full blur-3xl -z-10 pointer-events-none"></div>
+<div class="max-w-7xl mx-auto space-y-6 pb-12">
+<!-- Page Header -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface mb-1">User Accounts</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Manage staff logins and roles</p>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 bg-surface text-on-surface border border-outline-variant rounded-full font-label-lg text-label-lg flex items-center gap-2 hover:bg-surface-container-low transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                            Filter
+                        </button>
+<button class="px-6 py-2 bg-brand-sidebar text-white rounded-full font-label-lg text-label-lg font-bold flex items-center gap-2 hover:bg-brand-sidebar-active transition-colors shadow-ambient">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span>
+                            New User
+                        </button>
+</div>
+</div>
+<!-- Stats Overview Bento (Optional extra context for admin) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="bg-surface rounded-xl p-card-padding shadow-ambient flex items-center gap-4 border border-white">
+<div class="w-12 h-12 rounded-xl bg-surface-container-high text-primary flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="group" data-weight="fill" style="font-variation-settings: 'FILL' 1;">group</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Total Users</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">1,248</p>
+</div>
+</div>
+<div class="bg-surface rounded-xl p-card-padding shadow-ambient flex items-center gap-4 border border-white">
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Active Now</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">842</p>
+</div>
+</div>
+<div class="bg-surface rounded-xl p-card-padding shadow-ambient flex items-center gap-4 border border-white">
+<div class="w-12 h-12 rounded-xl bg-error-container text-on-error-container flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="block" data-weight="fill" style="font-variation-settings: 'FILL' 1;">block</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Deactivated</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">15</p>
+</div>
+</div>
+<div class="bg-surface rounded-xl p-card-padding shadow-ambient flex items-center gap-4 border border-white">
+<div class="w-12 h-12 rounded-xl bg-surface-container-highest text-tertiary flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings" data-weight="fill" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Admins</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">12</p>
+</div>
+</div>
+</div>
+<!-- Users Table Card -->
+<div class="bg-surface rounded-[16px] shadow-ambient border border-white overflow-hidden flex flex-col">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-surface-container-high bg-surface-bright/50">
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">User</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Email</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Role</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Status</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold">Joined</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-background">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="Close up professional portrait of a male warehouse manager smiling softly, well lit, neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiRbYiV8B5fiyEniLNRMvoZU9n6kqVXiO4xQtTaSlmDnhZBESJ4fmTHie1iUS_oA5h4XSzy2NCeU0RkNxQK1h6fk_XeiFA41TLfGmbf_S613mluTiuqEQaA4_QUsQmgc4irn3zjo7LxUqHe90vnkkSArNmDcSgrWjsjF8I11GnWRxJ143qE7wjnFRcFQd7VmyeOamR1lWaGFDhqpBerezR_kqbf5WdhmxvG3QCwWTR91fuJLxgQtQYRA"/>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-semibold group-hover:text-primary transition-colors">Marcus Johnson</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[13px]">Warehouse Operations</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface-variant">m.johnson@kandypack.com</span>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface">Manager</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#E6F4EA] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#137333] mr-1.5"></span>
+                                            Active
+                                        </span>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface-variant">Oct 12, 2022</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-md transition-colors" title="Edit">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/50 rounded-md transition-colors" title="Deactivate">
+<span class="material-symbols-outlined text-[20px]" data-icon="block">block</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of a female logistics coordinator in a bright office, professional attire, soft natural light." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBe1wJ83vMVTJrQSCzg3HTYRVEmIgMXJisHl_a5QPjh8glz3CFzllpIjGjZtfnvnp27u8jImJ70s5LFE2DkX0T4ghPBF41CNexOSeKpQuKzNY5Tesl6ExfLXtX6Po_nDhEwsU_Z5FcrZWKB6tGPQbsGrKwFU09XJFdVGFwQZbewd7BMlwh3vPBdtioH9C6ohO_pLhi21CPOxQNHxcn0FOce4SQaKydLzYKqPpkjHC2XzcD4v2F0s9cSQQ"/>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-semibold group-hover:text-primary transition-colors">Sarah Williams</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[13px]">Logistics Planning</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface-variant">s.williams@kandypack.com</span>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface">Coordinator</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#E6F4EA] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#137333] mr-1.5"></span>
+                                            Active
+                                        </span>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface-variant">Jan 05, 2023</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-md transition-colors" title="Edit">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/50 rounded-md transition-colors" title="Deactivate">
+<span class="material-symbols-outlined text-[20px]" data-icon="block">block</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 (Deactivated) -->
+<tr class="hover:bg-surface-container-lowest transition-colors group bg-surface-container-lowest/50">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3 opacity-60">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-semibold">David Chen</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[13px]">External Contractor</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6 opacity-60">
+<span class="font-body-md text-body-md text-on-surface-variant">d.chen@contractor.com</span>
+</td>
+<td class="py-4 px-6 opacity-60">
+<span class="font-body-md text-body-md text-on-surface">Driver</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold bg-tertiary-fixed text-on-tertiary-fixed-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-outline mr-1.5"></span>
+                                            Deactivated
+                                        </span>
+</td>
+<td class="py-4 px-6 opacity-60">
+<span class="font-body-md text-body-md text-on-surface-variant">Mar 15, 2021</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-md transition-colors" title="Activate">
+<span class="material-symbols-outlined text-[20px]" data-icon="check_circle">check_circle</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-surface-container-lowest transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of a young male inventory specialist in a warehouse setting, holding a tablet, soft rim lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAarBnlmK99-6UTzH-u8SpY40NcOguOMdXp1utroAMBPZUaHd-nHKi8onnUaN_X6CXVS99Tf6gx-I0km8GGXQabgogfhv2QUGi3CwTKMgR-byd7mTRcXNqiackDZQeyD_qTSRSvkfV-XtuOaILVkv-B-9uaxsKp7S-_u6f3CK15K0tFSVElxeIHVDYrOBRCMT4Jw3rtHE93ewt9miIEUGMNcTeu6JAiFpeNpTB6WTWMrQ6L10RMJamYw"/>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface font-semibold group-hover:text-primary transition-colors">Tyler Smith</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-[13px]">Inventory Control</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface-variant">t.smith@kandypack.com</span>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface">Specialist</span>
+</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#E6F4EA] text-[#137333]">
+<span class="w-1.5 h-1.5 rounded-full bg-[#137333] mr-1.5"></span>
+                                            Active
+                                        </span>
+</td>
+<td class="py-4 px-6">
+<span class="font-body-md text-body-md text-on-surface-variant">Nov 20, 2023</span>
+</td>
+<td class="py-4 px-6 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-surface-container-low rounded-md transition-colors" title="Edit">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/50 rounded-md transition-colors" title="Deactivate">
+<span class="material-symbols-outlined text-[20px]" data-icon="block">block</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="p-4 border-t border-background flex items-center justify-between bg-surface">
+<p class="font-body-sm text-body-md text-on-surface-variant">Showing <span class="font-semibold text-on-surface">1</span> to <span class="font-semibold text-on-surface">10</span> of <span class="font-semibold text-on-surface">1,248</span> results</p>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-md bg-brand-sidebar text-white font-label-md text-label-md">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-label-md text-label-md">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-surface-container-low font-label-md text-label-md">3</button>
+<span class="text-on-surface-variant">...</span>
+<button class="w-8 h-8 flex items-center justify-center rounded-md border border-outline-variant text-on-surface-variant hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

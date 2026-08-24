@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login - Kandypack</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-container": "#fffbff",
+                    "surface-variant": "#d9e3f9",
+                    "surface-container-highest": "#d9e3f9",
+                    "outline-variant": "#c8c4d7",
+                    "status-error-bg": "#FFF0F0",
+                    "badge-pastel-blue": "#E0F2FF",
+                    "secondary-container": "#7459f7",
+                    "tertiary": "#4c4d51",
+                    "on-primary-container": "#e5e1ff",
+                    "on-primary-fixed-variant": "#3928c0",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-error-container": "#93000a",
+                    "status-warning-bg": "#FFF9E6",
+                    "status-success-bg": "#E6F6F4",
+                    "primary-fixed-dim": "#c4c0ff",
+                    "status-warning-text": "#FFB800",
+                    "on-surface-variant": "#474554",
+                    "background": "#f9f9ff",
+                    "tertiary-fixed": "#e2e2e7",
+                    "inverse-primary": "#c4c0ff",
+                    "inverse-on-surface": "#ebf1ff",
+                    "main-bg": "#F5F5FA",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed": "#e3dfff",
+                    "primary": "#4132c7",
+                    "status-success-text": "#00B69B",
+                    "surface-card": "#FFFFFF",
+                    "error": "#ba1a1a",
+                    "status-error-text": "#F93C65",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#45474b",
+                    "primary-container": "#5a4fe0",
+                    "secondary-fixed": "#e5deff",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#c9bfff",
+                    "on-tertiary-container": "#e3e3e8",
+                    "tertiary-fixed-dim": "#c6c6cb",
+                    "tertiary-container": "#646569",
+                    "surface-container-low": "#f0f3ff",
+                    "on-secondary": "#ffffff",
+                    "badge-pastel-purple": "#EBE9FE",
+                    "surface-container": "#e7eeff",
+                    "surface": "#f9f9ff",
+                    "sidebar-bg": "#5A4FE0",
+                    "on-tertiary-fixed": "#1a1c1f",
+                    "on-background": "#121c2c",
+                    "surface-dim": "#d0daf0",
+                    "inverse-surface": "#273141",
+                    "on-primary-fixed": "#120068",
+                    "secondary": "#5b3cdd",
+                    "on-surface": "#121c2c",
+                    "on-secondary-fixed-variant": "#441cc8",
+                    "on-secondary-fixed": "#1a0063",
+                    "surface-bright": "#f9f9ff",
+                    "surface-tint": "#5247d8",
+                    "surface-container-high": "#dee8ff",
+                    "outline": "#777586"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sidebar-width": "260px",
+                    "stack-sm": "0.5rem",
+                    "card-gap": "1rem",
+                    "gutter": "1.5rem",
+                    "container-padding": "2rem",
+                    "stack-md": "1rem"
+            },
+            "fontFamily": {
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "title-sm": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"],
+                    "body-sm": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-bold": ["Plus Jakarta Sans"],
+                    "label-caps": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "title-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-lg": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-bold": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "label-caps": ["11px", {"lineHeight": "14px", "fontWeight": "600"}]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        .lift-hover {
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .lift-hover:hover {
+            box-shadow: 0px 8px 24px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        .input-glow:focus {
+            box-shadow: 0 0 0 3px rgba(90, 79, 224, 0.2);
+            border-color: #5A4FE0;
+            outline: none;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-low min-h-screen flex items-center justify-center p-4 antialiased">
+<!-- Container for graphic + form (split layout on larger screens, stacked on small) -->
+<div class="w-full max-w-5xl flex flex-col md:flex-row bg-surface-card rounded-xl overflow-hidden shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-surface-variant">
+<!-- Left Side: Graphic / Branding -->
+<div class="hidden md:flex flex-col justify-between w-1/2 p-container-padding bg-sidebar-bg relative overflow-hidden text-on-primary">
+<!-- decorative background elements -->
+<div class="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+<div class="absolute bottom-0 left-0 w-80 h-80 bg-white/10 rounded-full blur-3xl -ml-20 -mb-20 pointer-events-none"></div>
+<div class="relative z-10 flex items-center gap-stack-sm">
+<div class="w-8 h-8 rounded bg-white flex items-center justify-center">
+<span class="material-symbols-outlined text-sidebar-bg" style="font-variation-settings: 'FILL' 1;">package_2</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-primary tracking-tight">Kandypack</h1>
+</div>
+<div class="relative z-10 mt-auto pt-20">
+<img class="w-full h-auto object-contain max-h-[300px] mb-8 opacity-90 mix-blend-screen" data-alt="A stylized 3D isometric illustration of a modern logistics hub, featuring clean lines and a soft, professional aesthetic. Miniature rail cars and sleek road transport trucks are neatly arranged around a central distribution center. The color palette uses deep violet shadows and soft lavender highlights, set against a pristine, light-mode background. The mood is systematic, highly organized, and high-tech, conveying efficiency and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4ngppf1RAEhvVLgenbav1CO-scjcQrVeT9fiqJULSgrrEtZ7tZxvHkVCapNpRIuuhQWVKgusAl6CcTGMoVfeD_7Jms1uZKve-HNrFrUbxAIDp4L1l2i1VGjRsTvNmI0tFEu9YJqH_UfMSVXSu4EDZH46I5MD_Xj4AovjrT_DwshpFVcaWFyLaVs1252h6qMmePBmc-69nKeWz0UjXKZxFjnZkPZGjCbd50PrMrKt8bTS2_2d32Zaz1Q"/>
+<h2 class="font-headline-md text-headline-md text-on-primary mb-stack-sm">Rail &amp; road distribution management</h2>
+<p class="font-body-md text-body-md text-on-primary/80">Streamline your supply chain with intelligent tracking and comprehensive logistics tools.</p>
+</div>
+</div>
+<!-- Right Side: Login Form -->
+<div class="w-full md:w-1/2 p-container-padding md:p-12 flex flex-col justify-center">
+<div class="max-w-sm mx-auto w-full">
+<!-- Mobile Only Header -->
+<div class="md:hidden flex items-center gap-stack-sm mb-card-gap">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">package_2</span>
+</div>
+<h1 class="font-display-lg text-display-lg text-on-background tracking-tight">Kandypack</h1>
+</div>
+<div class="mb-8">
+<h2 class="font-headline-md text-headline-md text-on-background mb-stack-sm">Sign in</h2>
+<p class="font-body-md text-body-md text-on-surface-variant md:hidden">Rail &amp; road distribution management</p>
+</div>
+<form class="space-y-stack-md flex flex-col">
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider" for="email">Email</label>
+<input class="w-full h-12 px-4 rounded-lg bg-surface border border-outline-variant text-on-background font-body-md text-body-md placeholder-on-surface-variant/50 input-glow transition-all" id="email" placeholder="you@kandypack.lk" required="" type="email"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider" for="password">Password</label>
+<input class="w-full h-12 px-4 rounded-lg bg-surface border border-outline-variant text-on-background font-body-md text-body-md placeholder-on-surface-variant/50 input-glow transition-all" id="password" placeholder="Enter your password" required="" type="password"/>
+</div>
+<div class="flex items-center justify-between pt-stack-sm">
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="w-4 h-4 rounded border-outline-variant text-primary-container focus:ring-primary-container bg-surface" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Remember me</span>
+</label>
+<a class="font-body-sm text-body-sm text-primary hover:text-primary-fixed-variant transition-colors" href="#">Forgot password?</a>
+</div>
+<button class="mt-4 w-full h-12 bg-primary-container text-on-primary font-title-sm text-title-sm rounded-full flex items-center justify-center gap-2 lift-hover transition-all" type="submit">
+                        Sign in
+                        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</form>
+<div class="mt-12 pt-card-gap border-t border-surface-variant text-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] align-text-bottom mr-1 text-primary-container">info</span>
+                        No public sign-up? Contact your system administrator to get an account.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+</body></html>

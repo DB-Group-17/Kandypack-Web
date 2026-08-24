@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Master Data - Kandypack Logistics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "status-warning-text": "#FFB800",
+                        "on-surface-variant": "#474554",
+                        "surface-container-high": "#dee8ff",
+                        "main-bg": "#F5F5FA",
+                        "on-secondary-container": "#fffbff",
+                        "inverse-surface": "#273141",
+                        "secondary-container": "#7459f7",
+                        "surface-bright": "#f9f9ff",
+                        "on-surface": "#121c2c",
+                        "surface-variant": "#d9e3f9",
+                        "status-success-text": "#00B69B",
+                        "status-error-text": "#F93C65",
+                        "secondary-fixed-dim": "#c9bfff",
+                        "outline": "#777586",
+                        "status-error-bg": "#FFF0F0",
+                        "tertiary": "#4c4d51",
+                        "on-primary-fixed-variant": "#3928c0",
+                        "error-container": "#ffdad6",
+                        "badge-pastel-blue": "#E0F2FF",
+                        "on-tertiary-fixed-variant": "#45474b",
+                        "on-primary-container": "#e5e1ff",
+                        "surface-container-low": "#f0f3ff",
+                        "surface-dim": "#d0daf0",
+                        "primary-fixed": "#e3dfff",
+                        "sidebar-bg": "#5A4FE0",
+                        "tertiary-container": "#646569",
+                        "on-tertiary-fixed": "#1a1c1f",
+                        "on-secondary-fixed": "#1a0063",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#e7eeff",
+                        "surface-tint": "#5247d8",
+                        "tertiary-fixed-dim": "#c6c6cb",
+                        "secondary": "#5b3cdd",
+                        "primary-container": "#5a4fe0",
+                        "on-background": "#121c2c",
+                        "primary": "#4132c7",
+                        "secondary-fixed": "#e5deff",
+                        "on-secondary-fixed-variant": "#441cc8",
+                        "on-tertiary-container": "#e3e3e8",
+                        "badge-pastel-purple": "#EBE9FE",
+                        "on-primary-fixed": "#120068",
+                        "on-primary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "surface-container-highest": "#d9e3f9",
+                        "inverse-on-surface": "#ebf1ff",
+                        "error": "#ba1a1a",
+                        "primary-fixed-dim": "#c4c0ff",
+                        "on-tertiary": "#ffffff",
+                        "status-success-bg": "#E6F6F4",
+                        "status-warning-bg": "#FFF9E6",
+                        "surface": "#f9f9ff",
+                        "surface-card": "#FFFFFF",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#c4c0ff",
+                        "tertiary-fixed": "#e2e2e7",
+                        "surface-container-lowest": "#ffffff",
+                        "background": "#f9f9ff",
+                        "outline-variant": "#c8c4d7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-padding": "2rem",
+                        "card-gap": "1rem",
+                        "stack-md": "1rem",
+                        "stack-sm": "0.5rem",
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-bold": ["Plus Jakarta Sans"],
+                        "title-sm": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "display-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "fontWeight": "600" }]
+                    },
+                    "boxShadow": {
+                        'soft': '0px 4px 20px rgba(0, 0, 0, 0.03)',
+                        'hover': '0px 8px 30px rgba(0, 0, 0, 0.06)'
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-main-bg text-on-background h-full flex overflow-hidden">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col fixed left-0 top-0 h-full w-[260px] bg-sidebar-bg dark:bg-inverse-surface shadow-2xl z-20">
+<div class="flex flex-col h-full p-4 overflow-y-auto">
+<!-- Header -->
+<div class="flex items-center gap-3 mb-8 px-4 py-2">
+<div class="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-white" data-icon="local_shipping" data-weight="fill" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div>
+<h1 class="font-display-lg text-display-lg text-on-primary tracking-tight text-xl">Kandypack</h1>
+<p class="font-body-sm text-body-sm text-on-primary/70">Logistics Suite</p>
+</div>
+</div>
+<!-- CTA -->
+<button class="mb-8 mx-4 flex items-center justify-center gap-2 bg-white text-sidebar-bg rounded-full py-3 px-4 font-label-bold hover:bg-surface-bright transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Dispatch
+            </button>
+<!-- Tabs -->
+<div class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="package_2">package_2</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="calendar_month">calendar_month</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Schedules</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="local_shipping">local_shipping</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Deliveries</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="inventory_2">inventory_2</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="analytics">analytics</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Reports</span>
+</a>
+<div class="pt-4 pb-2 px-4">
+<p class="font-label-caps text-label-caps text-on-primary/50 tracking-wider">ADMIN</p>
+</div>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="group">group</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Users</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-white/10 text-on-primary rounded-lg font-label-bold group" href="#">
+<span class="material-symbols-outlined" data-icon="database" data-weight="fill" style="font-variation-settings: 'FILL' 1;">database</span>
+<span class="font-body-md text-body-md font-bold">Master Data</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="history">history</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Audit Log</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Settings</span>
+</a>
+</div>
+<!-- Footer -->
+<div class="mt-auto space-y-1 pt-4 border-t border-white/10">
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="help">help</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Help Center</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-primary/70 hover:text-on-primary hover:bg-white/5 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined transition-all duration-200 ease-in-out group-hover:translate-x-1" data-icon="logout">logout</span>
+<span class="font-body-md text-body-md transition-all duration-200 ease-in-out group-hover:translate-x-1">Sign Out</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-[260px] min-w-0 h-full">
+<!-- TopNavBar -->
+<header class="h-16 flex items-center justify-between px-8 bg-surface dark:bg-surface-container border-b border-outline-variant shadow-sm z-10 shrink-0">
+<!-- Search -->
+<div class="flex-1 max-w-md">
+<div class="relative flex items-center w-full h-10 rounded-full bg-main-bg border border-outline-variant/30 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary overflow-hidden transition-all">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant/70 text-[20px]" data-icon="search">search</span>
+<input class="w-full h-full pl-10 pr-4 bg-transparent border-none outline-none font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant/50 focus:ring-0" placeholder="Search Kandypack..." type="text"/>
+</div>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4 ml-4">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors relative cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[22px]" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2.5 w-2 h-2 bg-status-error-text rounded-full border border-surface"></span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors cursor-pointer active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[22px]" data-icon="help">help</span>
+</button>
+<div class="h-6 w-px bg-outline-variant/50 mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer hover:bg-surface-container-low p-1.5 rounded-full pr-4 transition-colors">
+<img class="w-8 h-8 rounded-full object-cover border border-outline-variant/30" data-alt="A professional headshot of a corporate administrator in a modern office setting. The lighting is soft and bright, reflecting a modern corporate aesthetic. The tone is reliable and efficient. Soft lavender hues are subtly present in the background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDW-XpyU2dICPN3hKa-HUNF0nE_hlv6r2W-OaFut0tb8o2wfZNIdnM_iMGRCNds_VmX_vMMnVNkFu5EKVgGPbkHaEk1R4BSBU0YFMcEXmjWNqP9W7_U5ZEE05fmxZZJcWBUYDLo0RNB9kWOACuEjC8ssHxsCNfCkTYSAm0qxMK4cxldjIfo2S0GMyRU6iQxcw1sOjTtns3Kte74Wg5oU-tv89WIgVjn8C453B1zutibhRNL6nnoXFdksw"/>
+<div class="hidden lg:block">
+<p class="font-title-sm text-[13px] leading-tight text-on-surface font-semibold">John Doe</p>
+<p class="font-body-sm text-[11px] leading-tight text-on-surface-variant">Administrator</p>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Scrollable Canvas -->
+<main class="flex-1 overflow-y-auto p-gutter bg-main-bg">
+<div class="max-w-7xl mx-auto space-y-gutter">
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Master Data</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Manage reference data used across the system</p>
+</div>
+<button class="bg-primary-container text-on-primary font-label-bold text-label-bold px-6 py-2.5 rounded-full hover:shadow-hover hover:-translate-y-0.5 transition-all flex items-center gap-2 whitespace-nowrap" id="main-add-btn">
+<span class="material-symbols-outlined text-[18px]">add</span>
+<span id="add-btn-text">Add Product</span>
+</button>
+</div>
+<!-- Navigation Tabs -->
+<div class="border-b border-outline-variant/40">
+<nav aria-label="Tabs" class="flex gap-6 overflow-x-auto pb-[1px]">
+<button class="tab-btn text-primary font-title-sm text-title-sm border-b-2 border-primary pb-3 px-1 whitespace-nowrap" id="tab-btn-products" onclick="switchTab('products')">
+                            Products
+                        </button>
+<button class="tab-btn text-on-surface-variant hover:text-primary font-title-sm text-title-sm border-b-2 border-transparent pb-3 px-1 whitespace-nowrap transition-colors" id="tab-btn-routes" onclick="switchTab('routes')">
+                            Routes
+                        </button>
+<button class="tab-btn text-on-surface-variant hover:text-primary font-title-sm text-title-sm border-b-2 border-transparent pb-3 px-1 whitespace-nowrap transition-colors" id="tab-btn-cities" onclick="switchTab('cities')">
+                            Cities
+                        </button>
+<button class="tab-btn text-on-surface-variant hover:text-primary font-title-sm text-title-sm border-b-2 border-transparent pb-3 px-1 whitespace-nowrap transition-colors" id="tab-btn-employees" onclick="switchTab('employees')">
+                            Employees
+                        </button>
+<button class="tab-btn text-on-surface-variant hover:text-primary font-title-sm text-title-sm border-b-2 border-transparent pb-3 px-1 whitespace-nowrap transition-colors" id="tab-btn-customers" onclick="switchTab('customers')">
+                            Customers
+                        </button>
+</nav>
+</div>
+<!-- Bento Grid Layout for Content -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-card-gap">
+<!-- Quick Stats (spanning full width above table) -->
+<div class="lg:col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-card-gap">
+<div class="bg-surface-card rounded-xl shadow-soft p-5 border border-outline-variant/10 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-badge-pastel-purple text-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="inventory">inventory</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider" id="stat-1-title">Total Products</p>
+<p class="font-display-lg text-[24px] text-on-surface font-bold leading-none mt-1" id="stat-1-value">1,248</p>
+</div>
+</div>
+<div class="bg-surface-card rounded-xl shadow-soft p-5 border border-outline-variant/10 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-status-success-bg text-status-success-text flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider" id="stat-2-title">Active SKU</p>
+<p class="font-display-lg text-[24px] text-on-surface font-bold leading-none mt-1" id="stat-2-value">1,102</p>
+</div>
+</div>
+<div class="bg-surface-card rounded-xl shadow-soft p-5 border border-outline-variant/10 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-badge-pastel-blue text-secondary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined" data-icon="category">category</span>
+</div>
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider" id="stat-3-title">Categories</p>
+<p class="font-display-lg text-[24px] text-on-surface font-bold leading-none mt-1" id="stat-3-value">24</p>
+</div>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="lg:col-span-12 bg-surface-card rounded-xl shadow-soft border border-outline-variant/10 overflow-hidden">
+<!-- Table Toolbar -->
+<div class="p-4 border-b border-outline-variant/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
+<div class="relative max-w-sm w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/70 text-[18px]" data-icon="search">search</span>
+<input class="w-full pl-9 pr-4 py-2 bg-main-bg border border-outline-variant/30 rounded-lg font-body-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" id="search-input" placeholder="Search products by SKU or Name..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="flex items-center gap-2 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-on-surface-variant hover:bg-main-bg hover:text-on-surface font-label-bold transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="filter_list">filter_list</span>
+                                    Filter
+                                </button>
+<button class="flex items-center gap-2 px-3 py-1.5 border border-outline-variant/30 rounded-lg text-on-surface-variant hover:bg-main-bg hover:text-on-surface font-label-bold transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="download">download</span>
+                                    Export
+                                </button>
+</div>
+</div>
+<!-- TAB CONTENTS -->
+<!-- Products Tab -->
+<div class="tab-content active overflow-x-auto" id="tab-content-products">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F8F9FC] border-b border-outline-variant/10">
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">SKU</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Name</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Category</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-right">Unit Price</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-right">Space Rate</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-center">Status</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/10">
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">PRD-8902</td>
+<td class="py-4 px-5 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="deployed_code">deployed_code</span>
+</div>
+                                            Industrial Pallet A
+                                        </td>
+<td class="py-4 px-5 text-on-surface-variant">Heavy Equipment</td>
+<td class="py-4 px-5 text-right font-medium">$245.00</td>
+<td class="py-4 px-5 text-right text-on-surface-variant">1.5 m³</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-caps text-label-caps">Active</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">PRD-8903</td>
+<td class="py-4 px-5 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="medication">medication</span>
+</div>
+                                            Medical Grade Cooler
+                                        </td>
+<td class="py-4 px-5 text-on-surface-variant">Temperature Controlled</td>
+<td class="py-4 px-5 text-right font-medium">$890.00</td>
+<td class="py-4 px-5 text-right text-on-surface-variant">0.8 m³</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-caps text-label-caps">Active</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">PRD-8904</td>
+<td class="py-4 px-5 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="precision_manufacturing">precision_manufacturing</span>
+</div>
+                                            Steel Coil Grade 2
+                                        </td>
+<td class="py-4 px-5 text-on-surface-variant">Raw Materials</td>
+<td class="py-4 px-5 text-right font-medium">$1,200.00</td>
+<td class="py-4 px-5 text-right text-on-surface-variant">2.2 m³</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-warning-bg text-status-warning-text font-label-caps text-label-caps">Low Stock</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">PRD-8905</td>
+<td class="py-4 px-5 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="science">science</span>
+</div>
+                                            Chemical Drum 50L
+                                        </td>
+<td class="py-4 px-5 text-on-surface-variant">Hazmat</td>
+<td class="py-4 px-5 text-right font-medium">$150.00</td>
+<td class="py-4 px-5 text-right text-on-surface-variant">0.5 m³</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-caps text-label-caps">Active</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium text-on-surface-variant">PRD-8906</td>
+<td class="py-4 px-5 flex items-center gap-3 text-on-surface-variant">
+<div class="w-8 h-8 rounded bg-surface-container-high/50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant/50 text-[18px]" data-icon="inventory_2">inventory_2</span>
+</div>
+                                            Standard Box L
+                                        </td>
+<td class="py-4 px-5 text-on-surface-variant/70">Packaging</td>
+<td class="py-4 px-5 text-right font-medium text-on-surface-variant/70">$12.00</td>
+<td class="py-4 px-5 text-right text-on-surface-variant/70">0.1 m³</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-outline-variant/20 text-on-surface-variant font-label-caps text-label-caps">Inactive</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Routes Tab -->
+<div class="tab-content overflow-x-auto" id="tab-content-routes">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F8F9FC] border-b border-outline-variant/10">
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Route ID</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Origin</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Destination</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Distance</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Est. Time</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-center">Status</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/10">
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">RT-1001</td>
+<td class="py-4 px-5 text-on-surface-variant">Los Angeles, CA</td>
+<td class="py-4 px-5 text-on-surface-variant">San Francisco, CA</td>
+<td class="py-4 px-5 font-medium">382 miles</td>
+<td class="py-4 px-5 text-on-surface-variant">6 hrs 15 mins</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-caps text-label-caps">Active</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Cities Tab -->
+<div class="tab-content overflow-x-auto" id="tab-content-cities">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F8F9FC] border-b border-outline-variant/10">
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">City Name</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Region</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Postal Code</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Hub Location</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-center">Status</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/10">
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">Seattle</td>
+<td class="py-4 px-5 text-on-surface-variant">Pacific Northwest</td>
+<td class="py-4 px-5 text-on-surface-variant">98101</td>
+<td class="py-4 px-5 text-on-surface-variant">Primary</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-caps text-label-caps">Active</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Employees Tab -->
+<div class="tab-content overflow-x-auto" id="tab-content-employees">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F8F9FC] border-b border-outline-variant/10">
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Emp ID</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Name</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Role</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Department</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Contact</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-center">Status</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/10">
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">EMP-309</td>
+<td class="py-4 px-5 text-on-surface-variant">Sarah Jenkins</td>
+<td class="py-4 px-5 text-on-surface-variant">Dispatch Manager</td>
+<td class="py-4 px-5 text-on-surface-variant">Operations</td>
+<td class="py-4 px-5 text-on-surface-variant">s.jenkins@kandypack.com</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-caps text-label-caps">Active</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Customers Tab -->
+<div class="tab-content overflow-x-auto" id="tab-content-customers">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#F8F9FC] border-b border-outline-variant/10">
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Customer ID</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Name</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Type</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Assigned Rep</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider">Contact</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-center">Status</th>
+<th class="py-3 px-5 font-label-caps text-label-caps text-on-surface-variant font-semibold tracking-wider text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface divide-y divide-outline-variant/10">
+<tr class="hover:bg-main-bg/50 transition-colors group">
+<td class="py-4 px-5 font-medium">CUS-992</td>
+<td class="py-4 px-5 text-on-surface-variant">Global Tech Corp</td>
+<td class="py-4 px-5 text-on-surface-variant">Enterprise</td>
+<td class="py-4 px-5 text-on-surface-variant">Michael Scott</td>
+<td class="py-4 px-5 text-on-surface-variant">purchasing@globaltech.com</td>
+<td class="py-4 px-5 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-status-success-bg text-status-success-text font-label-caps text-label-caps">Active</span>
+</td>
+<td class="py-4 px-5 text-right">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-1 opacity-0 group-hover:opacity-100 focus:opacity-100">
+<span class="material-symbols-outlined text-[20px]" data-icon="more_horiz">more_horiz</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination (Simple representation) -->
+<div class="p-4 border-t border-outline-variant/10 flex items-center justify-between bg-white text-on-surface-variant font-body-sm text-body-sm">
+<p id="pagination-text">Showing 1 to 5 of 1,248 results</p>
+<div class="flex gap-1">
+<button class="w-8 h-8 rounded flex items-center justify-center hover:bg-main-bg transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded flex items-center justify-center bg-badge-pastel-purple text-primary font-medium">1</button>
+<button class="w-8 h-8 rounded flex items-center justify-center hover:bg-main-bg transition-colors">2</button>
+<button class="w-8 h-8 rounded flex items-center justify-center hover:bg-main-bg transition-colors">3</button>
+<span class="w-8 h-8 flex items-center justify-center">...</span>
+<button class="w-8 h-8 rounded flex items-center justify-center hover:bg-main-bg transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<script>
+    const tabData = {
+        products: {
+            addBtnText: 'Add Product',
+            searchPlaceholder: 'Search products by SKU or Name...',
+            stats: [
+                { title: 'Total Products', value: '1,248' },
+                { title: 'Active SKU', value: '1,102' },
+                { title: 'Categories', value: '24' }
+            ],
+            resultsText: 'Showing 1 to 5 of 1,248 results'
+        },
+        routes: {
+            addBtnText: 'Add Route',
+            searchPlaceholder: 'Search routes by Origin or Destination...',
+            stats: [
+                { title: 'Total Routes', value: '342' },
+                { title: 'Active Routes', value: '310' },
+                { title: 'Hubs', value: '15' }
+            ],
+            resultsText: 'Showing 1 to 1 of 342 results'
+        },
+        cities: {
+            addBtnText: 'Add City',
+            searchPlaceholder: 'Search cities by Name or Region...',
+            stats: [
+                { title: 'Total Cities', value: '89' },
+                { title: 'Active Regions', value: '12' },
+                { title: 'Primary Hubs', value: '8' }
+            ],
+            resultsText: 'Showing 1 to 1 of 89 results'
+        },
+        employees: {
+            addBtnText: 'Add Employee',
+            searchPlaceholder: 'Search employees by Name or Role...',
+            stats: [
+                { title: 'Total Employees', value: '534' },
+                { title: 'Active Staff', value: '512' },
+                { title: 'Departments', value: '9' }
+            ],
+            resultsText: 'Showing 1 to 1 of 534 results'
+        },
+        customers: {
+            addBtnText: 'Add Customer',
+            searchPlaceholder: 'Search customers by Name or ID...',
+            stats: [
+                { title: 'Total Customers', value: '2,105' },
+                { title: 'Active Accounts', value: '1,890' },
+                { title: 'Enterprise', value: '345' }
+            ],
+            resultsText: 'Showing 1 to 1 of 2,105 results'
+        }
+    };
+
+    function switchTab(tabId) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('text-primary', 'border-primary');
+            btn.classList.add('text-on-surface-variant', 'border-transparent');
+        });
+        const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+        activeBtn.classList.remove('text-on-surface-variant', 'border-transparent');
+        activeBtn.classList.add('text-primary', 'border-primary');
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`tab-content-${tabId}`).classList.add('active');
+
+        // Update dynamic data
+        const data = tabData[tabId];
+        document.getElementById('add-btn-text').innerText = data.addBtnText;
+        document.getElementById('search-input').placeholder = data.searchPlaceholder;
+        
+        document.getElementById('stat-1-title').innerText = data.stats[0].title;
+        document.getElementById('stat-1-value').innerText = data.stats[0].value;
+        document.getElementById('stat-2-title').innerText = data.stats[1].title;
+        document.getElementById('stat-2-value').innerText = data.stats[1].value;
+        document.getElementById('stat-3-title').innerText = data.stats[2].title;
+        document.getElementById('stat-3-value').innerText = data.stats[2].value;
+        
+        document.getElementById('pagination-text').innerText = data.resultsText;
+    }
+</script>
+</body></html>

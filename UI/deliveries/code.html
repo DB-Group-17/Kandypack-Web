@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Kandypack Logistics - Deliveries</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e3dfff",
+                        "surface-variant": "#d9e3f9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#474554",
+                        "surface-container-highest": "#d9e3f9",
+                        "surface-dim": "#d0daf0",
+                        "surface": "#f9f9ff",
+                        "error": "#ba1a1a",
+                        "primary-container": "#5a4fe0",
+                        "on-error": "#ffffff",
+                        "surface-container": "#e7eeff",
+                        "on-primary": "#ffffff",
+                        "background": "#f9f9ff",
+                        "on-primary-container": "#e5e1ff",
+                        "surface-tint": "#5247d8",
+                        "on-primary-fixed-variant": "#3928c0",
+                        "primary-fixed-dim": "#c4c0ff",
+                        "on-primary-fixed": "#120068",
+                        "secondary-container": "#6c61e8",
+                        "on-tertiary-fixed-variant": "#45474b",
+                        "secondary-fixed-dim": "#c5c0ff",
+                        "inverse-on-surface": "#ebf1ff",
+                        "surface-container-high": "#dee8ff",
+                        "tertiary": "#4c4d51",
+                        "surface-bright": "#f9f9ff",
+                        "inverse-primary": "#c4c0ff",
+                        "tertiary-fixed-dim": "#c6c6cb",
+                        "on-error-container": "#93000a",
+                        "primary": "#4132c7",
+                        "surface-container-low": "#f0f3ff",
+                        "on-tertiary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "outline": "#777586",
+                        "on-secondary-container": "#fffbff",
+                        "secondary": "#5346ce",
+                        "on-background": "#121c2c",
+                        "on-secondary-fixed-variant": "#3d2cb8",
+                        "on-surface": "#121c2c",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#e3e3e8",
+                        "tertiary-fixed": "#e2e2e7",
+                        "outline-variant": "#c8c4d7",
+                        "inverse-surface": "#273141",
+                        "on-tertiary-fixed": "#1a1c1f",
+                        "tertiary-container": "#646569",
+                        "secondary-fixed": "#e3dfff",
+                        "on-secondary-fixed": "#140067"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-gap": "16px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px",
+                        "sidebar-width": "260px",
+                        "card-padding": "24px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["32px", { "lineHeight": "40px", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.03em", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["22px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<aside class="bg-primary-container dark:bg-primary-container text-on-primary-container dark:text-on-primary-container w-[260px] h-screen fixed left-0 top-0 flex flex-col py-6 z-20">
+<div class="px-8 mb-8">
+<h1 class="text-headline-lg font-headline-xl text-on-primary-container tracking-tight">Kandypack</h1>
+<p class="font-label-md text-label-md mt-1 opacity-80">Logistics Management</p>
+</div>
+<nav class="flex-1 overflow-y-auto">
+<ul class="space-y-2">
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">shopping_cart</span>
+<span class="font-body-md text-body-md">Orders</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">train</span>
+<span class="font-body-md text-body-md">Train Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">local_shipping</span>
+<span class="font-body-md text-body-md">Truck Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 bg-secondary-container text-on-primary font-semibold rounded-full mx-4 px-4 py-2 hover:bg-secondary-container/50 transition-colors scale-95 duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+<span class="font-body-md text-body-md">Deliveries</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">warehouse</span>
+<span class="font-body-md text-body-md">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">bar_chart</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="font-body-md text-body-md">Users</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">database</span>
+<span class="font-body-md text-body-md">Master Data</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">history</span>
+<span class="font-body-md text-body-md">Audit Log</span>
+</a>
+</li>
+</ul>
+</nav>
+<div class="mt-auto pt-4 border-t border-on-primary-container/10">
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+<span class="font-body-md text-body-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col ml-[260px] min-h-screen relative">
+<!-- TopAppBar -->
+<header class="bg-background dark:bg-background h-20 fixed top-0 right-0 left-[260px] z-10 flex items-center justify-between px-margin-desktop w-[calc(100%-260px)]">
+<div class="flex-1 flex items-center max-w-md bg-surface-container-low rounded-full px-4 py-2 border border-outline/20 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 w-full text-body-md text-on-surface placeholder:text-on-surface-variant/60" placeholder="Search deliveries, tracking numbers..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="flex items-center gap-3 ml-2 pl-4 border-l border-outline/20">
+<img alt="Operator John Doe" class="w-8 h-8 rounded-full object-cover border border-outline/20" data-alt="A small, circular avatar portrait of a logistics operator with short hair, wearing a casual uniform, smiling slightly against a neutral gray background. High quality, well-lit, professional headshot style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDPfD3sIz9aO4gcHlzi4igdCIdHH_9FihXaKDOXqbwXojdGEVzHiXrMhoBaLBbTjKIM-WaIq6jVCjAbCdAKSuhaV4HX300o3DDGGZ5K3tQrYjvuTM5M86zDG1Tmbbo5L8U_fx09oRRjEt5i5d1G6YBqTftKxP9eriqRoDech9a8jCBGDLtknh_ejO_8aI8xb2i2tuBLMGGoRgyVuEoAstkA1jfm-UM8oD2SvC8WPWkw7sufHzP2BsYHyA"/>
+<span class="font-label-lg text-label-lg text-primary font-semibold cursor-pointer hover:opacity-80 transition-opacity">Sign Out</span>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<main class="flex-1 pt-[104px] px-margin-desktop pb-8 overflow-y-auto bg-background">
+<!-- Page Header -->
+<div class="mb-8">
+<h2 class="font-headline-xl text-headline-xl text-on-background">Deliveries</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mt-1">Track and complete last-mile deliveries.</p>
+</div>
+<!-- Content Area (Cards) -->
+<div class="bg-surface-container-lowest rounded-[16px] shadow-[0px_4px_20px_rgba(0,0,0,0.05)] border border-outline/10 p-card-padding">
+<!-- Toolbar -->
+<div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Deliveries</h3>
+<div class="flex space-x-2 bg-surface-container-low p-1 rounded-lg">
+<button class="px-4 py-1.5 rounded-md font-label-md text-label-md bg-white shadow-sm text-primary font-semibold">All</button>
+<button class="px-4 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:bg-white/50 transition-colors">Scheduled</button>
+<button class="px-4 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:bg-white/50 transition-colors">In Progress</button>
+<button class="px-4 py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:bg-white/50 transition-colors">Completed</button>
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-surface-dim">
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Order ID</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Customer</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Truck &amp; Driver</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Delivered On</th>
+<th class="py-3 px-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Action</th>
+</tr>
+</thead>
+<tbody class="font-body-md text-body-md">
+<!-- Row 1 -->
+<tr class="border-b border-surface-dim hover:bg-surface-container-low/50 transition-colors">
+<td class="py-4 px-4 font-medium text-primary">#DLV-8829</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-3">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small circular avatar of a female customer with dark curly hair, smiling casually, set against a soft warm-toned background. Professional, high resolution, clear." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiZr0vwV6Gsk9ONrexC_wJYuZWuCa_aaBE_1ztcWYeIqh0CQVHSR_ZE0WvBQMmsHIvc1feO7KQ_E06FxHLyKix4DQmCKVXIEXaigIw3SYRZG-voKeGOOfQB4tKo2Ka8FSn1ig4zm728j-Jzrywy5m47FsjacSrJhA6zdbzSkwJjdEvDziKZqjtS2mdseJPJeuQnBRlINqdT4aCr1wJ313-FF8CYhNmBSjiopIEQeRu9tdpz7JgUPvdJQ"/>
+<div>
+<p class="font-medium text-on-surface">Elena Rodriguez</p>
+<p class="text-[12px] text-on-surface-variant">elena.r@example.com</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<p class="font-medium text-on-surface">TRK-04 (Volvo)</p>
+<p class="text-[12px] text-on-surface-variant">Driver: Sam Hill</p>
+</td>
+<td class="py-4 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                        In Progress
+                                    </span>
+</td>
+<td class="py-4 px-4 text-on-surface-variant">
+                                    --
+                                </td>
+<td class="py-4 px-4 text-right">
+<button class="bg-primary text-on-primary hover:bg-primary/90 px-4 py-1.5 rounded-full font-label-md text-label-md transition-colors shadow-sm">
+                                        Mark Complete
+                                    </button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-surface-dim hover:bg-surface-container-low/50 transition-colors">
+<td class="py-4 px-4 font-medium text-primary">#DLV-8828</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-3">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small circular avatar of a male customer with short blond hair and glasses, looking neutral, against a light blue background. High quality, professional portrait." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAyIMJnw4OTEEi16U4jmuItsCrHn0JT2kM6DkGNwb6aJX3KDeG7EXEa-D7KQudxlItdLrD7i0r98c5kYe22oM-BBRPyQ4wKVzRdqOXpwwXbRAd7y4MED6Yc2jQ5EQmwhrk2yJBct1TPyVdH2yq8dEsUzj4wlo6Wg0pLhL_RBuKxs2dgA-D5iNA5FgG01QakBF3vKHVeBlu_y15VBj6x295pP5EdlwzYrfX7oBGCFJmmdu0JdSBBDgmPQ"/>
+<div>
+<p class="font-medium text-on-surface">Marcus Chen</p>
+<p class="text-[12px] text-on-surface-variant">m.chen@example.com</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<p class="font-medium text-on-surface">TRK-12 (Scania)</p>
+<p class="text-[12px] text-on-surface-variant">Driver: Alex Thorne</p>
+</td>
+<td class="py-4 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                        Completed
+                                    </span>
+</td>
+<td class="py-4 px-4 text-on-surface-variant">
+                                    Today, 10:42 AM
+                                </td>
+<td class="py-4 px-4 text-right">
+<button class="bg-surface-dim text-on-surface hover:bg-outline-variant px-4 py-1.5 rounded-full font-label-md text-label-md transition-colors" disabled="">
+                                        Completed
+                                    </button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="py-4 px-4 font-medium text-primary">#DLV-8827</td>
+<td class="py-4 px-4">
+<div class="flex items-center gap-3">
+<img class="w-8 h-8 rounded-full object-cover" data-alt="A small circular avatar of a female customer with long black hair, wearing a white blouse, against a soft gray background. High quality, well lit." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPYCdxKt-JCW8KCUZLU0XGIJcyfi_qrSpw6TOpS0I5XC5CnT3PssgE04EnO9zCrG80zyblQvNRNddJ9FOfLU6WrtN63MVAfe0Vd_q8iQpxvr1ljju5wBMxQ_NOOPP6WbFZwMDqZ-vl3Riwa2LynMpkonAKOmJVwmr6d-50qRbEWRH2r3z5Bbhign4lauUXTSRH_xnLEDMOjuWw401kmGUQxIMEelmH6tGkBEchWS1aQE1Mcqix8w3qvw"/>
+<div>
+<p class="font-medium text-on-surface">Sarah Jenkins</p>
+<p class="text-[12px] text-on-surface-variant">s.jenkins@example.com</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-4">
+<p class="font-medium text-on-surface">TRK-09 (Mack)</p>
+<p class="text-[12px] text-on-surface-variant">Driver: David Okafor</p>
+</td>
+<td class="py-4 px-4">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                        Scheduled
+                                    </span>
+</td>
+<td class="py-4 px-4 text-on-surface-variant">
+                                    --
+                                </td>
+<td class="py-4 px-4 text-right">
+<button class="border border-primary text-primary hover:bg-primary/5 px-4 py-1.5 rounded-full font-label-md text-label-md transition-colors">
+                                        Start Delivery
+                                    </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination (Simple) -->
+<div class="flex items-center justify-between border-t border-surface-dim pt-4 mt-4">
+<p class="font-body-md text-body-md text-on-surface-variant">Showing 1 to 3 of 45 deliveries</p>
+<div class="flex gap-2">
+<button class="p-1 rounded-md text-on-surface-variant hover:bg-surface-container-low disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="p-1 rounded-md text-on-surface-variant hover:bg-surface-container-low">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

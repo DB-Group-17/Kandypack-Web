@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Truck Schedules - Kandypack Logistics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "primary-fixed": "#e3dfff",
+                      "surface-variant": "#d9e3f9",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface-variant": "#474554",
+                      "surface-container-highest": "#d9e3f9",
+                      "surface-dim": "#d0daf0",
+                      "surface": "#f9f9ff",
+                      "error": "#ba1a1a",
+                      "primary-container": "#5a4fe0",
+                      "on-error": "#ffffff",
+                      "surface-container": "#e7eeff",
+                      "on-primary": "#ffffff",
+                      "background": "#f9f9ff",
+                      "on-primary-container": "#e5e1ff",
+                      "surface-tint": "#5247d8",
+                      "on-primary-fixed-variant": "#3928c0",
+                      "primary-fixed-dim": "#c4c0ff",
+                      "on-primary-fixed": "#120068",
+                      "secondary-container": "#6c61e8",
+                      "on-tertiary-fixed-variant": "#45474b",
+                      "secondary-fixed-dim": "#c5c0ff",
+                      "inverse-on-surface": "#ebf1ff",
+                      "surface-container-high": "#dee8ff",
+                      "tertiary": "#4c4d51",
+                      "surface-bright": "#f9f9ff",
+                      "inverse-primary": "#c4c0ff",
+                      "tertiary-fixed-dim": "#c6c6cb",
+                      "on-error-container": "#93000a",
+                      "primary": "#4132c7",
+                      "surface-container-low": "#f0f3ff",
+                      "on-tertiary": "#ffffff",
+                      "error-container": "#ffdad6",
+                      "outline": "#777586",
+                      "on-secondary-container": "#fffbff",
+                      "secondary": "#5346ce",
+                      "on-background": "#121c2c",
+                      "on-secondary-fixed-variant": "#3d2cb8",
+                      "on-surface": "#121c2c",
+                      "on-secondary": "#ffffff",
+                      "on-tertiary-container": "#e3e3e8",
+                      "tertiary-fixed": "#e2e2e7",
+                      "outline-variant": "#c8c4d7",
+                      "inverse-surface": "#273141",
+                      "on-tertiary-fixed": "#1a1c1f",
+                      "tertiary-container": "#646569",
+                      "secondary-fixed": "#e3dfff",
+                      "on-secondary-fixed": "#140067"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "stack-gap": "16px",
+                      "margin-mobile": "16px",
+                      "margin-desktop": "32px",
+                      "sidebar-width": "260px",
+                      "card-padding": "24px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-xl": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "headline-xl": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.03em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "22px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-lg": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "letterSpacing": "0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+      </style>
+</head>
+<body class="bg-background min-h-screen flex text-on-surface">
+<!-- SideNavBar -->
+<aside class="w-sidebar-width h-screen fixed left-0 top-0 bg-primary-container dark:bg-primary-container flex flex-col py-6 z-20 text-on-primary-container dark:text-on-primary-container">
+<div class="px-8 mb-8">
+<h1 class="text-headline-lg font-headline-xl text-on-primary-container tracking-tight">Kandypack</h1>
+<p class="font-label-md text-label-md opacity-80 mt-1">Logistics Management</p>
+</div>
+<nav class="flex-1 overflow-y-auto">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-body-md text-body-md">Orders</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">train</span>
+<span class="font-body-md text-body-md">Train Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 bg-secondary-container text-on-primary font-semibold rounded-full mx-4 px-4 py-2 hover:bg-secondary-container/50 transition-colors scale-95 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-body-md text-body-md">Truck Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-body-md text-body-md">Deliveries</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">warehouse</span>
+<span class="font-body-md text-body-md">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">bar_chart</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body-md text-body-md">Users</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">database</span>
+<span class="font-body-md text-body-md">Master Data</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium px-8 py-2 hover:bg-secondary-container/50 transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="font-body-md text-body-md">Audit Log</span>
+</a>
+</li>
+</ul>
+</nav>
+<div class="mt-auto pt-6 px-8 border-t border-white/10">
+<a class="flex items-center gap-3 text-on-primary-container/70 font-medium py-2 hover:bg-secondary-container/50 transition-colors rounded" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-body-md text-body-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 ml-[260px] flex flex-col">
+<!-- TopAppBar -->
+<header class="h-20 ml-[260px] top-0 right-0 fixed left-0 z-10 bg-background dark:bg-background flex items-center justify-between px-margin-desktop w-full transition-all">
+<div class="flex-1 flex items-center">
+<div class="relative w-96 hidden md:block">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
+<input class="w-full pl-12 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-full focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md text-on-surface" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:bg-surface-container-low p-2 rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="hover:bg-surface-container-low p-2 rounded-full transition-all">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="flex items-center gap-3 border-l border-outline-variant pl-6">
+<div class="text-right hidden sm:block">
+<p class="font-label-lg text-label-lg text-primary dark:text-primary-fixed m-0">Operator John Doe</p>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Sign Out</a>
+</div>
+<img alt="Operator John Doe" class="w-10 h-10 rounded-full object-cover border border-outline-variant" data-alt="A small, circular professional headshot of a logistics operator in a well-lit office environment, smiling subtly. The lighting is soft and bright, aligning with a modern corporate aesthetic. 50-100 words." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqItCmwDuZW7jTBqjoAw_DiaWX11e1K2wWM_M4jqxILQPHAwvtWFXTGLUZpJkpB78rW3x9_m1_yPZCgvD2fdojVwkJb8MiI_QsCsRqtRHAZdMhZBhI3-20HYB610iNt7H4LrmKLBcvdhmR2FLLaIbWCgn9srXG3R-31DIBO2iDnj0nnN00L3amrUp_OlrTYaA0MZ0CcMRT8-9J4vgzwTE-yaP8FZ60ilEi1ROOVaqQaeNzRi6SDadyyA"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 pt-24 px-gutter pb-12">
+<!-- Page Header -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+<div>
+<h2 class="font-headline-xl text-headline-xl text-on-surface mb-1">Truck Schedules</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Last-mile delivery scheduling</p>
+</div>
+<button class="bg-primary text-on-primary font-label-lg text-label-lg py-3 px-6 rounded-full hover:bg-primary-container transition-colors shadow-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                    New Schedule
+                </button>
+</div>
+<!-- Filter Bar -->
+<div class="bg-surface-container-lowest rounded-xl p-card-padding shadow-[0px_4px_20px_rgba(0,0,0,0.05)] mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+<div class="flex flex-wrap gap-4 w-full md:w-auto">
+<div class="relative w-full md:w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">calendar_today</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md text-on-surface" placeholder="Nov 1 - Nov 30, 2023" type="text"/>
+</div>
+<div class="relative w-full md:w-48">
+<select class="w-full pl-4 pr-10 py-2 bg-surface border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md text-on-surface appearance-none">
+<option>All Statuses</option>
+<option>Scheduled</option>
+<option>In Progress</option>
+<option>Completed</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[20px]">expand_more</span>
+</div>
+<div class="relative w-full md:w-48">
+<select class="w-full pl-4 pr-10 py-2 bg-surface border border-outline-variant rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary font-body-md text-body-md text-on-surface appearance-none">
+<option>All Drivers</option>
+<option>Marcus Chen</option>
+<option>Sarah Jenkins</option>
+<option>David Osei</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none text-[20px]">expand_more</span>
+</div>
+</div>
+<button class="w-full md:w-auto font-label-lg text-label-lg text-primary hover:bg-surface-container-low px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                    More Filters
+                </button>
+</div>
+<!-- Data Table Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)] overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-surface-variant bg-surface/50">
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Truck</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Driver</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Assistant</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Route</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Start</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">End</th>
+<th class="py-4 px-6 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="py-4 px-6 text-right"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">local_shipping</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">TK-9021</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs">Refrigerated</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img alt="Driver" class="w-8 h-8 rounded-full object-cover" data-alt="Small circular portrait of an Asian male truck driver, professional logistics uniform, well-lit modern corporate style. 50-100 words." src="https://lh3.googleusercontent.com/aida-public/AB6AXuADFZK7AK8FI3VY9AIH8S07OkMjRNQYToUrZmvw7rdRtIfDa9Zwl_c2-ytib5ukEljc671lU3Lh2OynZfhQQdDxGZzVNAftMMHNvXuoNqjdGyqh0jm6HRAs2f1phw0AOWOdme3kZb8UDGaF9j78o7FdphRMT-wjV9yS9x1wS-F9U96D0dt_ktaRH72r6XRl0KrrfLp48LaeKgoF1hYL-Xk87FukFXw9NewB-HDom6_JreKCGDrxXrSmBA"/>
+<span class="font-body-md text-body-md text-on-surface">Marcus Chen</span>
+</div>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">L. Barnes</td>
+<td class="py-4 px-6">
+<p class="font-body-md text-body-md text-on-surface">North Metro</p>
+<p class="font-label-md text-label-md text-on-surface-variant">14 Stops</p>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">06:00 AM</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">02:30 PM</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        In Progress
+                                    </span>
+</td>
+<td class="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-outline hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">local_shipping</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">TK-8843</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs">Standard Box</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img alt="Driver" class="w-8 h-8 rounded-full object-cover" data-alt="Small circular portrait of a Caucasian female truck driver, professional logistics uniform, well-lit modern corporate style. 50-100 words." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDlm1J5iwhl5sUYgZ7IxLBkOS-jpxoRLgNLeLa0ytmsAQZLeGENLbJ6a6TDs6OyOlOKNxWs4cB0wSje64xJ0G2Hv1etBAn_OLepppnRUdeCdUVcyZKYgIw_Y01N3B0X8brN9WU2xV0OZ5GTG7MXAS0iSyOg0f_hL9Cqp28k1ZfTtVAR-C-WWeYl9jOGIooATl22npNBuUek3E5b8Il_inoF_Ptx7c9TsuzG50UA-o2g8yH5B2GhDfv5_g"/>
+<span class="font-body-md text-body-md text-on-surface">Sarah Jenkins</span>
+</div>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">T. Mills</td>
+<td class="py-4 px-6">
+<p class="font-body-md text-body-md text-on-surface">South District</p>
+<p class="font-label-md text-label-md text-on-surface-variant">8 Stops</p>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">08:15 AM</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">04:00 PM</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        Scheduled
+                                    </span>
+</td>
+<td class="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-outline hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-container-low transition-colors group">
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">local_shipping</span>
+</div>
+<div>
+<p class="font-label-lg text-label-lg text-on-surface">TK-7721</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-xs">Heavy Duty</p>
+</div>
+</div>
+</td>
+<td class="py-4 px-6">
+<div class="flex items-center gap-3">
+<img alt="Driver" class="w-8 h-8 rounded-full object-cover" data-alt="Small circular portrait of a Black male truck driver, professional logistics uniform, well-lit modern corporate style. 50-100 words." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRUGFi0sXWS0ctuFq4fto_yYe2rOjosmT54gkFMMRBJrrbaq9kY9ryjGEcMlpWtNNhaF192Esp2E-nik7iIeKomxgsyvhwGceYD76SmlcmccyK6iEb_YhILgaO5cGdNw-Qk92AjmkrneTUXv27gyaXZ2HsVloEz5PLJA_N1or_CnYNvu73ypY2wATmFhgbgazsnWYGqOnKM_GGPweP49ZL5QaeOMYyJJtO33GnO3uccHuFdGijhxNtkQ"/>
+<span class="font-body-md text-body-md text-on-surface">David Osei</span>
+</div>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">None</td>
+<td class="py-4 px-6">
+<p class="font-body-md text-body-md text-on-surface">West Hub Direct</p>
+<p class="font-label-md text-label-md text-on-surface-variant">2 Stops</p>
+</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">04:30 AM</td>
+<td class="py-4 px-6 font-body-md text-body-md text-on-surface">11:00 AM</td>
+<td class="py-4 px-6">
+<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Completed
+                                    </span>
+</td>
+<td class="py-4 px-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-outline hover:text-primary transition-colors p-1">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="px-6 py-4 border-t border-surface-variant flex items-center justify-between">
+<p class="font-body-md text-body-md text-on-surface-variant">Showing 1 to 3 of 42 entries</p>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded hover:bg-surface-container-low text-outline transition-colors disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[20px]">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded bg-primary text-on-primary font-label-md flex items-center justify-center">1</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-label-md flex items-center justify-center transition-colors">2</button>
+<button class="w-8 h-8 rounded hover:bg-surface-container-low text-on-surface font-label-md flex items-center justify-center transition-colors">3</button>
+<span class="text-outline">...</span>
+<button class="p-2 rounded hover:bg-surface-container-low text-outline transition-colors">
+<span class="material-symbols-outlined text-[20px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

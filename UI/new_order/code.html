@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Order - Kandypack Logistics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "sidebar-bg": "#5A4FE0",
+                      "on-surface-variant": "#474554",
+                      "status-warning-bg": "#FFF9E6",
+                      "outline": "#777586",
+                      "on-secondary-fixed-variant": "#441cc8",
+                      "main-bg": "#F5F5FA",
+                      "tertiary-container": "#646569",
+                      "on-tertiary-fixed-variant": "#45474b",
+                      "surface-container-lowest": "#ffffff",
+                      "surface": "#f9f9ff",
+                      "surface-container-low": "#f0f3ff",
+                      "status-warning-text": "#FFB800",
+                      "on-error": "#ffffff",
+                      "on-primary-fixed-variant": "#3928c0",
+                      "on-tertiary-container": "#e3e3e8",
+                      "status-success-bg": "#E6F6F4",
+                      "primary": "#4132c7",
+                      "on-background": "#121c2c",
+                      "surface-dim": "#d0daf0",
+                      "error": "#ba1a1a",
+                      "primary-fixed-dim": "#c4c0ff",
+                      "surface-container": "#e7eeff",
+                      "surface-container-high": "#dee8ff",
+                      "badge-pastel-blue": "#E0F2FF",
+                      "status-error-text": "#F93C65",
+                      "on-tertiary-fixed": "#1a1c1f",
+                      "secondary-fixed-dim": "#c9bfff",
+                      "inverse-primary": "#c4c0ff",
+                      "surface-card": "#FFFFFF",
+                      "status-error-bg": "#FFF0F0",
+                      "on-primary-fixed": "#120068",
+                      "error-container": "#ffdad6",
+                      "badge-pastel-purple": "#EBE9FE",
+                      "secondary": "#5b3cdd",
+                      "secondary-container": "#7459f7",
+                      "secondary-fixed": "#e5deff",
+                      "tertiary": "#4c4d51",
+                      "background": "#f9f9ff",
+                      "primary-container": "#5a4fe0",
+                      "surface-tint": "#5247d8",
+                      "inverse-surface": "#273141",
+                      "on-error-container": "#93000a",
+                      "status-success-text": "#00B69B",
+                      "tertiary-fixed-dim": "#c6c6cb",
+                      "surface-variant": "#d9e3f9",
+                      "on-primary-container": "#e5e1ff",
+                      "on-surface": "#121c2c",
+                      "tertiary-fixed": "#e2e2e7",
+                      "on-primary": "#ffffff",
+                      "outline-variant": "#c8c4d7",
+                      "on-tertiary": "#ffffff",
+                      "inverse-on-surface": "#ebf1ff",
+                      "on-secondary-container": "#fffbff",
+                      "surface-bright": "#f9f9ff",
+                      "surface-container-highest": "#d9e3f9",
+                      "on-secondary": "#ffffff",
+                      "primary-fixed": "#e3dfff",
+                      "on-secondary-fixed": "#1a0063"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "card-gap": "1rem",
+                      "container-padding": "2rem",
+                      "sidebar-width": "260px",
+                      "stack-md": "1rem",
+                      "stack-sm": "0.5rem",
+                      "gutter": "1.5rem"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "title-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-caps": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "display-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-bold": [
+                              "Plus Jakarta Sans"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "title-sm": [
+                              "18px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-caps": [
+                              "11px",
+                              {
+                                      "lineHeight": "14px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "30px",
+                              {
+                                      "lineHeight": "38px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-bold": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+</head>
+<body class="bg-main-bg text-on-background font-body-md antialiased overflow-x-hidden">
+<!-- SideNavBar -->
+<nav class="fixed w-[260px] h-full left-0 top-0 bg-sidebar-bg dark:bg-sidebar-bg shadow-sm flex flex-col h-full py-6 px-4 z-20 hidden md:flex">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 bg-surface-card rounded-lg flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+</div>
+<div>
+<h1 class="font-display-lg text-display-lg text-on-primary font-bold">Kandypack</h1>
+<p class="text-on-primary/70 font-label-caps text-label-caps mt-1">Logistics Suite</p>
+</div>
+</div>
+<ul class="flex flex-col gap-2 flex-grow">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                    Dashboard
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">package_2</span>
+                    Orders
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">train</span>
+                    Train Schedule
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+                    Truck Schedule
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                    Deliveries
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">inventory</span>
+                    Inventory
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">assessment</span>
+                    Reports
+                </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors rounded-lg scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+                    Admin
+                </a>
+</li>
+</ul>
+<div class="mt-auto px-2">
+<div class="flex items-center gap-3 p-3 bg-primary-container rounded-xl">
+<img class="w-10 h-10 rounded-full object-cover shadow-sm" data-alt="A professional headshot of a logistics operator in a well-lit modern office environment. The person is looking confidently at the camera, conveying trust and efficiency. Soft corporate lighting with a hint of purple accent. Modern UI context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCOuwmWqQnSPSvdI3UILYJ_0mdUFb7TXGYao6-yIbOpe2I_EwyCfeS_sviyPB8HqJRbibp5yWju0nNaAtdZxl0qxq4Fb_YsppSZzpu3iRcpP4ZltsMAJMN5zTIkteAVkysByV_ik_TKtiQsepQz5CJqt7O8j402oXoEItM3ntvpGPGObn0XBEv5VRe-8HBPH9oHef1gRqWFnAEmvLCPOgXd18EvSiqSk746aIMkQ4PAsLdxAClrFw9VLw"/>
+<div>
+<p class="text-on-primary font-label-bold text-label-bold">Operator John Doe</p>
+<p class="text-on-primary/70 font-label-caps text-label-caps">Dispatch Center</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 md:left-[260px] h-16 bg-surface dark:bg-surface-container-lowest shadow-sm flex justify-between items-center px-gutter w-full md:w-[calc(100%-260px)] z-10">
+<div class="flex items-center gap-4">
+<button class="md:hidden p-2 text-on-surface-variant opacity-80 active:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="hidden md:flex items-center gap-2 bg-surface-container-lowest border border-outline-variant rounded-full px-4 py-2 w-64 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary-fixed-dim transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="bg-transparent border-none outline-none text-body-sm w-full text-on-surface placeholder:text-on-surface-variant" placeholder="Search orders..." type="text"/>
+</div>
+<h2 class="md:hidden font-title-sm text-title-sm text-primary">Kandypack</h2>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-full opacity-80 active:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-low transition-colors rounded-full opacity-80 active:opacity-100 transition-opacity">
+<span class="material-symbols-outlined">help</span>
+</button>
+<img class="w-8 h-8 rounded-full object-cover ml-2 md:hidden" data-alt="A small circular avatar placeholder image for the top navigation bar showing a generic profile silhouette in a modern corporate style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfk8ZQAf-z2Dj3hR7qNjzcuDWg3nA5TVSkI5jCP6nAqf9E9Gr36Yxnc4sPP9VZ4u1LMDZ_hgtqGeF_LIFbmgBRrttUo9RSSORUSy5EzCpQCiyBWlWqUWlDEmDolH49JjB-83yrPC8AXy1rvpS4m4XQyP8WohD7DSnOp3IC7YlJxIj2PNtvB5YSr26T-XRFW9LQvVc8x_X_WcNNfhFgjmFRKQZybIdIU2_XRamwNA5hTG_iTtIJvbJ6Hw"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 px-container-padding md:ml-[260px] min-h-screen">
+<div class="max-w-5xl mx-auto">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
+<div>
+<div class="flex items-center gap-2 mb-2 text-on-surface-variant font-label-caps text-label-caps uppercase tracking-wider">
+<a class="hover:text-primary transition-colors" href="#">Orders</a>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-primary">New Order</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-background">Create New Order</h2>
+<p class="text-body-sm font-body-sm text-on-surface-variant mt-1">Enter customer details, delivery location, and items.</p>
+</div>
+<div class="flex gap-3 w-full md:w-auto">
+<button class="flex-1 md:flex-none px-6 py-2 rounded-full border border-primary-container text-primary-container font-label-bold text-label-bold hover:bg-surface-container-low transition-colors">
+                        Save Draft
+                    </button>
+<button class="flex-1 md:flex-none px-6 py-2 rounded-full bg-primary-container text-on-primary font-label-bold text-label-bold shadow-[0_4px_14px_rgba(90,79,224,0.3)] hover:shadow-[0_6px_20px_rgba(90,79,224,0.4)] hover:-translate-y-0.5 transition-all">
+                        Place Order
+                    </button>
+</div>
+</div>
+<!-- Bento Grid Layout for Forms -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-card-gap">
+<!-- Left Column: Customer & Delivery (8 cols) -->
+<div class="lg:col-span-8 flex flex-col gap-card-gap">
+<!-- Customer Details Card -->
+<div class="bg-surface-card rounded-[16px] p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-surface-variant">
+<div class="flex justify-between items-center mb-6 border-b border-surface-variant pb-4">
+<h3 class="font-title-sm text-title-sm text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">person</span>
+                                Customer Information
+                            </h3>
+<button class="text-primary-container font-label-bold text-label-bold hover:underline text-xs">Find Existing</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Full Name</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="e.g. Acme Corp" type="text"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Contact Person</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="e.g. Jane Smith" type="text"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Email Address</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="contact@acmecorp.com" type="email"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Phone Number</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="+1 (555) 000-0000" type="tel"/>
+</div>
+</div>
+</div>
+<!-- Delivery Details Card -->
+<div class="bg-surface-card rounded-[16px] p-6 shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-surface-variant relative overflow-hidden">
+<!-- Decorative bg -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-badge-pastel-blue rounded-full blur-3xl opacity-50 -z-10 pointer-events-none -translate-y-1/2 translate-x-1/2"></div>
+<div class="flex justify-between items-center mb-6 border-b border-surface-variant pb-4">
+<h3 class="font-title-sm text-title-sm text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">location_on</span>
+                                Delivery Details
+                            </h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="flex flex-col gap-1 md:col-span-2">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Street Address</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="123 Logistics Way, Suite 100" type="text"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">City</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="Chicago" type="text"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">State / Region</label>
+<div class="relative">
+<select class="appearance-none w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all pr-10">
+<option disabled="" selected="" value="">Select Region</option>
+<option value="IL">Illinois</option>
+<option value="IN">Indiana</option>
+<option value="WI">Wisconsin</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Postal Code</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" placeholder="60601" type="text"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-bold text-label-bold text-on-surface-variant">Expected Delivery Date</label>
+<input class="bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-body-md text-on-surface focus:border-primary-container focus:ring-1 focus:ring-primary-container outline-none transition-all" type="date"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Order Items Summary & Totals (4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-card-gap">
+<div class="bg-surface-card rounded-[16px] shadow-[0px_4px_20px_rgba(0,0,0,0.03)] border border-surface-variant flex flex-col h-full">
+<div class="p-6 border-b border-surface-variant">
+<div class="flex justify-between items-center">
+<h3 class="font-title-sm text-title-sm text-on-background flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container">shopping_cart</span>
+                                    Order Items
+                                </h3>
+<span class="bg-badge-pastel-purple text-primary-container font-label-caps text-label-caps px-2 py-1 rounded-full">0 Items</span>
+</div>
+</div>
+<!-- Empty State for Items -->
+<div class="flex-grow p-6 flex flex-col items-center justify-center text-center min-h-[200px]">
+<div class="w-16 h-16 bg-surface-container-low rounded-full flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-tertiary-container text-3xl">add_shopping_cart</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-4">No items added to this order yet.</p>
+<button class="flex items-center gap-2 text-primary-container font-label-bold text-label-bold hover:bg-surface-container-low px-4 py-2 rounded-full transition-colors">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                                Add Product
+                            </button>
+</div>
+<!-- Summary Footer -->
+<div class="p-6 bg-surface-bright rounded-b-[16px] border-t border-surface-variant mt-auto">
+<div class="flex justify-between items-center mb-3 text-body-sm font-body-sm text-on-surface-variant">
+<span>Subtotal</span>
+<span>$0.00</span>
+</div>
+<div class="flex justify-between items-center mb-3 text-body-sm font-body-sm text-on-surface-variant">
+<span>Tax (8%)</span>
+<span>$0.00</span>
+</div>
+<div class="flex justify-between items-center mb-4 text-body-sm font-body-sm text-on-surface-variant">
+<span>Shipping Base</span>
+<span>$0.00</span>
+</div>
+<div class="h-px w-full bg-outline-variant mb-4"></div>
+<div class="flex justify-between items-center">
+<span class="font-title-sm text-title-sm text-on-background">Total Estimate</span>
+<span class="font-headline-md text-headline-md text-primary-container">$0.00</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>
