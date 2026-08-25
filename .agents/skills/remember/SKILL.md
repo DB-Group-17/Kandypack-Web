@@ -63,6 +63,19 @@ Capture:
 
 **Open questions** — anything unresolved that the next session needs to address.
 
+### Synchronize the project task tracker
+
+When `/remember save` is called in this project, also read `Docs/09_task-tracker.md` and synchronize it with the current session state.
+
+- Mark a task `[x]` only when the current session provides evidence that it is complete.
+- Mark a task `[~]` when work has started but is incomplete.
+- Leave unrelated tasks unchanged.
+- Preserve the existing task order, wording, ownership, and phase gates.
+- Do not rewrite the entire tracker or create duplicate tasks.
+- If work does not map clearly to an existing task, add a concise note under the relevant phase rather than inventing a new task category.
+- If the correct task or status is ambiguous, leave the tracker unchanged and record the ambiguity in `memory.md` under **Open questions**.
+- Never place secrets or credential-like values in the task tracker.
+
 ### What not to capture
 
 - Implementation details that are visible in the code
@@ -77,6 +90,8 @@ Before writing `memory.md`, run a final pass over the content to ensure no sensi
 
 - If sensitive content is found, remove or redact it before writing.
 - Keep only the minimal non-sensitive context needed to continue next session.
+
+Before writing `memory.md`, save the approved task-tracker synchronization.
 
 ### Where to save
 
@@ -134,10 +149,11 @@ Last updated: [date and time]
 [Anything unresolved that needs addressing]
 ```
 
-After writing the file, confirm to the developer:
+After writing the files, confirm to the developer:
 
 ```
 Memory saved to memory.md.
+Task tracker synchronized: [concise status summary, or "no unambiguous task changes"].
 
 Next session: run /remember restore to pick up from here.
 ```
