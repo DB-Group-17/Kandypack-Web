@@ -14,10 +14,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 At the start of every new chat or task, before planning or changing code:
 
-1. Read [`DESIGN.md`](DESIGN.md) completely and treat it as the source of truth for the shared visual system.
-2. Read every file in [`Docs/`](Docs/) completely, including newly added files and nested files. Do not rely only on filenames or a previous chat summary.
-3. Check the current repository state and inspect the relevant existing page, component, route, and data files before making an edit.
-4. Follow the rules in `Docs/11_ui-rules.md` for shared components, layout, colors, spacing, typography, status styles, and responsive behavior.
+1. Read [`Docs/00_documentation-index.md`](Docs/00_documentation-index.md) to understand document order and authority.
+2. Read [`DESIGN.md`](DESIGN.md) completely and treat it as the source of truth for the shared visual system.
+3. Read every active file in [`Docs/`](Docs/) completely, including newly added files. Do not rely only on filenames or a previous chat summary. Treat `Archive/` as historical reference only.
+4. Resolve technical conflicts using this order: `AGENTS.md` → `DESIGN.md` → `Docs/03_architecture.md` → other active `Docs/` files → `Docs/02_srs.md` → `Archive/`.
+5. Check the current repository state and inspect the relevant existing page, component, route, and data files before making an edit.
+6. Follow the rules in `Docs/11_ui-rules.md` for shared components, layout, colors, spacing, typography, status styles, and responsive behavior.
 
 If a requested change conflicts with `DESIGN.md` or a documented rule, identify the conflict before implementing it. Update the relevant documentation when a new project-wide decision is confirmed.
 

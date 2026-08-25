@@ -1,6 +1,11 @@
 # Kandypack — Page Content Copy
 
-Companion to `architecture.md` and `api-and-pages.md`. Full UI text for every page — headings, labels, placeholders, button text, empty states, error/success messages, tooltips, and confirmation dialogs. Frontend devs can lift this directly instead of writing copy on the fly.
+> Status: Active
+> Authority: Supporting UI content reference
+> Primary source: `DESIGN.md` and `Docs/11_ui-rules.md`
+> Last reviewed: 2026-08-25
+
+Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for every page — headings, labels, placeholders, button text, empty states, error/success messages, tooltips, and confirmation dialogs. Frontend devs can lift this directly instead of writing copy on the fly.
 
 ---
 

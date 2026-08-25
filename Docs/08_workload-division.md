@@ -1,6 +1,11 @@
 # Kandypack — Team Workload Division (5 Members)
 
-Companion to `architecture.md`. Every member owns **backend + frontend** for their slice. Member 1 owns the foundation everyone else depends on, plus the most critical/complex business logic — heavier load is intentional and unavoidable there.
+> Status: Active
+> Authority: Supporting
+> Primary source: `Docs/03_architecture.md`
+> Last reviewed: 2026-08-25
+
+Companion to `03_architecture.md`. Every member owns **backend + frontend** for their slice. Member 1 owns the foundation everyone else depends on, plus the most critical/complex business logic — heavier load is intentional and unavoidable there.
 
 ---
 
@@ -39,7 +44,7 @@ Companion to `architecture.md`. Every member owns **backend + frontend** for the
 
 ### Frontend
 - Train Schedule page (calendar view, booked/remaining capacity, add-trip form)
-- Reports page (run each report, date-range filters, results table, CSV/PDF export buttons — PDF button wired to Member 5's Inngest endpoint once ready)
+- Reports page (run each report, date-range filters, results table, CSV/PDF export buttons — PDF button wired to Member 5's direct export endpoint once ready)
 
 ### Depends on
 Member 1's `db.ts` + auth/RBAC being merged first.
@@ -80,12 +85,12 @@ Member 1's foundation. `/admin/users` specifically depends on Member 1's auth sy
 
 ---
 
-## Member 5 — Cross-Cutting: Redis, Background Jobs, Testing, CI/CD, Docker
+## Member 5 — Cross-Cutting: Redis, Testing, CI/CD, Docker, and Exports
 
 ### Backend
 - `lib/redis.ts` — Upstash client, distributed-lock helper (used inside Member 1's `place_order` and Member 3's `schedule_truck_delivery`), caching helper, rate-limit helper
 - Rate limiting wired onto: `/auth/login`, `/orders`, `/truck-schedules`, `/reports/:type/export/pdf`
-- Inngest setup: `/api/inngest` route, `generate-report-pdf` function (`puppeteer-core` + `@sparticuz/chromium`), Cloudflare R2 upload
+- Synchronous CSV/PDF export service: validate filters, render output, return direct downloads, and add export-level tests
 - Test suite: unit tests (7-day rule, space calc, roster hours), integration tests (`place_order`, `schedule_truck_delivery` against a throwaway MySQL instance), one API route test (`/auth/login`)
 - GitHub Actions CI: lint, typecheck, test job (MySQL service container), migration check
 - Optional `docker-compose.yml` (whole-project self-host option)
@@ -94,7 +99,7 @@ Member 1's foundation. `/admin/users` specifically depends on Member 1's auth sy
 - Dashboard page (summary cards — pulls from Orders/Train/Truck/Inventory once those APIs exist, cached via Redis)
 
 ### Depends on
-Nothing to *start* (Redis/CI/Inngest scaffolding is independent) — but the PDF function needs Member 2's report queries, and the Dashboard needs data from all four other members' APIs, so both land late.
+Nothing to *start* (Redis/CI scaffolding is independent) — but PDF export needs Member 2's report queries, and the Dashboard needs data from all four other members' APIs, so both land late.
 
 ---
 
@@ -103,7 +108,7 @@ Nothing to *start* (Redis/CI/Inngest scaffolding is independent) — but the PDF
 ### Phase 0 — Foundation (Days 1–3)
 **Member 1** and **Member 5** work in parallel; Members 2, 3, 4 do *not* touch shared backend files yet.
 - Member 1: scaffold, migrations, `db.ts`, auth, RBAC, middleware, seed admin — merge to `main` first
-- Member 5: `redis.ts` (lock + cache + rate-limit helpers), CI skeleton (lint/typecheck job), Inngest client scaffold — merge to `main` alongside Member 1
+- Member 5: `redis.ts` (lock + cache + rate-limit helpers), CI skeleton (lint/typecheck job), and export-service scaffold — merge to `main` alongside Member 1
 - Members 2/3/4: build static page shells (routes, layout, placeholder UI) off the current `main`; agree on request/response shapes for their own endpoints so backend and frontend within each person's slice don't drift
 
 **Gate:** everyone pulls `main` after Member 1 + Member 5's work merges before starting their own module branch. This is the one hard sync point in the whole project.
@@ -119,16 +124,16 @@ Nothing to *start* (Redis/CI/Inngest scaffolding is independent) — but the PDF
 - Member 2 finishes Reports data queries + CSV export (needs real data in the DB — coordinate seed data timing with everyone).
 - Member 3 finishes Deliveries (`complete_delivery`) — needs `orders` + `truck_schedules` both to exist, so this is the last thing Member 3 builds.
 - Member 4 finishes Inventory receive/dispatch (needs `train_bookings` and `deliveries` to exist for the FK checks) and Admin Users page.
-- Member 5 builds the Inngest PDF function once Member 2's report queries exist to render.
+- Member 5 builds the synchronous PDF export once Member 2's report queries exist.
 
 ### Phase 3 — Integration (Days 13–14)
 - Member 5 builds the Dashboard — last, since it pulls from every other module's API.
-- Member 2 wires the PDF export button on the Reports page to Member 5's Inngest endpoint.
+- Member 2 wires the PDF export button on the Reports page to Member 5's direct PDF endpoint.
 - Cross-module smoke test: place an order → book train space → receive goods at store → schedule truck → complete delivery → confirm it shows in Reports and Dashboard.
 
 ### Phase 4 — Testing & Hardening (Days 15–16)
 - Member 5 finalizes the test suite and confirms CI blocks merges on failure.
-- Each member adds at least one test for their own module's riskiest logic if time allows (optional, stretch goal — not required per the time-boxed plan in `architecture.md` §16).
+- Each member adds at least one test for their own module's riskiest logic if time allows (optional, stretch goal — not required per the time-boxed plan in `03_architecture.md` §16).
 - Full run-through of the Schema v4 §10 manual deployment checklist.
 
 ---

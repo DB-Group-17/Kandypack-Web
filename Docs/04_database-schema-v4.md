@@ -1,9 +1,16 @@
 ﻿# Kandypack Database Schema — Design & Implementation (v4.0)
 
+> Status: Active
+> Authority: Supporting database specification
+> Primary source: `Docs/03_architecture.md`
+> Last reviewed: 2026-08-25
+
 **Platform:** MySQL 8.0 on Aiven · **App layer:** Next.js · **Auth:** Manual (custom `users` table, bcrypt, JWT)
 
 > **Migrated from:** Supabase (PostgreSQL 15/16) v3.0
 > **Migration target:** MySQL 8.0 on Aiven with application-layer authentication
+
+> Version-one reporting does not persist generated files or report jobs; no `report_jobs` table is required.
 
 ---
 

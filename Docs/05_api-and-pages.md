@@ -1,6 +1,6 @@
 # Kandypack — API & Pages Reference
 
-Companion to `architecture.md`. Documents every API route (method, auth, request/response shape, business logic) and every page (which routes it calls, how it uses them).
+Companion to `03_architecture.md`. Documents every API route (method, auth, request/response shape, business logic) and every page (which routes it calls, how it uses them).
 
 Conventions used throughout:
 - All request/response bodies are JSON unless noted.
@@ -277,17 +277,13 @@ All 6 report GET endpoints share the same pattern:
 ### `POST /api/reports/:type/export/pdf`
 - **Roles:** same as the report itself
 - **Request body:** same filter params as the report's GET
-- **Response 202:** `{ "job_id": string, "status": "pending" }`
+- **Response 200:** PDF bytes with `Content-Type: application/pdf` and `Content-Disposition: attachment`
 - **Business logic:**
-  1. Insert a `report_jobs` row (`status: pending`, `report_type`, `filters`, `requested_by`)
-  2. Send an Inngest event `report/pdf.requested` with `{ job_id, report_type, filters }`
-  3. Return immediately — actual generation happens in the Inngest function (queries the view → renders via `puppeteer-core` + `@sparticuz/chromium` → uploads to Cloudflare R2 → updates `report_jobs`)
-  4. Rate-limited per user (expensive operation)
-
-### `GET /api/reports/jobs/:job_id`
-- **Roles:** the user who requested it, or system_administrator
-- **Response 200:** `{ "job_id", "status": "pending"|"done"|"failed", "file_url"? }`
-- **Business logic:** simple `SELECT` against `report_jobs` — this is what the frontend polls.
+  1. Authenticate the requester and enforce the report permission.
+  2. Validate report type, filters, date range, and maximum result size.
+  3. Run the report query and render the PDF synchronously.
+  4. Return the PDF directly; do not create a `report_jobs` row, poll, or upload to storage.
+  5. Rate-limit per user because PDF rendering is an expensive operation.
 
 ---
 

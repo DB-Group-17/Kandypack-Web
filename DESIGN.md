@@ -85,11 +85,11 @@ Use sentence case for interface copy. Preserve domain acronyms such as SKU, API,
 - Keep tables readable with horizontal overflow or a deliberate card-stack transformation on mobile.
 - Use sticky/fixed navigation only where it supports long operational pages; avoid layering content under the top bar.
 
-## 7. Open Conflicts
+## 7. Resolved Reference Variants
 
-The following references do not fully match the dominant system and must be resolved when those pages are built:
+The following reference differences are intentional and resolved:
 
-1. `UI/train_schedule` uses a separate steel/amber token set, 4px spacing baseline, 240–260px sidebar geometry, 2xl radii, and rectangular controls. Treat the dominant Kandypack violet system above as canonical unless this page is intentionally designated as a separate operational mode.
-2. `UI/reports` and `UI/audit_log` use the deeper `#251297`/`#3D33AD` violet variant and a report-oriented headline scale. Keep the shared component geometry, but confirm whether the deeper violet is a page-specific accent or should be folded into the brand palette.
+1. `UI/train_schedule` uses a separate steel/amber token set, 4px spacing baseline, 240–260px sidebar geometry, 2xl radii, and rectangular controls. Use the main Kandypack violet theme as canonical; the steel/amber styling must not be carried into the implementation.
+2. `UI/reports` and `UI/audit_log` use the deeper `#251297`/`#3D33AD` violet variant. This is a sanctioned page-specific accent; shared component geometry and interaction rules remain unchanged.
 3. Some references use `#F9F9FF` as the page background while others explicitly render `#F5F5FA`. Use `#F5F5FA` for the application canvas and reserve `#F9F9FF` for tinted surfaces.
-
+4. On narrow screens, dense tables use deliberate card-layout transformations rather than horizontal scrolling.

@@ -1,5 +1,10 @@
 # Kandypack — Seed Data Specification
 
+> Status: Active
+> Authority: Supporting
+> Primary source: `Docs/04_database-schema-v4.md`
+> Last reviewed: 2026-08-25
+
 Defines the **exact** baseline dataset every member develops and tests against. Nobody invents their own test rows — if you need more data for a specific test, add it in your own migration/seed increment on top of this, never by editing the shared baseline.
 
 Meets the project minimums: 40+ orders, 10+ routes, valid train schedule with defined capacities.

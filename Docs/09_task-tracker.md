@@ -1,6 +1,11 @@
 # Kandypack — Task Tracker
 
-Companion to `workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
+> Status: Active
+> Authority: Supporting implementation tracker
+> Primary source: `Docs/03_architecture.md`
+> Last reviewed: 2026-08-25
+
+Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
 Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 
@@ -8,26 +13,26 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ## 🚧 PHASE 0 — Foundation (Days 1–3)
 
-**Owners:** Member 1, Member 5. **Everyone else:** read `architecture.md`, `api-and-pages.md`, `page-copy.md`, and `seed_data_spec.md` in full; do not write backend code yet.
+**Owners:** Member 1, Member 5. **Everyone else:** read `03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, and `06_seed-data-spec.md` in full; do not write backend code yet.
 
 ### Member 1
-- [ ] Project scaffold (Next.js + TypeScript, folder structure per `architecture.md` §5)
+- [ ] Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
 - [ ] Run migrations 01→19 against Aiven MySQL (schema only, no seed yet)
 - [ ] `lib/db.ts` — mysql2 pool + query/call helpers
 - [ ] Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
 - [ ] `middleware.ts` — JWT verification
 - [ ] `lib/rbac.ts` — role → route/action map
-- [ ] Bootstrap admin seed script (`20_seed.sql` §9 of `seed_data_spec.md` — admin row only, rest of seed comes later)
+- [ ] Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
 - [ ] Open PR → **at least one other member reviews**
 
 ### Member 5
 - [ ] `lib/redis.ts` — Upstash client, lock helper, cache helper, rate-limit helper
 - [ ] GitHub Actions CI skeleton — lint + typecheck job only for now
-- [ ] Inngest client scaffold (`/api/inngest` route, empty function registered)
+- [ ] Report-export service dependency review and synchronous PDF export scaffold
 - [ ] Open PR → **at least one other member reviews**
 
 ### Members 2, 3, 4 (in parallel, no shared-file edits)
-- [ ] Read all reference docs (`architecture.md`, `api-and-pages.md`, `page-copy.md`, `seed_data_spec.md`)
+- [ ] Read all reference docs (`03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, `06_seed-data-spec.md`)
 - [ ] Build static page shells for your own pages only (routes + layout + placeholder UI, no real data fetching)
 - [ ] Draft/confirm request-response shapes for your own module's endpoints against `api-and-pages.md` — flag any mismatch now, not later
 
@@ -35,7 +40,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ### 🔒 PHASE 0 GATE — do not proceed to Phase 1 until ALL of these are true:
 - [ ] Member 1's foundation PR is **merged to `main`**
-- [ ] Member 5's Redis + CI + Inngest scaffold PR is **merged to `main`**
+- [ ] Member 5's Redis + CI + export-service scaffold PR is **merged to `main`**
 - [ ] Everyone has pulled the latest `main` locally and can run the app + hit `POST /auth/login` successfully against the seeded bootstrap admin
 - [ ] CI lint/typecheck job is green on `main`
 
@@ -98,10 +103,10 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 - [ ] `/inventory` and `/admin/users` pages wired to real data
 - [ ] Open PR → review → merge
 
-### Member 5 — PDF Generation (needs Member 2's report queries merged first)
-- [ ] `POST /reports/:type/export/pdf`, `GET /reports/jobs/:job_id`
-- [ ] Inngest function: query → `puppeteer-core` + `@sparticuz/chromium` render → upload to Cloudflare R2 → update `report_jobs`
-- [ ] `report_jobs` table migration (route through Member 1)
+### Member 5 — Report Exports (needs Member 2's report queries merged first)
+- [ ] `POST /reports/:type/export/pdf` returns a direct PDF response
+- [ ] Add PDF renderer, report-size limits, permission checks, and export tests
+- [ ] Confirm no `report_jobs` migration, polling endpoint, or report-file storage is needed for version one
 - [ ] Open PR → review → merge
 
 ---
@@ -117,7 +122,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 ## 🔗 PHASE 3 — Integration (Days 13–14)
 
 - [ ] Member 5: `/dashboard` page built and wired (last, since it pulls from every other module)
-- [ ] Member 2: PDF export button on `/reports` wired to Member 5's Inngest endpoint + polling
+- [ ] Member 2: PDF export button on `/reports` wired to Member 5's direct PDF endpoint
 - [ ] Member 4: `/admin/audit-log` page wired
 - [ ] **Full cross-module smoke test** (everyone, together): place an order → confirm train booking → receive goods at destination store → schedule a truck → mark delivery complete → confirm it appears correctly in Reports and Dashboard
 - [ ] Fix any integration issues found during the smoke test before moving on
@@ -146,7 +151,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 
 ### Everyone
 - [ ] Run through the Schema v4 §10 manual Deployment Checklist together
-- [ ] Final review of `page-copy.md` against actual rendered pages — fix any copy drift
+- [ ] Final review of `07_content-copy.md` against actual rendered pages — fix any copy drift
 - [ ] Confirm optional `docker-compose.yml` (whole-project self-host) still starts cleanly, if built
 
 ---

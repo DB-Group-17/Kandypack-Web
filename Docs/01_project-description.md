@@ -1,5 +1,10 @@
 # Project 3 - Rail and Road-based Supply Chain Distribution System
 
+> Status: Active
+> Authority: Supporting
+> Primary source: `Docs/03_architecture.md`
+> Last reviewed: 2026-08-25
+
 Kandypack is a mid-sized FMCG manufacturing company located in Kandy, Sri Lanka. The company distributes finished goods to wholesale and retail customers across the island using a combination of railway transport and road-based last-mile delivery. The company has maintained Excel-based tracking systems for years, but due to increasing order volumes and delivery inefficiencies, the management has decided to implement a modern, database-driven logistics platform. Your team is hired to develop the database system for the first version of this system. A basic UI is required key business operations.
 
 ## Key System Operations

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Truck Schedule | Kandypack Logistics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#474554",
+                        "tertiary-container": "#646569",
+                        "secondary-fixed": "#e5deff",
+                        "tertiary": "#4c4d51",
+                        "on-primary-fixed": "#120068",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#c6c6cb",
+                        "secondary-container": "#7459f7",
+                        "status-success-bg": "#E6F6F4",
+                        "on-secondary-fixed-variant": "#441cc8",
+                        "on-tertiary-fixed": "#1a1c1f",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f0f3ff",
+                        "on-secondary-container": "#fffbff",
+                        "status-error-bg": "#FFF0F0",
+                        "on-tertiary": "#ffffff",
+                        "surface-card": "#FFFFFF",
+                        "inverse-on-surface": "#ebf1ff",
+                        "primary": "#4132c7",
+                        "badge-pastel-purple": "#EBE9FE",
+                        "surface-container": "#e7eeff",
+                        "surface-container-high": "#dee8ff",
+                        "surface-dim": "#d0daf0",
+                        "on-tertiary-fixed-variant": "#45474b",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#e2e2e7",
+                        "on-primary-container": "#e5e1ff",
+                        "outline-variant": "#c8c4d7",
+                        "on-tertiary-container": "#e3e3e8",
+                        "status-error-text": "#F93C65",
+                        "secondary-fixed-dim": "#c9bfff",
+                        "inverse-surface": "#273141",
+                        "on-secondary-fixed": "#1a0063",
+                        "primary-fixed-dim": "#c4c0ff",
+                        "surface-tint": "#5247d8",
+                        "primary-container": "#5a4fe0",
+                        "status-warning-bg": "#FFF9E6",
+                        "main-bg": "#F5F5FA",
+                        "error-container": "#ffdad6",
+                        "on-surface": "#121c2c",
+                        "status-warning-text": "#FFB800",
+                        "on-background": "#121c2c",
+                        "primary-fixed": "#e3dfff",
+                        "outline": "#777586",
+                        "surface-variant": "#d9e3f9",
+                        "badge-pastel-blue": "#E0F2FF",
+                        "status-success-text": "#00B69B",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#3928c0",
+                        "surface": "#f9f9ff",
+                        "surface-bright": "#f9f9ff",
+                        "sidebar-bg": "#5A4FE0",
+                        "inverse-primary": "#c4c0ff",
+                        "surface-container-highest": "#d9e3f9",
+                        "background": "#f9f9ff",
+                        "secondary": "#5b3cdd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1.5rem",
+                        "sidebar-width": "260px",
+                        "stack-md": "1rem",
+                        "card-gap": "1rem",
+                        "container-padding": "2rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "label-bold": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "label-caps": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-md": ["Plus Jakarta Sans"],
+                        "title-sm": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-bold": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-caps": ["11px", { "lineHeight": "14px", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    },
+                    "boxShadow": {
+                        "ambient": "0px 4px 20px rgba(0, 0, 0, 0.03)",
+                        "ambient-hover": "0px 8px 30px rgba(0, 0, 0, 0.06)"
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[style*="FILL' 1"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom Scrollbar for better UI */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c8c4d7;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777586;
+        }
+    </style>
+</head>
+<body class="bg-main-bg text-on-background font-body-md antialiased min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="fixed w-[260px] h-full left-0 top-0 bg-sidebar-bg dark:bg-sidebar-bg shadow-sm z-20 flex flex-col h-full py-6 px-4">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-surface flex items-center justify-center text-primary font-bold">
+                KP
+            </div>
+<div>
+<h1 class="font-display-lg text-display-lg text-on-primary font-bold">Kandypack</h1>
+<p class="font-label-bold text-label-bold text-on-primary/70 uppercase">Logistics Suite</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto pr-2">
+<ul class="space-y-2">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="package_2">package_2</span>
+<span>Orders</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="train">train</span>
+<span>Train Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary-container text-on-secondary-container rounded-lg font-bold scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="local_shipping" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+<span>Truck Schedule</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="inventory_2">inventory_2</span>
+<span>Deliveries</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="inventory">inventory</span>
+<span>Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="assessment">assessment</span>
+<span>Reports</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-primary/70 font-body-md hover:bg-primary-container hover:text-on-primary-container transition-colors scale-95 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span>Admin</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="mt-auto pt-6 px-2">
+<button class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-full bg-surface/20 text-on-primary hover:bg-surface/30 transition-colors font-body-sm font-semibold border border-surface/30">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+                Logout
+            </button>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 ml-[260px] flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-[260px] h-16 bg-surface dark:bg-surface-container-lowest shadow-sm z-10 flex justify-between items-center px-gutter w-[calc(100%-260px)]">
+<div class="flex items-center gap-4">
+<div class="relative w-64 hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="w-full bg-main-bg border-none rounded-full py-2 pl-10 pr-4 font-body-sm text-body-sm text-on-surface placeholder-outline focus:ring-1 focus:ring-primary focus:bg-surface transition-all" placeholder="Search orders, trucks, routes..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors opacity-80 active:opacity-100 relative">
+<span class="material-symbols-outlined text-[24px]" data-icon="notifications">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-status-error-text rounded-full border-2 border-surface"></span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-low transition-colors opacity-80 active:opacity-100 mr-2">
+<span class="material-symbols-outlined text-[24px]" data-icon="help">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant/30 mx-2"></div>
+<button class="flex items-center gap-3 pl-2 pr-1 py-1 rounded-full hover:bg-surface-container-low transition-colors">
+<div class="text-right hidden sm:block">
+<p class="font-body-sm text-body-sm font-semibold text-on-surface">Operator John Doe</p>
+<p class="font-label-caps text-label-caps text-outline uppercase">Dispatcher</p>
+</div>
+<img class="w-9 h-9 rounded-full object-cover border border-outline-variant/30" data-alt="A professional headshot of a mature male logistics dispatcher in a modern, well-lit control room setting. He is wearing a crisp light blue button-down shirt and a subtle headset. The background features slightly blurred glowing screens with abstract logistics data, illuminated by soft ambient white and light blue lighting to match the modern corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCw9dBr5AEKJ5heGb_8XFb-bBAoHGatGwwUCv9lpQzdaMVlWj0rpJsI40rVgkpT2ksiTd3-311uZYGqkAXXKXI5F0HrNWrD5FQvD3r4kMtytBZPkiciL2WFSp5rpyv7i3H_Jt6Zn0S9FEYE2Oz_yS-8So7DqiDPKxOaDn1ygKmw6Sr58RGp9g10iSs71seLAHM-VzP6oy5kK5tYRJ6b_5cpatAC4XqT4tDiu4Ik7WKmtrTl3GXzulMCfg"/>
+</button>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 mt-16 p-container-padding bg-main-bg overflow-x-hidden">
+<!-- Page Header -->
+<div class="mb-8 flex items-center justify-between">
+<div>
+<div class="flex items-center gap-2 mb-2">
+<a class="text-outline hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</a>
+<span class="text-outline font-label-caps uppercase tracking-wider">Truck Schedule</span>
+<span class="text-outline text-[10px] material-symbols-outlined">chevron_right</span>
+<span class="text-primary font-label-caps uppercase tracking-wider font-semibold">New Schedule</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface flex items-center gap-3">
+                        New Truck Schedule
+                        <span class="px-2.5 py-1 bg-badge-pastel-purple text-primary rounded-full font-label-caps text-label-caps uppercase border border-primary/10">Draft</span>
+</h2>
+<p class="font-body-md text-body-md text-tertiary mt-1">Last-mile delivery scheduling for regional routes.</p>
+</div>
+</div>
+<!-- Main Form Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column (Main Form) -->
+<div class="lg:col-span-8 space-y-6">
+<!-- Vehicle & Route Card -->
+<div class="bg-surface-card rounded-xl p-6 shadow-ambient">
+<div class="flex items-center gap-3 mb-6 pb-4 border-b border-outline-variant/30">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">local_shipping</span>
+</div>
+<h3 class="font-title-sm text-title-sm text-on-surface">Vehicle &amp; Route</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+<!-- Truck Selection -->
+<div class="col-span-1 md:col-span-2">
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-2">Select Truck *</label>
+<div class="relative">
+<select class="w-full bg-white border border-outline-variant/60 rounded-lg py-2.5 px-4 font-body-sm text-on-surface appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors cursor-pointer">
+<option disabled="" selected="" value="">Choose a vehicle...</option>
+<option value="t1">Volvo VNL 860 - KDP-882 (Available)</option>
+<option value="t2">Freightliner Cascadia - KDP-394 (Available)</option>
+<option disabled="" value="t3">Kenworth T680 - KDP-112 (In Maintenance)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Route Selection -->
+<div class="col-span-1 md:col-span-2">
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-2">Select Route *</label>
+<div class="relative">
+<select class="w-full bg-white border border-outline-variant/60 rounded-lg py-2.5 px-4 font-body-sm text-on-surface appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors cursor-pointer">
+<option disabled="" selected="" value="">Choose destination route...</option>
+<option value="r1">Route A: North Metro Hub -&gt; Suburban Sector 4</option>
+<option value="r2">Route B: Central Depot -&gt; South Industrial Park</option>
+<option value="r3">Route C: East Port -&gt; Westside Retail Hub</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Time Window -->
+<div class="col-span-1">
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-2">Start Time *</label>
+<input class="w-full bg-white border border-outline-variant/60 rounded-lg py-2.5 px-4 font-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors" type="datetime-local"/>
+</div>
+<div class="col-span-1">
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-2">End Time *</label>
+<input class="w-full bg-white border border-outline-variant/60 rounded-lg py-2.5 px-4 font-body-sm text-on-surface focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors" type="datetime-local"/>
+</div>
+</div>
+</div>
+<!-- Crew Assignment Card -->
+<div class="bg-surface-card rounded-xl p-6 shadow-ambient">
+<div class="flex items-center gap-3 mb-6 pb-4 border-b border-outline-variant/30">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">group</span>
+</div>
+<h3 class="font-title-sm text-title-sm text-on-surface">Crew Assignment</h3>
+</div>
+<div class="space-y-6">
+<!-- Driver Selection -->
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-2">Select Driver *</label>
+<div class="relative">
+<!-- Simulating a conflict selection for the UI requirement -->
+<select class="w-full bg-status-error-bg/30 border border-status-error-text/50 rounded-lg py-2.5 px-4 font-body-sm text-on-surface appearance-none focus:outline-none focus:ring-1 focus:ring-status-error-text focus:border-status-error-text transition-colors cursor-pointer">
+<option selected="" value="d1">Marcus Johnson (ID: 8839)</option>
+<option value="d2">Sarah Connor (ID: 9921)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none">expand_more</span>
+</div>
+<div class="mt-2 flex items-center justify-between">
+<p class="font-body-sm text-[13px] text-tertiary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+                                        32h remaining this week
+                                    </p>
+</div>
+</div>
+<!-- Assistant Selection -->
+<div>
+<label class="block font-label-bold text-label-bold text-on-surface-variant mb-2">Select Assistant (Optional)</label>
+<div class="relative">
+<select class="w-full bg-white border border-outline-variant/60 rounded-lg py-2.5 px-4 font-body-sm text-on-surface appearance-none focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors cursor-pointer">
+<option disabled="" selected="" value="">Assign an assistant...</option>
+<option value="a1">David Lee (ID: 4421)</option>
+<option value="a2">Elena Rodriguez (ID: 5510)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline pointer-events-none">expand_more</span>
+</div>
+<div class="mt-2 flex items-center justify-between">
+<p class="font-body-sm text-[13px] text-tertiary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+                                        40h remaining this week
+                                    </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column (Context & Actions) -->
+<div class="lg:col-span-4 space-y-6">
+<!-- Summary Widget -->
+<div class="bg-surface-card rounded-xl p-6 shadow-ambient sticky top-24">
+<h3 class="font-title-sm text-title-sm text-on-surface mb-4">Schedule Summary</h3>
+<div class="space-y-4 mb-6">
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/20">
+<span class="font-body-sm text-tertiary">Est. Duration</span>
+<span class="font-body-sm text-on-surface font-semibold">4h 30m</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/20">
+<span class="font-body-sm text-tertiary">Distance</span>
+<span class="font-body-sm text-on-surface font-semibold">142 miles</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-outline-variant/20">
+<span class="font-body-sm text-tertiary">Stops</span>
+<span class="font-body-sm text-on-surface font-semibold">8 locations</span>
+</div>
+</div>
+<!-- Live Conflict Warning Banner -->
+<div class="bg-status-error-bg border border-status-error-text/30 rounded-lg p-4 mb-6">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-status-error-text text-[20px] mt-0.5" style="font-variation-settings: 'FILL' 1;">error</span>
+<div>
+<h4 class="font-label-bold text-label-bold text-status-error-text mb-1 uppercase tracking-wider">Schedule Conflict Detected</h4>
+<p class="font-body-sm text-[13px] text-on-surface-variant">
+                                        Driver <strong>Marcus Johnson</strong> is already scheduled during this time window for Route D.
+                                    </p>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-3 mt-auto pt-2">
+<button class="w-full bg-outline-variant text-on-surface-variant py-3 rounded-full font-body-sm font-semibold opacity-70 cursor-not-allowed flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-[18px]">lock</span>
+                                Create Schedule
+                            </button>
+<button class="w-full bg-transparent border border-outline-variant/50 text-on-surface-variant hover:bg-surface-container-low hover:border-outline-variant py-3 rounded-full font-body-sm font-semibold transition-all">
+                                Cancel
+                            </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

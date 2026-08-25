@@ -1,10 +1,15 @@
 # UI Component & Layout Rules
 
+> Status: Active
+> Authority: Supporting UI implementation reference
+> Primary source: `DESIGN.md`
+> Last reviewed: 2026-08-25
+
 ## 1. Scope and Source Inventory
 
-This document is the shared implementation contract for the `UI/` references. The initialization pass found 13 complete page pairs:
+This document is the shared implementation contract for the `UI/` references. The initialization pass found 14 complete page pairs:
 
-`audit_log`, `dashboard`, `deliveries`, `login`, `master_data`, `new_order`, `order_detail`, `orders_list`, `reports`, `store_inventory`, `train_schedule`, `truck_schedules`, and `user_accounts`.
+`audit_log`, `dashboard`, `deliveries`, `login`, `master_data`, `new_order`, `order_detail`, `orders_list`, `reports`, `store_inventory`, `train_schedule`, `truck_schedules`, `truck-schedule-new`, and `user_accounts`.
 
 The folders `image.png_1`, `logo`, `kandypack_logistics_system`, `steel_signal`, and `violet_saas_logistics` are supporting visual/design references rather than complete page pairs.
 
@@ -95,11 +100,10 @@ Visual tokens live in the root [`DESIGN.md`](../DESIGN.md). Component decisions 
 |---|---|---|---|
 | 2026-08-24 | 13-page UI init | Adopted the dominant Kandypack violet theme as the shared baseline. | `DESIGN.md`, sections 2–6 |
 | 2026-08-24 | All page pairs | Standardized 260px desktop sidebar, 8px spacing base, 16px cards, and pill actions/statuses. | `DESIGN.md`, sections 4–6 |
-| 2026-08-24 | `train_schedule`, `reports`, `audit_log` | Preserved divergent palettes and geometry as explicit open conflicts for page-level confirmation. | `DESIGN.md`, section 7 |
+| 2026-08-25 | `train_schedule`, `reports`, `audit_log` | Use the main violet theme for train scheduling, allow deeper violet accents for reports and audit log, and transform dense tables into cards on narrow screens. | `DESIGN.md`, section 7 |
 
-## 11. Open Implementation Questions
+## 11. Resolved Implementation Questions
 
-1. Confirm whether `train_schedule` is intentionally a separate steel/amber operational mode or should be migrated to the shared violet palette.
-2. Confirm whether the deeper violet used by `reports` and `audit_log` is a sanctioned accent variant.
-3. Choose the responsive table behavior per page: horizontal scroll or card-stack transformation.
-
+1. `train_schedule` uses the main Kandypack violet theme.
+2. `reports` and `audit_log` may use the deeper violet accent variant.
+3. Responsive dense tables use card-layout transformations on narrow screens.

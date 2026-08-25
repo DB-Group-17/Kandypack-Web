@@ -1,7 +1,11 @@
 # Kandypack — System Architecture
 
 **Version:** 1.0
-**Based on:** Project_Description.md, Kandypack_SRS_v1.0, Kandypack_Database_Schema_v4.0 (MySQL 8.0 / Aiven)
+**Status:** Active and authoritative technical source of truth
+**Primary references:** `01_project-description.md`, `02_srs.md`, `04_database-schema-v4.md`
+**Last reviewed:** 2026-08-25
+
+When technical documents conflict, use this order: `AGENTS.md` → `DESIGN.md` → this document → other active `Docs/` files → `02_srs.md` → `Archive/`. The SRS remains unchanged as the original business-requirements reference. Intentional implementation deviations are recorded in §19.
 
 ---
 
@@ -11,7 +15,7 @@
 - Two-stage distribution: bulk rail transport (Kandy → 6 destination cities) → city store → last-mile truck delivery.
 - Replaces Excel-based tracking with a database-driven platform enforcing business rules at the DB level (triggers, procedures, constraints).
 - Basic web UI for 5 staff roles: System Administrator, Logistics Manager, Order Entry Clerk, Store Manager, Fleet Supervisor.
-- Produces 6 management reports (CSV + PDF export).
+- Produces 6 management reports (CSV + on-demand PDF export).
 
 ---
 
@@ -40,11 +44,12 @@
 
 ## 3. Assumptions & Documented Deviations from SRS
 
-- **Deployment:** SRS assumes a self-hosted on-prem Linux server at Kandy. This project instead deploys the entire app (web + background jobs via Inngest) to **Vercel**, with Redis (Upstash) and MySQL (Aiven) as external managed services. *(Deviation confirmed — documented here as required.)*
+- **Deployment:** SRS assumes a self-hosted on-prem Linux server at Kandy. This project uses **Vercel** for the web app, with Redis (Upstash) and MySQL (Aiven) as external managed services. Self-hosting remains a future deployment option.
 - **Database:** SRS allows MySQL 8.0 or PostgreSQL 14+. This project uses **MySQL 8.0 on Aiven** (per Schema v4 migration).
 - **Auth:** Manual (`users` table + bcrypt + JWT), not a third-party auth provider — matches Schema v4 §8.
 - **Roles:** Only the 5 roles defined in `user_profiles.app_role` can log in. Drivers and customers are data rows only, never authenticate.
-- **Reports:** SRS specifies CSV only. This project adds **PDF export via background worker** on top of CSV, per stakeholder decision.
+- **Reports:** SRS specifies CSV. This project also provides **synchronous on-demand PDF export**. PDF output is returned directly and is not persisted.
+- **Scheduling:** Operational delivery days are Monday–Saturday; calendar calculations use Monday–Sunday. Version one uses explicit delivery-area assignment rather than intelligent address parsing.
 - Product space rates, train capacity (500 units/trip default), and train frequency follow SRS §2.7 assumptions — configurable in DB, not hardcoded.
 
 ---
@@ -54,6 +59,7 @@
 ### Application Layer
 - **Framework:** Next.js (App Router) — frontend + API routes
 - **Language:** TypeScript
+- **Package manager:** npm (the repository currently uses `package-lock.json`)
 - **Database access:** **Plain SQL — no ORM.** `mysql2` driver with a connection pool; parameterized queries; `CALL procedure_name(...)` for stored procedures
 - **Auth:** Custom JWT (HttpOnly cookie) + bcrypt, per Schema v4 §8 — no NextAuth/Supabase Auth, no public sign-up (see §6)
 - **Styling/UI:** Tailwind CSS + `lucide-react` + `react-icons`
@@ -61,13 +67,12 @@
 ### Data & Infra
 - **Primary DB:** MySQL 8.0 on **Aiven** (`ssl-mode=REQUIRED`)
 - **Cache / Locks:** Redis — **Upstash** (serverless REST) for caching, rate-limiting, distributed locks
-- **Background jobs:** **Inngest** — serverless job runner, no dedicated worker host needed (see §11)
-- **PDF Generation:** `puppeteer-core` + `@sparticuz/chromium` (serverless-compatible headless Chrome), run inside an Inngest function on Vercel
-- **File Storage:** **Cloudflare R2** (free tier, no egress fees) for generated PDFs
+- **PDF Generation:** Synchronous server-side PDF generation; the implementation library is installed when the export phase begins and must respect report-size limits.
+- **File Storage:** None for generated reports in version one; PDFs are returned directly to the requester.
 - **CSV Export:** generated synchronously in the API route (fast, no queue needed)
 
 ### Deployment & Ops
-- **Web app + background jobs:** Vercel (Inngest functions run as Vercel serverless functions — no separate worker host required)
+- **Web app:** Vercel or a compatible Next.js host
 - **CI/CD:** GitHub Actions
 - **Containerization:** Docker is **optional**, not required for production. One root-level `docker-compose.yml` can containerize the *entire* stack (web app + Redis, MySQL optional) as a self-hosting alternative to Vercel — no separate worker-only container.
 
@@ -96,13 +101,7 @@ kandypack/
 │   │       ├── users/              # create/deactivate accounts, assign roles
 │   │       ├── master-data/
 │   │       └── audit-log/
-│   └── api/
-│       ├── inngest/route.ts        # single Inngest handler (serves all background functions)
-│       └── ...                     # all other API routes (see §7)
-├── inngest/
-│   ├── client.ts                   # Inngest client config
-│   └── functions/
-│       └── generate-report-pdf.ts  # PDF generation step function
+│   └── api/                        # route handlers (see §7)
 ├── components/
 ├── lib/
 │   ├── db.ts                       # mysql2 pool + query/call helpers (no ORM)
@@ -112,7 +111,7 @@ kandypack/
 │   └── rate-limit.ts               # per-route rate limiting
 ├── middleware.ts                   # JWT verification on protected routes
 ├── db/
-│   ├── migrations/                 # 01_auth.sql … 20_seed.sql (Schema v4 order)
+│   ├── migrations/                 # ordered schema migrations
 │   └── schema-docs/
 ├── tests/
 │   ├── unit/                       # space calc, roster hours, 7-day rule
@@ -236,8 +235,7 @@ All routes under `/api/`. Auth required on all except `/auth/login`.
 | `/reports/truck-usage` | GET | Report 5 |
 | `/reports/customer-history` | GET | Report 6 |
 | `/reports/:type/export/csv` | GET | Stream CSV directly (synchronous, no queue) |
-| `/reports/:type/export/pdf` | POST | Trigger Inngest PDF job, return `job_id` |
-| `/reports/jobs/:job_id` | GET | Poll PDF job status; returns file URL when done |
+| `/reports/:type/export/pdf` | POST | Generate the filtered PDF synchronously and return it as `application/pdf` with `Content-Disposition: attachment` |
 
 ### Admin
 | Route | Method | Description |
@@ -316,7 +314,7 @@ All routes under `/api/`. Auth required on all except `/auth/login`.
 |---|---|
 | **Train trip capacity lock** | Distributed lock (`SET NX EX`) on `trip_id` during the check-then-book step in `place_order` flow — belt-and-braces alongside DB row locking |
 | **Roster conflict check lock** | Short-lived lock on `driver_id`/`assistant_id` during `schedule_truck_delivery` to prevent two simultaneous bookings racing past the trigger check |
-| **PDF report job triggering** | Inngest handles queuing/retries internally — Redis not needed for this (see §11) |
+| **PDF report caching** | Not used in version one; PDFs are generated on demand and are not persisted |
 | **Report result caching** | Cache heavy aggregate report queries (quarterly sales, city-wise breakdown) with a TTL (e.g. 1 hour) |
 | **Dashboard summary cache** | Cache `/dashboard/summary` for ~30–60s to avoid recomputing on every load |
 | **Rate limiting** | Protect `/orders` (place_order) and `/auth/login` from abuse |
@@ -324,31 +322,25 @@ All routes under `/api/`. Auth required on all except `/auth/login`.
 
 ---
 
-## 11. Background Jobs — PDF Generation via Inngest
+## 11. Synchronous Report Export
 
-**Why Inngest (not BullMQ + a dedicated worker):**
-- Inngest functions run as **serverless functions on Vercel** via a single `/api/inngest` route — no separate always-on worker process or host to deploy/maintain.
-- Handles retries and durable step execution out of the box, which helps with a slower step like PDF rendering.
-- Removes the need to Dockerize or separately deploy a worker service at all — the entire app (web + background jobs) lives on Vercel.
+CSV and PDF exports are generated on demand by the authenticated API request. The API validates the report type and filters, queries MySQL, renders the result, and returns the file directly.
 
 Flow:
-1. `POST /reports/:type/export/pdf` → API inserts a `report_jobs` row (`status: pending`) + sends an event to Inngest (`report/pdf.requested`)
-2. API returns `job_id` immediately (202 Accepted)
-3. Inngest function (running as a Vercel serverless function): runs the report query → renders PDF using `puppeteer-core` + `@sparticuz/chromium` (serverless-compatible headless Chrome) → uploads to **Cloudflare R2** → updates `report_jobs.status = done` + `file_url`
-4. Frontend polls `GET /reports/jobs/:job_id` until `done`
+1. The client submits the selected report filters.
+2. The API authenticates the user and checks report permissions.
+3. The API validates the date range and maximum row/report size.
+4. The report query runs and the export renderer creates CSV or PDF output.
+5. The API returns the file with the correct content type and download headers.
 
-**Note:** persist job status in a DB table (`report_jobs`), not just Inngest's internal state — the frontend needs a simple thing to poll.
-
-CSV export stays **synchronous** (fast, no queue needed).
-
-**PDF storage — Cloudflare R2** (free tier: 10GB storage, no egress fees — the best free option here since staff will be downloading reports regularly). Vercel Blob is a simpler fallback if you'd rather stay single-vendor.
+Version-one exports do not create a database record, do not use a `report_jobs` table, do not use polling, and do not upload files to R2. If performance testing shows that large reports exceed the hosting limits, asynchronous processing will be proposed as a new architecture decision.
 
 ---
 
 ## 12. Docker & CI/CD
 
 ### Docker — Optional, Whole-Project Only
-- **No dedicated worker container** — Inngest removed that need entirely (§11).
+- No dedicated report-worker container is required for version one because exports are synchronous.
 - **Production default:** Vercel builds and runs the Next.js app natively, no Docker involved.
 - **Docker as an alternative:** one root-level `docker-compose.yml` that containerizes the **entire project** (web app + Redis, MySQL optional) for anyone who wants to self-host instead of using Vercel. This is offered as an *option*, not the primary deployment path.
 
@@ -361,7 +353,7 @@ CSV export stays **synchronous** (fast, no queue needed).
 | **Migration check** | Every PR touching `db/migrations` | Runs migrations 01→20 against the same throwaway MySQL service container to catch SQL errors before merge |
 | **Vercel** | Push to `main`/PR | Handled automatically by Vercel's own Git integration — no custom workflow needed, but can add a required "Vercel Preview" check on PRs |
 
-**Summary:** with Inngest removing the separate-worker requirement, CI/CD now only needs to cover code quality gates + the automated test suite. No Docker build/push/deploy job is needed at all — everything ships through Vercel's native Git integration.
+**Summary:** CI/CD covers code quality gates, migration checks, and the automated test suite. No report-worker build or deployment is required for version one.
 
 ---
 
@@ -400,8 +392,6 @@ General principles:
 | `DATABASE_URL` | Aiven MySQL connection (`ssl-mode=REQUIRED`) |
 | `JWT_SECRET` | Sign/verify auth tokens |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Caching, rate limiting, distributed locks |
-| `INNGEST_EVENT_KEY` / `INNGEST_SIGNING_KEY` | Inngest client + function auth |
-| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET` | Cloudflare R2 — storing generated PDFs |
 | `NODE_ENV` | Environment flag |
 
 All secrets stored in Vercel's environment variables — never committed (per REQ-NF-011). Since everything runs on Vercel now, there's a single secret store instead of two.
@@ -419,7 +409,7 @@ Limited time budget → **prioritize highest-risk business logic, skip UI/e2e en
 | 3 | `schedule_truck_delivery()` — overlap rejection + roster rule rejection | Integration | Vitest + `mysql2` |
 | 4 | `POST /auth/login` — correct password succeeds, wrong password rejected | API route test | Vitest, invoking the route handler directly (no Supertest needed) |
 
-**Explicitly out of scope given time constraints:** UI component tests, e2e (Playwright/Cypress), CSV/PDF output content tests.
+**Deferred:** broad UI component tests and full browser e2e coverage. CSV/PDF export tests are required at the service/API level for content type, headers, permissions, filters, empty results, and representative output validity.
 
 **Manual checklist (not automated):** the 10-step Deployment Checklist in Schema v4 §10 (place_order, receive_goods_at_store, complete_delivery, audit_log, active-delivery trigger) — run once manually after deploy.
 
@@ -443,4 +433,47 @@ Per SRS §6.5 minimum test data, seeded via `20_seed.sql` (must run after `users
 - Truck schedule creation with validation: < 2s
 - Reports: < 10s against up to 10,000 orders
 - 99% uptime during business hours (06:00–22:00, Mon–Sat)
-- Schema/SQL kept portable across MySQL 8.0 (current) — avoid MySQL-only syntax where reasonably possible, per SRS §5.4 Portability note
+- MySQL 8.0 is the implementation target. Portability concerns from the SRS are retained as a future consideration, but migrations may use validated MySQL 8 features.
+
+---
+
+## 19. Architecture Decision Log
+
+| Decision | Approved choice | Reason | Affected documents | Date |
+|---|---|---|---|---|
+| Documentation authority | Architecture controls technical implementation; SRS remains the business-requirements reference | Prevents conflicting implementation guidance | `AGENTS.md`, `Docs/00_documentation-index.md`, all `Docs/` files | 2026-08-25 |
+| Database | MySQL 8.0 on Aiven | Matches the active schema and selected deployment | `02_srs.md`, `03_architecture.md`, `04_database-schema-v4.md`, `10_local-setup.md` | 2026-08-25 |
+| Report generation | Synchronous CSV and PDF responses | Reports do not need persistence in version one | `03_architecture.md`, `05_api-and-pages.md`, `09_task-tracker.md`, `10_local-setup.md` | 2026-08-25 |
+| Report persistence | No `report_jobs` table and no report-file storage | The generated file is returned directly to the requester | `03_architecture.md`, `04_database-schema-v4.md` | 2026-08-25 |
+| Scheduling days | Operations run Monday–Saturday; calendar calculations use Monday–Sunday | Preserves business operations while keeping date calculations consistent | `03_architecture.md`, `04_database-schema-v4.md`, `05_api-and-pages.md` | 2026-08-25 |
+| Delivery-area matching | Explicit delivery-area assignment in version one | Avoids unreliable address-parsing behavior | `03_architecture.md`, `04_database-schema-v4.md`, `06_seed-data-spec.md` | 2026-08-25 |
+
+## 20. Application Layer Boundaries
+
+- **Pages and components:** render UI, collect input, show loading/error states, and initiate requests. They must not contain direct SQL.
+- **Route handlers/server actions:** authenticate requests, validate input, enforce permissions, call services, and format responses.
+- **Services/business logic:** implement order, inventory, scheduling, delivery, and report rules. Reusable logic belongs here rather than in page components.
+- **Database layer:** owns the MySQL pool, parameterized queries, stored-procedure calls, transactions, and migration-compatible data access.
+- **Export services:** transform validated report data into CSV or PDF buffers and return them through authorized endpoints. They must not persist generated files in version one.
+- **Audit layer:** records authorized create, update, delete, status-transition, and administrative actions.
+
+## 21. Migration, Seed, and Environment Rules
+
+- Migrations run in deterministic numeric order and must be safe to verify against a clean MySQL 8 database.
+- Schema migrations and seed data remain separate concerns; seed data runs only after the schema is complete.
+- Destructive schema changes require an explicit migration note and a rollback or recovery explanation.
+- Required environment variables are documented in `10_local-setup.md`; secrets are never committed.
+- Local, test, and production environments must use separate database credentials and data.
+
+## 22. Implementation Order
+
+1. Finalize and validate documentation and design rules.
+2. Create database migrations and approved seed data.
+3. Implement authentication, sessions, roles, and permissions.
+4. Implement the shared application shell and reusable UI components.
+5. Implement master-data pages and APIs.
+6. Implement orders, inventory, and deliveries.
+7. Implement train and truck scheduling.
+8. Implement CSV and synchronous PDF exports.
+9. Implement audit-log views, rate limiting, and operational hardening.
+10. Run migration, API, export, responsive, and acceptance verification.
