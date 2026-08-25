@@ -34,6 +34,7 @@ The SRS remains unchanged unless explicitly approved. Intentional implementation
 | 10 | `10_local-setup.md` | Local development and environment setup | Active | Supporting |
 | 11 | `11_ui-rules.md` | Reusable UI rules and component conventions | Active | Follows `DESIGN.md` |
 | 12 | `12_documentation-final-report.md` | Final approved conflict–solution table and readiness baseline | Active | Documentation baseline |
+| 13 | `13_system-operation-guide.md` | End-to-end system workflow, roles, permissions, and business rules | Active | Follows architecture |
 
 ## Other project guidance
 
