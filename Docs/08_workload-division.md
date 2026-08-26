@@ -9,7 +9,7 @@ Companion to `03_architecture.md`. Every member owns **backend + frontend** for 
 
 ---
 
-## Member 1 — Foundation, Auth, Orders *(heaviest load — critical path)*
+## Member 1(Dineth) — Foundation, Auth, Orders *(heaviest load — critical path)*
 
 ### Why this person carries the most
 - Nobody else can start real backend work until the DB connection helper, auth system, and RBAC middleware exist.
@@ -35,7 +35,7 @@ Companion to `03_architecture.md`. Every member owns **backend + frontend** for 
 
 ---
 
-## Member 2 — Train Scheduling + Reports (data layer)
+## Member 2(Linari) — Train Scheduling + Reports (data layer)
 
 ### Backend
 - `GET /train-trips`, `POST /train-trips`, `GET /train-trips/:id/capacity`
@@ -51,7 +51,7 @@ Member 1's `db.ts` + auth/RBAC being merged first.
 
 ---
 
-## Member 3 — Truck Scheduling, Roster, Deliveries
+## Member 3(Minishka) — Truck Scheduling, Roster, Deliveries
 
 ### Backend
 - `GET /trucks`, `GET /drivers`, `GET /assistants` (with current weekly hours)
@@ -68,7 +68,7 @@ Member 1's foundation. Deliveries also needs `orders` to exist — coordinate ti
 
 ---
 
-## Member 4 — Inventory, Master Data, Admin
+## Member 4(Vidura) — Inventory, Master Data, Admin
 
 ### Backend
 - `GET /stores/:id/inventory`, `POST /stores/:id/receive-goods` (calls `receive_goods_at_store()`), `GET /inventory/transactions`
@@ -85,7 +85,7 @@ Member 1's foundation. `/admin/users` specifically depends on Member 1's auth sy
 
 ---
 
-## Member 5 — Cross-Cutting: Redis, Testing, CI/CD, Docker, and Exports
+## Member 5(Desandu) — Cross-Cutting: Redis, Testing, CI/CD, Docker, and Exports
 
 ### Backend
 - `lib/redis.ts` — Upstash client, distributed-lock helper (used inside Member 1's `place_order` and Member 3's `schedule_truck_delivery`), caching helper, rate-limit helper
