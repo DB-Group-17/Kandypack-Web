@@ -20,9 +20,9 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - ⏳ Run migrations 01→19 against Aiven MySQL (files & runner built, awaiting DB connection)
 - ✅ `lib/db.ts` — mysql2 pool + query/call helpers
 - ✅ Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
-- [ ] `proxy.ts` — Next.js 16 Proxy for JWT verification & route protection
-- [ ] `lib/rbac.ts` — role → route/action map
-- [ ] Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
+- ✅ `proxy.ts` — Next.js 16 Proxy for JWT verification & route protection
+- ✅ `lib/rbac.ts` — role → route/action map
+- ✅ Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
 - [ ] Open PR → **at least one other member reviews**
 
 ### Member 5
