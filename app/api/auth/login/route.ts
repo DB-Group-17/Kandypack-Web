@@ -55,6 +55,8 @@ interface ProfileRow {
  */
 export async function POST(req: Request): Promise<NextResponse> {
   try {
+    // TODO (Member 5): Apply Upstash Redis rate limiting from lib/redis.ts on login attempts per IP / email
+
     const body = await req.json();
     const { email, password } = body;
 

@@ -7,7 +7,7 @@
  * - Central Access Control Matrix (ACM) encoding Schema v4 §9 permissions.
  * - Route-level permission map for Next.js Edge Proxy and navigation guards.
  * - Fine-grained resource/action permission checker (`hasPermission`, `requirePermission`).
- * - Multi-tenant store scoping helper (`getStoreScope`) for store_manager isolation.
+ * - Multi-tenant store scoping helper (`getStoreScope`) for store_manager isolation with strict null-safety.
  * 
  * Authority: Docs/03_architecture.md §6, Docs/04_database-schema-v4.md §9, Docs/05_api-and-pages.md
  * Owner: Member 1 (Dineth)
@@ -255,6 +255,11 @@ export const PERMISSION_MATRIX: Record<Resource, Partial<Record<Action, AppRole[
  * Checks whether a given role is allowed to access a page route pathname.
  * Handles dynamic route segments (such as `/orders/123` matching `/orders/[orderId]`).
  * 
+ * Note on Architecture:
+ * - This function is primarily used by `proxy.ts` to guard frontend page navigation.
+ * - API routes (`/api/*`) pass through the proxy and enforce fine-grained capabilities
+ *   directly within each route handler via `requirePermission()`.
+ * 
  * @param role - The authenticated user's AppRole
  * @param pathname - The URL pathname being visited
  * @returns True if access is permitted, false otherwise
@@ -264,7 +269,12 @@ export const PERMISSION_MATRIX: Record<Resource, Partial<Record<Action, AppRole[
  * const forbidden = canAccessRoute('order_entry_clerk', '/admin/users'); // false
  */
 export function canAccessRoute(role: AppRole, pathname: string): boolean {
-  // Direct exact match
+  // Pass through API routes to handler-level permission checks
+  if (pathname.startsWith('/api/')) {
+    return true;
+  }
+
+  // Direct exact match in route permission map
   if (ROUTE_PERMISSIONS[pathname]) {
     return ROUTE_PERMISSIONS[pathname].includes(role);
   }
@@ -285,7 +295,7 @@ export function canAccessRoute(role: AppRole, pathname: string): boolean {
     return ROUTE_PERMISSIONS['/admin/audit-log']?.includes(role) ?? false;
   }
 
-  // Find longest matching route prefix for other paths
+  // Find longest matching route prefix for other known dashboard paths
   const matchingKey = Object.keys(ROUTE_PERMISSIONS)
     .filter((route) => route !== '/' && pathname.startsWith(route))
     .sort((a, b) => b.length - a.length)[0];
@@ -294,8 +304,8 @@ export function canAccessRoute(role: AppRole, pathname: string): boolean {
     return ROUTE_PERMISSIONS[matchingKey].includes(role);
   }
 
-  // Default to allowing if no explicit restriction is defined (e.g. root '/')
-  return true;
+  // Deny unknown/unmapped paths by default for staff isolation
+  return false;
 }
 
 /**
@@ -371,10 +381,11 @@ export function requirePermission(
 
 /**
  * Determines data scoping parameters for store-scoped roles.
- * Store managers are isolated to their home_store_id; other roles have global access.
+ * Store managers are strictly isolated to their home_store_id; other roles have global access.
+ * Throws a ForbiddenError if a store_manager profile is missing an assigned store_id.
  * 
  * @param user - The authenticated session user
- * @returns Object with isScoped boolean and store_id if applicable
+ * @returns Object with isScoped boolean and store_id
  * 
  * @example
  * const { isScoped, store_id } = getStoreScope(session);
@@ -387,6 +398,9 @@ export function getStoreScope(user: SessionUser): {
   store_id: number | null;
 } {
   if (user.role === 'store_manager') {
+    if (user.store_id === null || user.store_id === undefined) {
+      throw new ForbiddenError('Store manager account is not assigned to any store.');
+    }
     return {
       isScoped: true,
       store_id: user.store_id

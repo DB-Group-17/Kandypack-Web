@@ -19,7 +19,7 @@ import { hashPassword } from '../lib/auth';
 const BOOTSTRAP_ADMIN = {
   user_id: '00000000-0000-0000-0000-000000000001',
   email: 'admin@kandypack.lk',
-  password: 'Admin@Kandypack2026!',
+  password: process.env.BOOTSTRAP_ADMIN_PASSWORD || 'Admin@Kandypack2026!',
   display_name: 'System Administrator',
   app_role: 'system_administrator' as const
 };
@@ -67,7 +67,7 @@ async function seedBootstrapAdmin(): Promise<void> {
     console.log('✅ Bootstrap Admin Account Successfully Created:');
     console.log(`   User ID:   ${BOOTSTRAP_ADMIN.user_id}`);
     console.log(`   Email:     ${BOOTSTRAP_ADMIN.email}`);
-    console.log(`   Password:  ${BOOTSTRAP_ADMIN.password}`);
+    console.log('   Password:  [REDACTED — Sourced from BOOTSTRAP_ADMIN_PASSWORD / default seed spec]');
     console.log(`   Role:      ${BOOTSTRAP_ADMIN.app_role}`);
     console.log('----------------------------------------------------');
     console.log('⚠️  IMPORTANT: Please change this default password after first login.');
@@ -76,7 +76,11 @@ async function seedBootstrapAdmin(): Promise<void> {
     throw error;
   } finally {
     // Gracefully close database connection pool
-    await pool.end();
+    try {
+      await pool.end();
+    } catch (closeErr) {
+      console.error('Warning: Error closing MySQL pool:', closeErr);
+    }
   }
 }
 
@@ -86,6 +90,7 @@ seedBootstrapAdmin()
     console.log('✨ Seed script completed.');
     process.exit(0);
   })
-  .catch(() => {
+  .catch((err) => {
+    console.error('❌ Fatal error in seed execution:', err);
     process.exit(1);
   });

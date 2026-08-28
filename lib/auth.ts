@@ -205,3 +205,23 @@ export async function getSession(): Promise<SessionUser | null> {
     return null;
   }
 }
+
+/**
+ * Decodes a URL-encoded display name header injected by proxy.ts.
+ * 
+ * @param value - The raw `x-user-display-name` header string
+ * @returns Decoded user display name, or fallback 'Staff Member'
+ * 
+ * @example
+ * const displayName = decodeDisplayNameHeader(req.headers.get('x-user-display-name'));
+ */
+export function decodeDisplayNameHeader(value?: string | null): string {
+  if (!value) {
+    return 'Staff Member';
+  }
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
