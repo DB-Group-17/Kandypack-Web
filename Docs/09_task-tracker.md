@@ -7,7 +7,7 @@
 
 Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
-Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
+Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 
 ---
 
@@ -16,10 +16,10 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 **Owners:** Member 1, Member 5. **Everyone else:** read `03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, and `06_seed-data-spec.md` in full; do not write backend code yet.
 
 ### Member 1
-- [ ] Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
-- [ ] Run migrations 01→19 against Aiven MySQL (schema only, no seed yet)
-- [ ] `lib/db.ts` — mysql2 pool + query/call helpers
-- [ ] Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
+- ✅ Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
+- ⏳ Run migrations 01→19 against Aiven MySQL (files & runner built, awaiting DB connection)
+- ✅ `lib/db.ts` — mysql2 pool + query/call helpers
+- ✅ Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
 - [ ] `middleware.ts` — JWT verification
 - [ ] `lib/rbac.ts` — role → route/action map
 - [ ] Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
