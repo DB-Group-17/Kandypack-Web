@@ -149,6 +149,6 @@ This is **not** the primary dev path for the team (per `03_architecture.md` §12
 
 ## 11. Daily Workflow Reminder
 
-- `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts`, `lib/redis.ts`) change under you if you don't.
+- `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `lib/redis.ts`) change under you if you don't.
 - Never run `npm run db:migrate` or `npm run db:seed` against the shared dev DB without checking in the team channel first — it affects everyone at once.
 - If `.env.example` gets a new variable added, you'll need to manually add it to your own `.env.local` — it isn't automatic.

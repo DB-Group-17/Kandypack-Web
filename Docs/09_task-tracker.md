@@ -20,7 +20,7 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - ⏳ Run migrations 01→19 against Aiven MySQL (files & runner built, awaiting DB connection)
 - ✅ `lib/db.ts` — mysql2 pool + query/call helpers
 - ✅ Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
-- [ ] `middleware.ts` — JWT verification
+- [ ] `proxy.ts` — Next.js 16 Proxy for JWT verification & route protection
 - [ ] `lib/rbac.ts` — role → route/action map
 - [ ] Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
 - [ ] Open PR → **at least one other member reviews**
@@ -159,6 +159,6 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 ## Standing Rules (apply in every phase)
 
 - One feature branch per person per module; PR into `main`; **at least one reviewer** before merge.
-- Shared files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts` → Member 1 only; `lib/redis.ts` → Member 5 only) — ask the owner, don't edit directly.
+- Shared files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts` → Member 1 only; `lib/redis.ts` → Member 5 only) — ask the owner, don't edit directly.
 - Any schema/migration/seed change, regardless of who needs it, goes through Member 1.
 - If you're blocked waiting on someone else's PR, work on your own module's frontend shell or write copy/tests — never start editing a shared-owned file to unblock yourself.
