@@ -14,6 +14,14 @@
  */
 
 import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load .env.local if running in standalone scripts/CLI context outside Next.js runtime
+if (!process.env.DATABASE_URL) {
+  dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+  dotenv.config(); // fallback to .env if present
+}
 
 /**
  * Valid types for SQL query parameters.

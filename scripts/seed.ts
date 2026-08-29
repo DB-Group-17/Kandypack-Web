@@ -9,7 +9,13 @@
  * Owner: Member 1 (Dineth)
  */
 
-import 'dotenv/config';
+import path from 'path';
+import dotenv from 'dotenv';
+
+// Load .env.local environment variables
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config();
+
 import { pool, queryOne, withTransaction } from '../lib/db';
 import { hashPassword } from '../lib/auth';
 
