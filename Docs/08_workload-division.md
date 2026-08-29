@@ -20,7 +20,7 @@ Companion to `03_architecture.md`. Every member owns **backend + frontend** for 
 - Run all 20 migration files against Aiven MySQL; own the `db/migrations/` folder going forward — **any schema change from any member goes through Member 1**
 - `lib/db.ts` — mysql2 pool + query/call helpers (used by everyone)
 - Auth system: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt, JWT sign/verify
-- `middleware.ts` — JWT verification on protected routes
+- `proxy.ts` — Next.js 16 Proxy for JWT verification on protected routes
 - `lib/rbac.ts` — role → allowed routes/actions map
 - Seed script for the first admin account
 - Orders module: `POST /orders` (calls `place_order()`), `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
@@ -31,7 +31,7 @@ Companion to `03_architecture.md`. Every member owns **backend + frontend** for 
 - `useAuth()` hook / auth context — **the pattern everyone else's pages import**
 
 ### Owns these shared files (others don't touch without asking)
-`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts`, `db/migrations/`
+`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `db/migrations/`
 
 ---
 
@@ -141,7 +141,7 @@ Nothing to *start* (Redis/CI scaffolding is independent) — but PDF export need
 ## Conflict-Avoidance Rules
 
 - **One feature branch per member per module**, PR into `main`, at least one other member reviews before merge.
-- **Shared files are owned, not shared:** `lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts` → Member 1 only. `lib/redis.ts` → Member 5 only. Anyone needing a change to these asks the owner rather than editing directly.
+- **Shared files are owned, not shared:** `lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts` → Member 1 only. `lib/redis.ts` → Member 5 only. Anyone needing a change to these asks the owner rather than editing directly.
 - **Migrations are sequential and single-owner:** if a module needs a schema tweak after Phase 0, it goes through Member 1 to avoid two people claiming the same migration number.
 - **No two members touch the same page/route file.** The module split above guarantees this as long as everyone stays in their own `app/(dashboard)/<module>/` and `app/api/<module>/` folders.
 - **Agree on API contracts before writing code**, not after — each member's own frontend depends on their own backend, so a shape mismatch only hurts them, but cross-module reads (Dashboard reading Orders' shape, Reports reading everyone's data) need the contract fixed early.

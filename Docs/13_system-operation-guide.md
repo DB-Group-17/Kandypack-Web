@@ -32,7 +32,7 @@ The system connects the full flow:
 3. The system creates a secure HttpOnly JWT session cookie.
 4. The system loads the user role and store/city scope.
 5. The user is redirected to the dashboard.
-6. Middleware and API routes enforce permissions on every protected request.
+6. Next.js Proxy and API routes enforce permissions on every protected request.
 
 Customers, drivers, and assistants do not have login accounts in version one. Staff members manage their records and perform actions on their behalf where applicable.
 
@@ -267,7 +267,7 @@ Cannot manage users, products, global master data, train trips, or system permis
 - Only active staff accounts can log in.
 - Passwords are hashed and never stored as plain text.
 - Sessions use secure HttpOnly cookies.
-- Middleware protects authenticated routes.
+- Next.js Proxy protects authenticated routes.
 - Every API route enforces role permissions.
 
 ## Order rules

@@ -74,6 +74,8 @@ NODE_ENV=development
 
 ⚠️ **Do this against the shared dev database only if you're told to** — running migrations resets/alters shared state everyone else depends on. During Phase 0, only **Member 1** runs migrations. After that, coordinate in the team channel before running new migrations against the shared dev DB.
 
+> **Note:** For Phase 0, migrations and the initial bootstrap seed have already been executed against the shared Aiven database. You do not need to run them again on a fresh clone.
+
 ```bash
 npm run db:migrate
 ```
@@ -149,6 +151,6 @@ This is **not** the primary dev path for the team (per `03_architecture.md` §12
 
 ## 11. Daily Workflow Reminder
 
-- `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts`, `lib/redis.ts`) change under you if you don't.
+- `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `lib/redis.ts`) change under you if you don't.
 - Never run `npm run db:migrate` or `npm run db:seed` against the shared dev DB without checking in the team channel first — it affects everyone at once.
 - If `.env.example` gets a new variable added, you'll need to manually add it to your own `.env.local` — it isn't automatic.

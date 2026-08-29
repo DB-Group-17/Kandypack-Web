@@ -7,7 +7,7 @@
 
 Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
-Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
+Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 
 ---
 
@@ -16,14 +16,14 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 **Owners:** Member 1, Member 5. **Everyone else:** read `03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, and `06_seed-data-spec.md` in full; do not write backend code yet.
 
 ### Member 1
-- [ ] Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
-- [ ] Run migrations 01→19 against Aiven MySQL (schema only, no seed yet)
-- [ ] `lib/db.ts` — mysql2 pool + query/call helpers
-- [ ] Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
-- [ ] `middleware.ts` — JWT verification
-- [ ] `lib/rbac.ts` — role → route/action map
-- [ ] Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
-- [ ] Open PR → **at least one other member reviews**
+- ✅ Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
+- ✅ Run migrations 01→19 against Aiven MySQL (executed against live Aiven database 2026-08-29)
+- ✅ `lib/db.ts` — mysql2 pool + query/call helpers
+- ✅ Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
+- ✅ `proxy.ts` — Next.js 16 Proxy for JWT verification & route protection
+- ✅ `lib/rbac.ts` — role → route/action map
+- ✅ Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
+- ⏳ Open PR → **at least one other member reviews**
 
 ### Member 5
 - [ ] `lib/redis.ts` — Upstash client, lock helper, cache helper, rate-limit helper
@@ -41,7 +41,7 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 ### 🔒 PHASE 0 GATE — do not proceed to Phase 1 until ALL of these are true:
 - [ ] Member 1's foundation PR is **merged to `main`**
 - [ ] Member 5's Redis + CI + export-service scaffold PR is **merged to `main`**
-- [ ] Everyone has pulled the latest `main` locally and can run the app + hit `POST /auth/login` successfully against the seeded bootstrap admin
+- ✅ Everyone has pulled the latest `main` locally and can run the app + hit `POST /auth/login` successfully against the seeded bootstrap admin (Member 1 verified live 2026-08-29)
 - [ ] CI lint/typecheck job is green on `main`
 
 ---
@@ -159,6 +159,6 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 ## Standing Rules (apply in every phase)
 
 - One feature branch per person per module; PR into `main`; **at least one reviewer** before merge.
-- Shared files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts` → Member 1 only; `lib/redis.ts` → Member 5 only) — ask the owner, don't edit directly.
+- Shared files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts` → Member 1 only; `lib/redis.ts` → Member 5 only) — ask the owner, don't edit directly.
 - Any schema/migration/seed change, regardless of who needs it, goes through Member 1.
 - If you're blocked waiting on someone else's PR, work on your own module's frontend shell or write copy/tests — never start editing a shared-owned file to unblock yourself.
