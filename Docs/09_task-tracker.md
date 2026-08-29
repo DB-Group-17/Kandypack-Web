@@ -17,13 +17,13 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 
 ### Member 1
 - ✅ Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
-- ⏳ Run migrations 01→19 against Aiven MySQL (files & runner built, awaiting DB connection)
+- ✅ Run migrations 01→19 against Aiven MySQL (executed against live Aiven database 2026-08-29)
 - ✅ `lib/db.ts` — mysql2 pool + query/call helpers
 - ✅ Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
 - ✅ `proxy.ts` — Next.js 16 Proxy for JWT verification & route protection
 - ✅ `lib/rbac.ts` — role → route/action map
 - ✅ Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
-- [ ] Open PR → **at least one other member reviews**
+- ⏳ Open PR → **at least one other member reviews**
 
 ### Member 5
 - [ ] `lib/redis.ts` — Upstash client, lock helper, cache helper, rate-limit helper
@@ -41,7 +41,7 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 ### 🔒 PHASE 0 GATE — do not proceed to Phase 1 until ALL of these are true:
 - [ ] Member 1's foundation PR is **merged to `main`**
 - [ ] Member 5's Redis + CI + export-service scaffold PR is **merged to `main`**
-- [ ] Everyone has pulled the latest `main` locally and can run the app + hit `POST /auth/login` successfully against the seeded bootstrap admin
+- ✅ Everyone has pulled the latest `main` locally and can run the app + hit `POST /auth/login` successfully against the seeded bootstrap admin (Member 1 verified live 2026-08-29)
 - [ ] CI lint/typecheck job is green on `main`
 
 ---

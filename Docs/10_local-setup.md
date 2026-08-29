@@ -74,6 +74,8 @@ NODE_ENV=development
 
 ⚠️ **Do this against the shared dev database only if you're told to** — running migrations resets/alters shared state everyone else depends on. During Phase 0, only **Member 1** runs migrations. After that, coordinate in the team channel before running new migrations against the shared dev DB.
 
+> **Note:** For Phase 0, migrations and the initial bootstrap seed have already been executed against the shared Aiven database. You do not need to run them again on a fresh clone.
+
 ```bash
 npm run db:migrate
 ```
