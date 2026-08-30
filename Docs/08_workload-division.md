@@ -51,7 +51,7 @@ Member 1's `db.ts` + auth/RBAC being merged first.
 
 ---
 
-## Member 3(Minishka) — Truck Scheduling, Roster, Deliveries
+## Member 3(Monishka) — Truck Scheduling, Roster, Deliveries
 
 ### Backend
 - `GET /trucks`, `GET /drivers`, `GET /assistants` (with current weekly hours)
