@@ -32,9 +32,9 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 - [ ] Open PR → **at least one other member reviews**
 
 ### Members 2, 3, 4 (in parallel, no shared-file edits)
-- [ ] Read all reference docs (`03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, `06_seed-data-spec.md`)
-- [ ] Build static page shells for your own pages only (routes + layout + placeholder UI, no real data fetching)
-- [ ] Draft/confirm request-response shapes for your own module's endpoints against `api-and-pages.md` — flag any mismatch now, not later
+- [x] Read all reference docs (`03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, `06_seed-data-spec.md`)
+- [~] Build static page shells for your own pages only (routes + layout + placeholder UI, no real data fetching)
+- [~] Draft/confirm request-response shapes for your own module's endpoints against `api-and-pages.md` — flag any mismatch now, not later
 
 ---
 
