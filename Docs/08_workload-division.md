@@ -17,12 +17,12 @@ Companion to `03_architecture.md`. Every member owns **backend + frontend** for 
 
 ### Backend
 - Project scaffold (Next.js + TypeScript setup)
-- Run all 20 migration files against Aiven MySQL; own the `db/migrations/` folder going forward — **any schema change from any member goes through Member 1**
+- Run all 20 migration files against Aiven MySQL (`01_auth.sql` through `20_delivery_status_cancelled.sql`); own the `db/migrations/` folder going forward — **any schema change from any member goes through Member 1**
 - `lib/db.ts` — mysql2 pool + query/call helpers (used by everyone)
 - Auth system: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt, JWT sign/verify
-- `middleware.ts` — JWT verification on protected routes
+- `proxy.ts` — Next.js 16 Proxy for JWT verification on protected routes
 - `lib/rbac.ts` — role → allowed routes/actions map
-- Seed script for the first admin account
+- Seed script for the first admin account (`scripts/seed.ts` via `npm run db:seed`)
 - Orders module: `POST /orders` (calls `place_order()`), `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
 
 ### Frontend
@@ -31,7 +31,7 @@ Companion to `03_architecture.md`. Every member owns **backend + frontend** for 
 - `useAuth()` hook / auth context — **the pattern everyone else's pages import**
 
 ### Owns these shared files (others don't touch without asking)
-`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts`, `db/migrations/`
+`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `db/migrations/`
 
 ---
 
@@ -51,7 +51,7 @@ Member 1's `db.ts` + auth/RBAC being merged first.
 
 ---
 
-## Member 3(Minishka) — Truck Scheduling, Roster, Deliveries
+## Member 3(Monishka) — Truck Scheduling, Roster, Deliveries
 
 ### Backend
 - `GET /trucks`, `GET /drivers`, `GET /assistants` (with current weekly hours)
@@ -105,13 +105,14 @@ Nothing to *start* (Redis/CI scaffolding is independent) — but PDF export need
 
 ## Build Sequence (Avoids Merge Conflicts)
 
-### Phase 0 — Foundation (Days 1–3)
-**Member 1** and **Member 5** work in parallel; Members 2, 3, 4 do *not* touch shared backend files yet.
-- Member 1: scaffold, migrations, `db.ts`, auth, RBAC, middleware, seed admin — merge to `main` first
-- Member 5: `redis.ts` (lock + cache + rate-limit helpers), CI skeleton (lint/typecheck job), and export-service scaffold — merge to `main` alongside Member 1
-- Members 2/3/4: build static page shells (routes, layout, placeholder UI) off the current `main`; agree on request/response shapes for their own endpoints so backend and frontend within each person's slice don't drift
+### Phase 0 — Foundation (Days 1–3) — ✅ COMPLETED
+**Member 1** and **Member 5** worked in parallel; Members 2, 3, 4 built static page shells. All deliverables are merged and verified.
+- Member 1: scaffold, migrations 01→20, `db.ts`, auth, RBAC, proxy, seed admin (`scripts/seed.ts`).
+- Member 5: `redis.ts` (lock + cache + rate-limit helpers), GitHub Actions CI skeleton, and export-service scaffold.
+- Members 2/3/4: built static page shells, consolidated under the single canonical `app/(dashboard)/layout.tsx` layout shell.
+- Verification: 0 typecheck errors, 0 lint warnings, clean build across all 14 routes.
 
-**Gate:** everyone pulls `main` after Member 1 + Member 5's work merges before starting their own module branch. This is the one hard sync point in the whole project.
+**Gate:** ✅ PASSED. All 5 members pull latest `main` (or `development`) before branching for Phase 1.
 
 ### Phase 1 — Critical path (Days 4–7)
 - **Member 1** builds Orders (`place_order`, using Member 5's Redis lock helper) — this is the pacing item; other modules reference orders/customers but don't block on it existing in full.
@@ -141,7 +142,7 @@ Nothing to *start* (Redis/CI scaffolding is independent) — but PDF export need
 ## Conflict-Avoidance Rules
 
 - **One feature branch per member per module**, PR into `main`, at least one other member reviews before merge.
-- **Shared files are owned, not shared:** `lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts` → Member 1 only. `lib/redis.ts` → Member 5 only. Anyone needing a change to these asks the owner rather than editing directly.
+- **Shared files are owned, not shared:** `lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts` → Member 1 only. `lib/redis.ts` → Member 5 only. Anyone needing a change to these asks the owner rather than editing directly.
 - **Migrations are sequential and single-owner:** if a module needs a schema tweak after Phase 0, it goes through Member 1 to avoid two people claiming the same migration number.
 - **No two members touch the same page/route file.** The module split above guarantees this as long as everyone stays in their own `app/(dashboard)/<module>/` and `app/api/<module>/` folders.
 - **Agree on API contracts before writing code**, not after — each member's own frontend depends on their own backend, so a shape mismatch only hurts them, but cross-module reads (Dashboard reading Orders' shape, Reports reading everyone's data) need the contract fixed early.

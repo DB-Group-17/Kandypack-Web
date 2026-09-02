@@ -61,7 +61,7 @@ When technical documents conflict, use this order: `AGENTS.md` → `DESIGN.md` �
 - **Language:** TypeScript
 - **Package manager:** npm (the repository currently uses `package-lock.json`)
 - **Database access:** **Plain SQL — no ORM.** `mysql2` driver with a connection pool; parameterized queries; `CALL procedure_name(...)` for stored procedures
-- **Auth:** Custom JWT (HttpOnly cookie) + bcrypt, per Schema v4 §8 — no NextAuth/Supabase Auth, no public sign-up (see §6)
+- **Auth:** Custom JWT (HttpOnly cookie) + bcrypt, per Schema v4 §8 — `jsonwebtoken` + `bcryptjs` for server API routes, `jose` for Next.js 16 Edge proxy; no NextAuth/Supabase Auth, no public sign-up (see §6)
 - **Styling/UI:** Tailwind CSS + `lucide-react` + `react-icons`
 
 ### Data & Infra
@@ -109,7 +109,7 @@ kandypack/
 │   ├── redis.ts                    # Upstash client, lock helpers
 │   ├── rbac.ts                     # role → allowed routes/actions map
 │   └── rate-limit.ts               # per-route rate limiting
-├── middleware.ts                   # JWT verification on protected routes
+├── proxy.ts                        # Next.js 16 Proxy (JWT verification on protected routes)
 ├── db/
 │   ├── migrations/                 # ordered schema migrations
 │   └── schema-docs/
@@ -128,7 +128,7 @@ kandypack/
 ## 6. Authentication & Roles
 
 - Login: `POST /api/auth/login` → bcrypt compare → JWT `{ sub: user_id, role, store_id, exp }` in HttpOnly cookie (per Schema v4 §8.1).
-- `middleware.ts` verifies JWT on every protected route; injects `user_id`/`role`/`store_id` into request context.
+- `proxy.ts` (Next.js 16 Proxy) verifies JWT on every protected route; injects `user_id`/`role`/`store_id` into request context.
 - Every DB connection used by a request sets `@current_user_id` / `@current_app_role` session variables before calling procedures (required by triggers/audit logging).
 - **Role → access** (from Schema v4 §9 Access Control Matrix):
 
@@ -156,7 +156,7 @@ kandypack/
 
 ### 6.3 Account Creation — Admin-Only, No Public Sign-Up
 - There is **no public sign-up page.** New accounts are created exclusively by a `system_administrator` from `/admin/users`: set email, generate/send a temporary password, assign one of the 5 roles.
-- **First admin account** is not created through the UI (no admin exists yet to do it) — it's inserted directly via the seed script (`20_seed.sql` or a one-time bootstrap script) with a pre-hashed bcrypt password.
+- **First admin account** is not created through the UI (no admin exists yet to do it) — it's inserted directly via the seed script (`scripts/seed.ts` via `npm run db:seed`) with a pre-hashed bcrypt password.
 
 ---
 
@@ -419,7 +419,7 @@ Limited time budget → **prioritize highest-risk business logic, skip UI/e2e en
 
 ## 17. Data Seeding Strategy
 
-Per SRS §6.5 minimum test data, seeded via `20_seed.sql` (must run after `users`/`user_profiles` per v4 §11):
+Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`) after migrations `01→20` are applied (must run after `users`/`user_profiles` per v4 §11):
 - 10+ products, 20+ customers across all 6 cities, 10+ routes (1+ per city)
 - Valid train schedule, 2+ trips per city, defined capacities
 - 8+ drivers, 8+ assistants, 6+ trucks
@@ -447,6 +447,7 @@ Per SRS §6.5 minimum test data, seeded via `20_seed.sql` (must run after `users
 | Report persistence | No `report_jobs` table and no report-file storage | The generated file is returned directly to the requester | `03_architecture.md`, `04_database-schema-v4.md` | 2026-08-25 |
 | Scheduling days | Operations run Monday–Saturday; calendar calculations use Monday–Sunday | Preserves business operations while keeping date calculations consistent | `03_architecture.md`, `04_database-schema-v4.md`, `05_api-and-pages.md` | 2026-08-25 |
 | Delivery-area matching | Explicit delivery-area assignment in version one | Avoids unreliable address-parsing behavior | `03_architecture.md`, `04_database-schema-v4.md`, `06_seed-data-spec.md` | 2026-08-25 |
+| Next.js 16 Proxy & Edge JWT | Use `proxy.ts` and `jose` library | Next.js 16 renamed `middleware.ts` to `proxy.ts`; `jose` is required for Edge runtime webcrypto JWT verification | `03_architecture.md`, `08_workload-division.md`, `09_task-tracker.md`, `10_local-setup.md` | 2026-08-28 |
 
 ## 20. Application Layer Boundaries
 

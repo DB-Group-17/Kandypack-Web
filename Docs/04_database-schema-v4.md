@@ -1,4 +1,4 @@
-﻿# Kandypack Database Schema — Design & Implementation (v4.0)
+# Kandypack Database Schema — Design & Implementation (v4.0)
 
 > Status: Active
 > Authority: Supporting database specification
@@ -711,7 +711,7 @@ CREATE TABLE deliveries (
     created_at        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT pk_deliveries   PRIMARY KEY (delivery_id),
-    CONSTRAINT chk_del_status  CHECK (status IN ('Scheduled','In Progress','Completed','Failed')),
+    CONSTRAINT chk_del_status  CHECK (status IN ('Scheduled','In Progress','Completed','Failed','Cancelled')),
     CONSTRAINT fk_del_order    FOREIGN KEY (order_id)          REFERENCES orders(order_id),
     CONSTRAINT fk_del_schedule FOREIGN KEY (truck_schedule_id) REFERENCES truck_schedules(schedule_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1643,8 +1643,9 @@ await db.execute(
    17_proc_place_order.sql
    18_proc_remaining.sql
    19_reports.sql
-   20_seed.sql
+   20_delivery_status_cancelled.sql
    ```
+   *(Note: Database seeding is decoupled from schema migrations and executed separately via `npm run db:seed` / `scripts/seed.ts`)*
 
 5. Before any test, run on the same connection:
    ```sql
