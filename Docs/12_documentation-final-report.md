@@ -39,6 +39,7 @@ The SRS remains unchanged as the original business-requirements reference. The a
 | Train-schedule visual variant | Use the main Kandypack violet theme; do not carry over the steel/amber reference palette. | `DESIGN.md`, `11_ui-rules.md` |
 | Reports and audit-log accent | Allow the deeper violet accent as a sanctioned page-specific variant. | `DESIGN.md`, `11_ui-rules.md` |
 | Narrow-screen table behavior | Transform dense tables into card layouts. | `DESIGN.md`, `11_ui-rules.md` |
+| Migration sequence & Seed runner | Migrations structured as `01→20` (`20_delivery_status_cancelled.sql`); seed execution decoupled via `npm run db:seed` (`scripts/seed.ts`). | `03_architecture.md`, `04_database-schema-v4.md` |
 
 ## Approved documentation changes
 

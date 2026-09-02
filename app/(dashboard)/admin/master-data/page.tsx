@@ -20,7 +20,6 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { MasterDataShell } from './components/MasterDataShell';
 import { QuickStatsBanner } from './components/QuickStatsBanner';
 import { ProductsTab } from './components/ProductsTab';
 import { RoutesTab } from './components/RoutesTab';
@@ -438,7 +437,7 @@ export default function MasterDataPage(): React.JSX.Element {
   }, [activeTab]);
 
   return (
-    <MasterDataShell>
+    <div className="space-y-6">
       {/* Toast Feedback Notification Banner */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
@@ -672,6 +671,6 @@ export default function MasterDataPage(): React.JSX.Element {
         onClose={() => setIsAddCustomerOpen(false)}
         onSubmit={handleAddCustomer}
       />
-    </MasterDataShell>
+    </div>
   );
 }

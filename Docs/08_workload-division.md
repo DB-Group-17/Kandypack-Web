@@ -17,12 +17,12 @@ Companion to `03_architecture.md`. Every member owns **backend + frontend** for 
 
 ### Backend
 - Project scaffold (Next.js + TypeScript setup)
-- Run all 20 migration files against Aiven MySQL; own the `db/migrations/` folder going forward — **any schema change from any member goes through Member 1**
+- Run all 20 migration files against Aiven MySQL (`01_auth.sql` through `20_delivery_status_cancelled.sql`); own the `db/migrations/` folder going forward — **any schema change from any member goes through Member 1**
 - `lib/db.ts` — mysql2 pool + query/call helpers (used by everyone)
 - Auth system: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt, JWT sign/verify
 - `proxy.ts` — Next.js 16 Proxy for JWT verification on protected routes
 - `lib/rbac.ts` — role → allowed routes/actions map
-- Seed script for the first admin account
+- Seed script for the first admin account (`scripts/seed.ts` via `npm run db:seed`)
 - Orders module: `POST /orders` (calls `place_order()`), `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
 
 ### Frontend

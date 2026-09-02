@@ -12,7 +12,6 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { AuditLogShell } from './components/AuditLogShell';
 import { AuditLogFilterBar } from './components/AuditLogFilterBar';
 import { AuditLogTable } from './components/AuditLogTable';
 import { AuditLogPagination } from './components/AuditLogPagination';
@@ -118,7 +117,7 @@ export default function AuditLogPage(): React.JSX.Element {
   };
 
   return (
-    <AuditLogShell>
+    <div className="space-y-6">
       {/* Page Header Area */}
       <div className="mb-6">
         <h1 className="text-[28px] lg:text-[32px] font-bold text-[#121C2C] tracking-tight mb-1">
@@ -146,6 +145,6 @@ export default function AuditLogPage(): React.JSX.Element {
           onPageChange={handlePageChange}
         />
       </div>
-    </AuditLogShell>
+    </div>
   );
 }

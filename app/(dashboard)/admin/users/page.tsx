@@ -27,7 +27,6 @@
  */
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { UserAccountsShell } from './components/UserAccountsShell';
 import { UserStatsBento } from './components/UserStatsBento';
 import { UserFilterBar } from './components/UserFilterBar';
 import { UsersTable } from './components/UsersTable';
@@ -238,10 +237,7 @@ export default function UserAccountsPage() {
   };
 
   return (
-    <UserAccountsShell
-      searchQuery={filters.searchQuery}
-      onSearchChange={(val) => handleFilterChange({ ...filters, searchQuery: val })}
-    >
+    <div className="space-y-6">
       {/* Toast Notification Alert */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
@@ -372,6 +368,6 @@ export default function UserAccountsPage() {
         onClose={() => setEditModalUser(null)}
         onSave={handleSaveEditUser}
       />
-    </UserAccountsShell>
+    </div>
   );
 }

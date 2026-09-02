@@ -87,6 +87,7 @@ Each document must stay within its defined responsibility. Active documents shou
 - Overflow orders may be split across future trips while remaining one customer order.
 - Assistant route continuity is an architecture rule and must be auditable.
 - CSV and PDF reports are generated synchronously and returned directly; no `report_jobs` table or report-file storage is required for version one.
+- Database schema migrations are structured as `01→20` sequential SQL files; database seeding is managed separately via `scripts/seed.ts` (`npm run db:seed`).
 - `UI/truck-schedule-new/` is the confirmed reference for the new truck-schedule page.
 
 ### Approved architecture finalization scope

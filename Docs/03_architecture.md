@@ -156,7 +156,7 @@ kandypack/
 
 ### 6.3 Account Creation — Admin-Only, No Public Sign-Up
 - There is **no public sign-up page.** New accounts are created exclusively by a `system_administrator` from `/admin/users`: set email, generate/send a temporary password, assign one of the 5 roles.
-- **First admin account** is not created through the UI (no admin exists yet to do it) — it's inserted directly via the seed script (`20_seed.sql` or a one-time bootstrap script) with a pre-hashed bcrypt password.
+- **First admin account** is not created through the UI (no admin exists yet to do it) — it's inserted directly via the seed script (`scripts/seed.ts` via `npm run db:seed`) with a pre-hashed bcrypt password.
 
 ---
 
@@ -419,7 +419,7 @@ Limited time budget → **prioritize highest-risk business logic, skip UI/e2e en
 
 ## 17. Data Seeding Strategy
 
-Per SRS §6.5 minimum test data, seeded via `20_seed.sql` (must run after `users`/`user_profiles` per v4 §11):
+Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`) after migrations `01→20` are applied (must run after `users`/`user_profiles` per v4 §11):
 - 10+ products, 20+ customers across all 6 cities, 10+ routes (1+ per city)
 - Valid train schedule, 2+ trips per city, defined capacities
 - 8+ drivers, 8+ assistants, 6+ trucks

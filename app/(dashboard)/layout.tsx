@@ -111,13 +111,32 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       ),
     },
     {
-      label: "Admin",
+      label: "Master Data",
       href: "/admin/master-data",
       section: "Administration",
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+        </svg>
+      ),
+    },
+    {
+      label: "Users",
+      href: "/admin/users",
+      section: "Administration",
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      ),
+    },
+    {
+      label: "Audit Log",
+      href: "/admin/audit-log",
+      section: "Administration",
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0zM9 12h6m-6 4h4" />
         </svg>
       ),
     },
@@ -125,11 +144,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   /**
    * Evaluates whether a given navigation item is currently active.
-   * Matches root paths or subpaths.
+   * Matches exact route or nested subpath.
    */
   const isItemActive = (href: string): boolean => {
     if (href === "/dashboard") return pathname === "/dashboard";
-    return pathname.startsWith(href);
+    return pathname === href || pathname.startsWith(`${href}/`);
   };
 
   return (
@@ -281,22 +300,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
 
               <nav className="mt-4 flex-1 overflow-y-auto space-y-1">
-                {navItems.map((item) => {
+                {navItems.map((item, index) => {
                   const active = isItemActive(item.href);
+                  const showSectionHeading =
+                    index === 0 || item.section !== navItems[index - 1].section;
+
                   return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-medium transition-colors ${
-                        active
-                          ? "bg-white text-[#4132C7] font-semibold"
-                          : "text-white/80 hover:bg-white/10 hover:text-white"
-                      }`}
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
+                    <React.Fragment key={item.href}>
+                      {showSectionHeading && item.section && (
+                        <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/60">
+                          {item.section}
+                        </div>
+                      )}
+                      <Link
+                        href={item.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-full text-sm font-medium transition-colors ${
+                          active
+                            ? "bg-white text-[#4132C7] font-semibold"
+                            : "text-white/80 hover:bg-white/10 hover:text-white"
+                        }`}
+                      >
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </Link>
+                    </React.Fragment>
                   );
                 })}
               </nav>

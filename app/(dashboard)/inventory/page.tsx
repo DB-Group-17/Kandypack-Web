@@ -14,7 +14,6 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { InventoryShell } from './components/InventoryShell';
 import { StockLevelsTable } from './components/StockLevelsTable';
 import { TransactionHistoryTable } from './components/TransactionHistoryTable';
 import { ReceiveGoodsModal } from './components/ReceiveGoodsModal';
@@ -236,7 +235,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
   const availableBookings = MOCK_ARRIVED_TRAIN_BOOKINGS[selectedStoreId] || [];
 
   return (
-    <InventoryShell searchQuery={globalSearch} onSearchChange={setGlobalSearch}>
+    <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
@@ -266,7 +265,23 @@ export default function StoreInventoryPage(): React.JSX.Element {
         </div>
 
         {/* Header Right Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Search Bar */}
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search SKU or name..."
+              value={globalSearch}
+              onChange={(e) => setGlobalSearch(e.target.value)}
+              className="w-44 sm:w-56 h-10 pl-9 pr-3 rounded-lg border border-[#c8c4d7] text-[13px] outline-none focus:border-[#4132c7] focus:ring-1 focus:ring-[#4132c7] bg-white shadow-xs"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#777586] pointer-events-none">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+          </div>
+
           {/* Store Selector Dropdown */}
           <div className="relative">
             <select
@@ -355,6 +370,6 @@ export default function StoreInventoryPage(): React.JSX.Element {
         onClose={() => setReceiveModalOpen(false)}
         onConfirmReceipt={handleConfirmReceipt}
       />
-    </InventoryShell>
+    </div>
   );
 }

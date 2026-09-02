@@ -209,7 +209,7 @@ Conventions used throughout:
 
 ### `GET /api/truck-schedules`
 - **Roles:** fleet_supervisor, system_administrator (read for others)
-- **Query params:** `date_from?`, `date_to?`, `status?`, `driver_id?`, `truck_id?`
+- **Query params:** `date_from?`, `date_to?`, `status?` (`Scheduled`, `In Progress`, `Completed`, `Cancelled`), `driver_id?`, `truck_id?`
 - **Response 200:** `{ "items": [{ schedule_id, truck_plate, driver_name, assistant_name, route_name, start_time, end_time, status }] }`
 
 ### `POST /api/truck-schedules`
@@ -237,7 +237,7 @@ Conventions used throughout:
 
 ### `GET /api/deliveries`
 - **Roles:** fleet_supervisor, system_administrator (read for others)
-- **Query params:** `status?`, `date_from?`, `date_to?`
+- **Query params:** `status?` (`Scheduled`, `In Progress`, `Completed`, `Failed`, `Cancelled`), `date_from?`, `date_to?`
 - **Response 200:** `{ "items": [{ delivery_id, order_id, customer_name, truck_plate, driver_name, status, delivered_at }] }`
 
 ### `PATCH /api/deliveries/:id/complete`

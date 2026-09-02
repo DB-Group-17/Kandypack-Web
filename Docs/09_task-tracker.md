@@ -16,14 +16,14 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 **Owners:** Member 1, Member 5. **Everyone else:** read `03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, and `06_seed-data-spec.md` in full; do not write backend code yet.
 
 ### Member 1
-- ✅ Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
-- ✅ Run migrations 01→19 against Aiven MySQL (executed against live Aiven database 2026-08-29)
-- ✅ `lib/db.ts` — mysql2 pool + query/call helpers
-- ✅ Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
-- ✅ `proxy.ts` — Next.js 16 Proxy for JWT verification & route protection
-- ✅ `lib/rbac.ts` — role → route/action map
-- ✅ Bootstrap admin seed script (seed-data specification — admin row only, rest of seed comes later)
-- ⏳ Open PR → **at least one other member reviews**
+- [x] Project scaffold (Next.js + TypeScript, folder structure per `03_architecture.md` §5)
+- [x] Run migrations 01→20 against Aiven MySQL (including `20_delivery_status_cancelled.sql`)
+- [x] `lib/db.ts` — mysql2 pool + query/call helpers
+- [x] Auth: `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, bcrypt hashing
+- [x] `proxy.ts` — Next.js 16 Proxy for JWT verification & route protection
+- [x] `lib/rbac.ts` — role → route/action map
+- [x] Bootstrap admin seed script (`scripts/seed.ts` via `npm run db:seed`)
+- [x] Open PR → **at least one other member reviews**
 
 ### Member 5
 - [x] `lib/redis.ts` — Upstash client, lock helper, cache helper, rate-limit helper
@@ -33,8 +33,8 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 
 ### Members 2, 3, 4 (in parallel, no shared-file edits)
 - [x] Read all reference docs (`03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, `06_seed-data-spec.md`)
-- [~] Build static page shells for your own pages only (routes + layout + placeholder UI, no real data fetching)
-- [~] Draft/confirm request-response shapes for your own module's endpoints against `api-and-pages.md` — flag any mismatch now, not later
+- [x] Build static page shells for your own pages only (routes + layout + placeholder UI, no real data fetching)
+- [x] Draft/confirm request-response shapes for your own module's endpoints against `api-and-pages.md` — flag any mismatch now, not later
 
 ---
 
