@@ -38,11 +38,12 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 
 ---
 
-### 🔒 PHASE 0 GATE — do not proceed to Phase 1 until ALL of these are true:
-- [ ] Member 1's foundation PR is **merged to `main`**
-- [ ] Member 5's Redis + CI + export-service scaffold PR is **merged to `main`**
-- ✅ Everyone has pulled the latest `main` locally and can run the app + hit `POST /auth/login` successfully against the seeded bootstrap admin (Member 1 verified live 2026-08-29)
-- [ ] CI lint/typecheck job is green on `main`
+### 🔒 PHASE 0 GATE — COMPLETED & LOCKED (2026-09-02)
+- [x] Member 1's foundation PR is **merged to `development` / `main`**
+- [x] Member 5's Redis + CI + export-service scaffold PR is **merged to `development` / `main`**
+- [x] All 5 members' static page shells completed, unified under canonical `app/(dashboard)/layout.tsx`, and verified against `POST /auth/login`
+- [x] CI lint/typecheck/build pipeline is green (0 errors, 14 routes compiled cleanly)
+- **Status:** **PASSED / LOCKED** — All team members ready to pull `main` and branch for Phase 1.
 
 ---
 

@@ -40,6 +40,7 @@ The SRS remains unchanged as the original business-requirements reference. The a
 | Reports and audit-log accent | Allow the deeper violet accent as a sanctioned page-specific variant. | `DESIGN.md`, `11_ui-rules.md` |
 | Narrow-screen table behavior | Transform dense tables into card layouts. | `DESIGN.md`, `11_ui-rules.md` |
 | Migration sequence & Seed runner | Migrations structured as `01→20` (`20_delivery_status_cancelled.sql`); seed execution decoupled via `npm run db:seed` (`scripts/seed.ts`). | `03_architecture.md`, `04_database-schema-v4.md` |
+| Application shell & Sidebar consistency | Standardized under single shared `app/(dashboard)/layout.tsx` (260px violet, 4 nav groups, 10 modules); per-page shell wrappers removed. | `DESIGN.md`, `03_architecture.md`, `11_ui-rules.md` |
 
 ## Approved documentation changes
 
@@ -70,7 +71,7 @@ The SRS remains unchanged as the original business-requirements reference. The a
 - [x] `/truck-schedule/new` reference is present.
 - [x] Agent startup and commenting rules are documented in `AGENTS.md`.
 - [x] UI theme, deeper-violet accent, and mobile card-layout decisions are resolved.
-- [ ] Application implementation has begun — intentionally not started during documentation finalization.
+- [x] Application implementation has begun — Phase 0 Foundation completed, static page shells unified, and Phase 0 Gate passed.
 
 ## Baseline status
 

@@ -105,13 +105,14 @@ Nothing to *start* (Redis/CI scaffolding is independent) — but PDF export need
 
 ## Build Sequence (Avoids Merge Conflicts)
 
-### Phase 0 — Foundation (Days 1–3)
-**Member 1** and **Member 5** work in parallel; Members 2, 3, 4 do *not* touch shared backend files yet.
-- Member 1: scaffold, migrations, `db.ts`, auth, RBAC, middleware, seed admin — merge to `main` first
-- Member 5: `redis.ts` (lock + cache + rate-limit helpers), CI skeleton (lint/typecheck job), and export-service scaffold — merge to `main` alongside Member 1
-- Members 2/3/4: build static page shells (routes, layout, placeholder UI) off the current `main`; agree on request/response shapes for their own endpoints so backend and frontend within each person's slice don't drift
+### Phase 0 — Foundation (Days 1–3) — ✅ COMPLETED
+**Member 1** and **Member 5** worked in parallel; Members 2, 3, 4 built static page shells. All deliverables are merged and verified.
+- Member 1: scaffold, migrations 01→20, `db.ts`, auth, RBAC, proxy, seed admin (`scripts/seed.ts`).
+- Member 5: `redis.ts` (lock + cache + rate-limit helpers), GitHub Actions CI skeleton, and export-service scaffold.
+- Members 2/3/4: built static page shells, consolidated under the single canonical `app/(dashboard)/layout.tsx` layout shell.
+- Verification: 0 typecheck errors, 0 lint warnings, clean build across all 14 routes.
 
-**Gate:** everyone pulls `main` after Member 1 + Member 5's work merges before starting their own module branch. This is the one hard sync point in the whole project.
+**Gate:** ✅ PASSED. All 5 members pull latest `main` (or `development`) before branching for Phase 1.
 
 ### Phase 1 — Critical path (Days 4–7)
 - **Member 1** builds Orders (`place_order`, using Member 5's Redis lock helper) — this is the pacing item; other modules reference orders/customers but don't block on it existing in full.

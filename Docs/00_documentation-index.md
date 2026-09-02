@@ -89,6 +89,8 @@ Each document must stay within its defined responsibility. Active documents shou
 - CSV and PDF reports are generated synchronously and returned directly; no `report_jobs` table or report-file storage is required for version one.
 - Database schema migrations are structured as `01→20` sequential SQL files; database seeding is managed separately via `scripts/seed.ts` (`npm run db:seed`).
 - `UI/truck-schedule-new/` is the confirmed reference for the new truck-schedule page.
+- Canonical application layout is unified under `app/(dashboard)/layout.tsx` for all authenticated modules (`/inventory`, `/admin/*`, `/train-schedule`, `/truck-schedule`, `/deliveries`, `/reports`); redundant per-page shells are decommissioned.
+- Phase 0 Foundation completed and verified on 2026-09-02; all Phase 0 Gate criteria locked for Phase 1 kickoff.
 
 ### Approved architecture finalization scope
 
