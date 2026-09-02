@@ -57,6 +57,8 @@ export async function proxy(request: NextRequest) {
   const isApiRoute = pathname.startsWith('/api/');
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
+  // return NextResponse.next();
+
   // Fail fast if JWT_SECRET is missing from environment
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
