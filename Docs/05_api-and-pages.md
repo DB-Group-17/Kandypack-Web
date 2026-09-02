@@ -155,7 +155,7 @@ Conventions used throughout:
 ## A5. Train Scheduling
 
 ### `GET /api/train-trips`
-- **Roles:** all authenticated roles (read); logistics_manager/admin see full detail
+- **Roles:** logistics_manager, store_manager, system_administrator
 - **Query params:** `city_id?`, `date_from?`, `date_to?`, `status?`
 - **Response 200:** `{ "items": [{ trip_id, destination_city, departure_datetime, arrival_datetime, total_capacity, booked_space, remaining_capacity, status }] }`
 
