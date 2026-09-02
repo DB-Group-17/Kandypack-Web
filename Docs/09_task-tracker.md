@@ -26,10 +26,10 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 - [ ] Open PR → **at least one other member reviews**
 
 ### Member 5
-- [ ] `lib/redis.ts` — Upstash client, lock helper, cache helper, rate-limit helper
-- [ ] GitHub Actions CI skeleton — lint + typecheck job only for now
-- [ ] Report-export service dependency review and synchronous PDF export scaffold
-- [ ] Open PR → **at least one other member reviews**
+- [x] `lib/redis.ts` — Upstash client, lock helper, cache helper, rate-limit helper
+- [x] GitHub Actions CI skeleton — lint + typecheck job only for now
+- [x] Report-export service dependency review and synchronous PDF export scaffold
+- [x] Open PR → **at least one other member reviews**
 
 ### Members 2, 3, 4 (in parallel, no shared-file edits)
 - [ ] Read all reference docs (`03_architecture.md`, `05_api-and-pages.md`, `07_content-copy.md`, `06_seed-data-spec.md`)
