@@ -84,14 +84,13 @@ export default function TrainSchedulePage() {
 
   /**
    * Fetches the list of train trips from the backend API.
-   * Accepts optional query parameter overrides or uses current filter state.
+   * Used for manual refetching after modal actions or retry button.
    */
   const fetchTrips = useCallback(async (): Promise<void> => {
     setIsLoading(true);
     setFetchError(null);
 
     try {
-      // Build query string based on active filters
       const params = new URLSearchParams();
 
       if (selectedCity !== "All") {
@@ -139,10 +138,72 @@ export default function TrainSchedulePage() {
     }
   }, [selectedCity, selectedStatus]);
 
-  // Initial fetch and re-fetch when filter criteria change
+  // Initial fetch and re-fetch when filter criteria change (asynchronously to avoid cascading renders)
   useEffect(() => {
-    fetchTrips();
-  }, [fetchTrips]);
+    let ignore = false;
+
+    const loadInitialTrips = async () => {
+      try {
+        const params = new URLSearchParams();
+
+        if (selectedCity !== "All") {
+          const matchingCity = DESTINATION_CITIES.find(
+            (c) => c.city_name.toLowerCase() === selectedCity.toLowerCase()
+          );
+          if (matchingCity) {
+            params.append("city_id", String(matchingCity.city_id));
+          }
+        }
+
+        if (selectedStatus !== "All") {
+          params.append("status", selectedStatus);
+        }
+
+        const queryString = params.toString();
+        const url = `/api/train-trips${queryString ? `?${queryString}` : ""}`;
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error?.message || "Couldn't load train trips. Please try again."
+          );
+        }
+
+        const data = await response.json();
+        if (!ignore) {
+          setTrips(data.items || []);
+          setFetchError(null);
+        }
+      } catch (err: unknown) {
+        console.error("Failed to load train trips:", err);
+        if (!ignore) {
+          if (err instanceof Error) {
+            setFetchError(err.message);
+          } else {
+            setFetchError("Couldn't load train trips. Please try again.");
+          }
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadInitialTrips();
+
+    return () => {
+      ignore = true;
+    };
+  }, [selectedCity, selectedStatus]);
 
   /**
    * Helper function to format an ISO datetime string into human-readable date & time.
@@ -385,7 +446,10 @@ export default function TrainSchedulePage() {
             <select
               id={filterCityId}
               value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
+              onChange={(e) => {
+                setSelectedCity(e.target.value);
+                setIsLoading(true);
+              }}
               className="text-xs font-medium bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-2 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
             >
               <option value="All">All cities</option>
@@ -405,7 +469,10 @@ export default function TrainSchedulePage() {
             <select
               id={filterStatusId}
               value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              onChange={(e) => {
+                setSelectedStatus(e.target.value);
+                setIsLoading(true);
+              }}
               className="text-xs font-medium bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-2 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
             >
               <option value="All">All statuses</option>

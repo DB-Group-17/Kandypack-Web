@@ -41,8 +41,20 @@ export async function GET(
   try {
     const session = await getSession();
 
-    // Verify RBAC permissions: all authenticated roles may read capacity
-    if (session && !hasPermission(session.role, 'train_trips', 'read')) {
+    if (!session) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required. Please log in.'
+          }
+        },
+        { status: 401 }
+      );
+    }
+
+    // Verify RBAC permissions: all authenticated roles with train_trips read permission
+    if (!hasPermission(session.role, 'train_trips', 'read')) {
       return NextResponse.json(
         {
           error: {

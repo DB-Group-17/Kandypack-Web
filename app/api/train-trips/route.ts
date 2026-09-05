@@ -51,9 +51,20 @@ export async function GET(req: Request): Promise<NextResponse> {
   try {
     const session = await getSession();
 
+    if (!session) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required. Please log in.'
+          }
+        },
+        { status: 401 }
+      );
+    }
+
     // Verify RBAC permissions: logistics_manager, store_manager, system_administrator
-    // When session is present, verify permission. In local dev without session cookie, allow read.
-    if (session && !hasPermission(session.role, 'train_trips', 'read')) {
+    if (!hasPermission(session.role, 'train_trips', 'read')) {
       return NextResponse.json(
         {
           error: {
@@ -170,8 +181,20 @@ export async function POST(req: Request): Promise<NextResponse> {
   try {
     const session = await getSession();
 
+    if (!session) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required. Please log in.'
+          }
+        },
+        { status: 401 }
+      );
+    }
+
     // Verify RBAC permissions: logistics_manager, system_administrator
-    if (session && !hasPermission(session.role, 'train_trips', 'create')) {
+    if (!hasPermission(session.role, 'train_trips', 'create')) {
       return NextResponse.json(
         {
           error: {
