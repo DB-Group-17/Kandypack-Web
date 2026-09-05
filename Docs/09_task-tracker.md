@@ -55,7 +55,7 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] `POST /orders` → `place_order()` integration (using Member 5's Redis lock helper)
 - [ ] `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
 - [ ] `/orders` (list), `/orders/new`, `/orders/[orderId]` pages wired to real data
-- [ ] `useAuth()` hook / auth context finalized for others to import
+- [x] `useAuth()` hook / auth context finalized for others to import
 - [ ] Open PR → review → merge
 
 ### Member 2 — Train Trips (independent of Orders)
