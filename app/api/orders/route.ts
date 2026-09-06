@@ -25,7 +25,7 @@ import { NextResponse } from 'next/server';
 import { RowDataPacket } from 'mysql2/promise';
 import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
-import { withUserContext } from '@/lib/db';
+import { withUserContext, query, queryOne, QueryParam } from '@/lib/db';
 import { withLock, REDIS_KEYS } from '@/lib/redis';
 
 /**
@@ -49,7 +49,7 @@ interface CreateOrderRequest {
 }
 
 /**
- * Created order row returned by the database.
+ * Created order row returned by the database after procedure execution.
  */
 interface OrderSummaryRow extends RowDataPacket {
   order_id: number;
@@ -63,6 +63,40 @@ interface OrderSummaryRow extends RowDataPacket {
   status: string;
   total_value: string;
   total_space_required: string;
+}
+
+/**
+ * Enriched order row returned by the GET /api/orders listing query.
+ */
+interface OrderListItemRow extends RowDataPacket {
+  order_id: number;
+  customer_id: number;
+  customer_name: string;
+  customer_phone: string;
+  destination_city_id: number;
+  destination_city: string;
+  delivery_area: string;
+  delivery_address: string;
+  route_id: number | null;
+  order_placed_at: string | Date;
+  expected_delivery_date: string | Date;
+  status: string;
+  total_value: string;
+  total_space_required: string;
+}
+
+/**
+ * Count query result interface.
+ */
+interface CountResult extends RowDataPacket {
+  total: number;
+}
+
+/**
+ * Store city lookup result for store_manager role scoping.
+ */
+interface StoreCityRow extends RowDataPacket {
+  city_id: number;
 }
 
 /**
@@ -404,6 +438,250 @@ export async function POST(req: Request): Promise<NextResponse> {
         error: {
           code: 'INTERNAL_SERVER_ERROR',
           message: 'An unexpected server error occurred while processing the order.'
+        }
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Handles GET requests to /api/orders.
+ * Fetches a paginated, filterable list of orders joined with customer and city details.
+ * 
+ * Query Parameters:
+ * - status: 'Pending' | 'In Transit' | 'At Store' | 'Out for Delivery' | 'Delivered' | 'Cancelled'
+ * - customer_id: number
+ * - city_id: number (overridden if caller is a store_manager)
+ * - date_from: 'YYYY-MM-DD'
+ * - date_to: 'YYYY-MM-DD'
+ * - search: string (matches customer name, delivery address, or numeric order ID)
+ * - page: number (default 1)
+ * - page_size: number (default 10, max 100)
+ * 
+ * Role Scoping:
+ * - store_manager accounts are forcefully scoped to their assigned store's city_id.
+ * - system_administrator, logistics_manager, and order_entry_clerk have global visibility.
+ * 
+ * @param {Request} req - Incoming HTTP Request with query parameters
+ * @returns {Promise<NextResponse>} JSON response containing items array and pagination metadata
+ */
+export async function GET(req: Request): Promise<NextResponse> {
+  try {
+    // 1. Authenticate user session
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'Authentication required. Please log in.'
+          }
+        },
+        { status: 401 }
+      );
+    }
+
+    // 2. Enforce RBAC permission for reading orders
+    const canReadOrders = hasPermission(session.role, 'orders', 'read');
+    if (!canReadOrders) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'FORBIDDEN',
+            message: 'You do not have permission to view customer orders.'
+          }
+        },
+        { status: 403 }
+      );
+    }
+
+    // 3. Parse and sanitize query parameters
+    const { searchParams } = new URL(req.url);
+    const statusParam = searchParams.get('status')?.trim() || null;
+    const customerIdParam = searchParams.get('customer_id');
+    const cityIdParam = searchParams.get('city_id');
+    const dateFromParam = searchParams.get('date_from')?.trim() || null;
+    const dateToParam = searchParams.get('date_to')?.trim() || null;
+    const searchParam = searchParams.get('search')?.trim() || null;
+    const pageParam = parseInt(searchParams.get('page') || '1', 10);
+    const pageSizeParam = parseInt(searchParams.get('page_size') || '10', 10);
+
+    const page = isNaN(pageParam) || pageParam < 1 ? 1 : pageParam;
+    const pageSize = isNaN(pageSizeParam) || pageSizeParam < 1 ? 10 : Math.min(pageSizeParam, 100);
+    const offset = (page - 1) * pageSize;
+
+    // 4. Enforce store manager destination isolation
+    let enforcedCityId: number | null = null;
+    if (session.role === 'store_manager') {
+      if (!session.store_id) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Store manager account is not assigned to any regional warehouse store.'
+            }
+          },
+          { status: 403 }
+        );
+      }
+
+      // Lookup the city_id associated with this store
+      const store = await queryOne<StoreCityRow>(
+        'SELECT city_id FROM stores WHERE store_id = ? AND is_deleted = 0',
+        [session.store_id]
+      );
+
+      if (!store) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Assigned store was not found or has been deactivated.'
+            }
+          },
+          { status: 404 }
+        );
+      }
+
+      enforcedCityId = store.city_id;
+    }
+
+    // 5. Construct parameterized dynamic SQL conditions
+    const whereConditions: string[] = [];
+    const whereParams: QueryParam[] = [];
+
+    // Apply destination city filter (enforced for store_manager, optional for others)
+    if (enforcedCityId !== null) {
+      whereConditions.push('o.destination_city_id = ?');
+      whereParams.push(enforcedCityId);
+    } else if (cityIdParam) {
+      const parsedCityId = parseInt(cityIdParam, 10);
+      if (!isNaN(parsedCityId) && parsedCityId > 0) {
+        whereConditions.push('o.destination_city_id = ?');
+        whereParams.push(parsedCityId);
+      }
+    }
+
+    // Apply status filter (accepts canonical names, ignores 'all')
+    if (statusParam && statusParam.toLowerCase() !== 'all') {
+      const validStatuses = [
+        'Pending',
+        'In Transit',
+        'At Store',
+        'Out for Delivery',
+        'Delivered',
+        'Cancelled'
+      ];
+      const matched = validStatuses.find(
+        (s) => s.toLowerCase() === statusParam.toLowerCase()
+      );
+      if (matched) {
+        whereConditions.push('o.status = ?');
+        whereParams.push(matched);
+      }
+    }
+
+    // Apply customer_id filter
+    if (customerIdParam) {
+      const parsedCustomerId = parseInt(customerIdParam, 10);
+      if (!isNaN(parsedCustomerId) && parsedCustomerId > 0) {
+        whereConditions.push('o.customer_id = ?');
+        whereParams.push(parsedCustomerId);
+      }
+    }
+
+    // Apply placed date range filters
+    if (dateFromParam && isValidDateString(dateFromParam)) {
+      whereConditions.push('o.order_placed_at >= ?');
+      whereParams.push(`${dateFromParam} 00:00:00`);
+    }
+
+    if (dateToParam && isValidDateString(dateToParam)) {
+      whereConditions.push('o.order_placed_at <= ?');
+      whereParams.push(`${dateToParam} 23:59:59`);
+    }
+
+    // Apply omni-search filter (customer name, delivery address, or order ID)
+    if (searchParam) {
+      const cleanSearch = searchParam.replace(/^#?ORD-?/i, '');
+      const numericOrderId = parseInt(cleanSearch, 10);
+
+      if (!isNaN(numericOrderId) && numericOrderId > 0) {
+        whereConditions.push(
+          '(c.customer_name LIKE ? OR o.delivery_address LIKE ? OR o.order_id = ?)'
+        );
+        whereParams.push(`%${searchParam}%`, `%${searchParam}%`, numericOrderId);
+      } else {
+        whereConditions.push(
+          '(c.customer_name LIKE ? OR o.delivery_address LIKE ?)'
+        );
+        whereParams.push(`%${searchParam}%`, `%${searchParam}%`);
+      }
+    }
+
+    const whereClause =
+      whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // 6. Define Count and Data SQL queries
+    const countSql = `
+      SELECT COUNT(*) AS total
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.customer_id
+      JOIN cities dest ON o.destination_city_id = dest.city_id
+      ${whereClause}
+    `;
+
+    const dataSql = `
+      SELECT 
+        o.order_id,
+        o.customer_id,
+        c.customer_name,
+        c.phone AS customer_phone,
+        o.destination_city_id,
+        dest.city_name AS destination_city,
+        o.delivery_area,
+        o.delivery_address,
+        o.route_id,
+        o.order_placed_at,
+        o.expected_delivery_date,
+        o.status,
+        o.total_value,
+        o.total_space_required
+      FROM orders o
+      JOIN customers c ON o.customer_id = c.customer_id
+      JOIN cities dest ON o.destination_city_id = dest.city_id
+      ${whereClause}
+      ORDER BY o.order_placed_at DESC, o.order_id DESC
+      LIMIT ? OFFSET ?
+    `;
+    const dataParams: QueryParam[] = [...whereParams, pageSize, offset];
+
+    // 7. Execute both queries in parallel via Promise.all to minimize latency
+    const [countRow, items] = await Promise.all([
+      queryOne<CountResult>(countSql, whereParams),
+      query<OrderListItemRow[]>(dataSql, dataParams)
+    ]);
+
+    const total = countRow ? Number(countRow.total) : 0;
+    const totalPages = Math.ceil(total / pageSize);
+
+    // 8. Return 200 OK with items and pagination metadata
+    return NextResponse.json({
+      items,
+      total,
+      page,
+      page_size: pageSize,
+      total_pages: totalPages
+    });
+
+  } catch (error: unknown) {
+    console.error('[GET /api/orders] Unexpected error:', error);
+    return NextResponse.json(
+      {
+        error: {
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected server error occurred while retrieving customer orders.'
         }
       },
       { status: 500 }
