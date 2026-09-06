@@ -1,3 +1,28 @@
+# Memory — Member 2 (Linari) Phase 1 Train Scheduling
+
+Last updated: 2026-09-05 10:53:00
+
+## What was built
+
+- Implemented backend API endpoints for Train Scheduling:
+  - `app/api/train-trips/route.ts` — `GET` with dynamic filter support (`city_id`, `status`, `date_from`, `date_to`), calculation of `remaining_capacity`, and `POST` with validation of `arrival_datetime > departure_datetime` (mirrors `chk_tt_arrival`), `total_capacity > 0` (mirrors `chk_tt_capacity`), destination city verification, and parameterized database insertion.
+  - `app/api/train-trips/[id]/capacity/route.ts` — `GET` returning `total_capacity`, `booked_space`, and calling `get_available_capacity(p_trip_id)` SQL function for real-time capacity utilization breakdown.
+- Wired `/train-schedule` page to live data in `app/(dashboard)/train-schedule/page.tsx`:
+  - Replaced static mock data with asynchronous fetch from `/api/train-trips`.
+  - Added loading skeleton spinner per `Docs/07_content-copy.md` §427.
+  - Added error state banner with "Retry" action button per `Docs/07_content-copy.md` §429.
+  - Preserved empty state with "+ Add Trip" action button per `Docs/07_content-copy.md` §200.
+  - Wired Add Trip modal form to `POST /api/train-trips`, providing dynamic submit button state ("Saving Trip…"), error banner for server constraints, and 4-second auto-dismiss success toast ("Trip to {destination_city} added.") per copy spec.
+- Updated `Docs/09_task-tracker.md` checking off Member 2's Phase 1 tasks.
+
+## Decisions made
+
+- Strictly respected Member 2's module boundary (`train-schedule` and `app/api/train-trips`) on branch `member2` without modifying shared files owned by Member 1 (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`) or other members' pages.
+- Followed Next.js 16 App Router standard where dynamic route params are a `Promise<{ id: string }>`.
+- Followed `DESIGN.md` visual rules (violet palette, pill badges, card containers) and `Docs/07_content-copy.md` text.
+
+---
+
 # Memory — Member 4 Phase 0 Static Page Shells
 
 Last updated: 2026-09-01 00:52:00

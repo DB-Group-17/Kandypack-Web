@@ -59,8 +59,8 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] Open PR → review → merge
 
 ### Member 2 — Train Trips (independent of Orders)
-- [ ] `GET /train-trips`, `POST /train-trips`, `GET /train-trips/:id/capacity`
-- [ ] `/train-schedule` page wired to real data
+- [x] `GET /train-trips`, `POST /train-trips`, `GET /train-trips/:id/capacity`
+- [x] `/train-schedule` page wired to real data
 - [ ] Open PR → review → merge
 
 ### Member 3 — Truck Scheduling (independent of Orders)
