@@ -74,13 +74,15 @@ NODE_ENV=development
 
 ⚠️ **Do this against the shared dev database only if you're told to** — running migrations resets/alters shared state everyone else depends on. During Phase 0, only **Member 1** runs migrations. After that, coordinate in the team channel before running new migrations against the shared dev DB.
 
+> **Note:** For Phase 0, migrations and the initial bootstrap seed have already been executed against the shared Aiven database. You do not need to run them again on a fresh clone.
+
 ```bash
 npm run db:migrate
 ```
 
-This runs `db/migrations/01_*.sql` through the latest file in order against whatever `DATABASE_URL` points to.
+This runs `db/migrations/01_*.sql` through `20_*.sql` in sequential order against whatever `DATABASE_URL` points to.
 
-To load the baseline seed data (per `06_seed-data-spec.md`) — again, coordinate before running against shared dev:
+To load the baseline seed data (per `06_seed-data-spec.md`) via `scripts/seed.ts` — again, coordinate before running against shared dev:
 
 ```bash
 npm run db:seed
@@ -88,16 +90,7 @@ npm run db:seed
 
 ---
 
-## 6. Start the application
-
-No background worker is required for version-one report exports. Start the Next.js development server using the project package script.
-
-- This opens a local dashboard at `http://localhost:8288` where you can see triggered events and function runs — useful for debugging PDF generation without waiting for the real thing to render.
-- Leave this running in its own terminal tab alongside the Next.js dev server (§7).
-
----
-
-## 7. Start the App
+## 6. Start the App
 
 ```bash
 npm run dev
@@ -149,6 +142,6 @@ This is **not** the primary dev path for the team (per `03_architecture.md` §12
 
 ## 11. Daily Workflow Reminder
 
-- `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `middleware.ts`, `lib/redis.ts`) change under you if you don't.
+- `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `lib/redis.ts`) change under you if you don't.
 - Never run `npm run db:migrate` or `npm run db:seed` against the shared dev DB without checking in the team channel first — it affects everyone at once.
 - If `.env.example` gets a new variable added, you'll need to manually add it to your own `.env.local` — it isn't automatic.
