@@ -52,8 +52,8 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 **Pacing item:** Member 1's Orders module. Others do not need to wait for it to fully finish, but nobody merges anything that touches `orders`/`order_items` until it's on `main`.
 
 ### Member 1 — Orders
-- [ ] `POST /orders` → `place_order()` integration (using Member 5's Redis lock helper)
-- [ ] `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
+- [x] `POST /orders` → `place_order()` integration (using Member 5's Redis lock helper)
+- [x] `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
 - [ ] `/orders` (list), `/orders/new`, `/orders/[orderId]` pages wired to real data
 - [x] `useAuth()` hook / auth context finalized for others to import
 - [ ] Open PR → review → merge
