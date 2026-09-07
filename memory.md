@@ -1,3 +1,35 @@
+# Memory — Member 4 (Vidura) Phase 1 Master Data Module
+
+Last updated: 2026-09-07 11:58:00
+
+## What was built
+
+- **Backend API Endpoints:**
+  - `app/api/products/route.ts` — `GET` with dynamic text and category filtering; `POST` with validation (`unit_price >= 0`, `space_rate > 0`), RBAC guard (`system_administrator`), and duplicate SKU error handling returning 409 (*"A product with this SKU already exists."*).
+  - `app/api/products/[id]/route.ts` — `PATCH` with Next.js 16 dynamic route params Promise, validation of price/space rate constraints, and updates to mutable fields.
+  - `app/api/cities/route.ts` — `GET` returning origin and destination hubs joined with regional stores.
+  - `app/api/stores/route.ts` — `GET` returning active regional station stores joined with cities for route and employee assignments.
+  - `app/api/routes/route.ts` — `GET` returning routes with child coverage areas grouped; `POST` with atomic transaction inserting route and bulk-inserting coverage areas (`withTransaction`), validating `max_delivery_time_hours > 0` and catching duplicate city area allocations (409).
+  - `app/api/employees/route.ts` — `GET` returning staff roster joined with stores, drivers, and assistants; `POST` executing atomic transaction to create employee and provision child subtype rows in `drivers` or `assistants` table, satisfying Schema v4 database triggers (`trg_validate_driver_subtype`, `trg_validate_assistant_subtype`) and catching duplicate NIC or driver license collisions (409).
+  - `app/api/customers/route.ts` — `GET` with text search and city filter; `POST` validating `'retail' | 'wholesale'` customer types and registered destination city link.
+- **Frontend UI Wiring in `app/(dashboard)/admin/master-data/`:**
+  - Wired `page.tsx` to fetch live data from all 6 endpoints concurrently on mount with ignore guard to eliminate render cascading.
+  - Dynamically calculates 3-card KPI Bento banner metrics from active items list.
+  - Added loading indicator during initial fetch and error alert banner with "Retry" action button matching `Docs/07_content-copy.md`.
+  - Updated all 4 creation modals (`AddProductModal`, `AddRouteModal`, `AddEmployeeModal`, `AddCustomerModal`) to call live `POST` endpoints with async submitting indicators ("Saving Product...", "Saving Route...", "Registering Employee...", "Registering Customer..."), inline error handling for server constraint violations, and auto-dismiss success toasts.
+  - Populated store and city selection dropdowns in modals from live `/api/stores` and `/api/cities` data.
+- **Task Tracking & Validation:**
+  - Updated `Docs/09_task-tracker.md` checking off Member 4 Phase 1 tasks.
+  - Verified 0 TypeScript errors (`npm run typecheck`), 0 ESLint warnings (`npm run lint`), and 100% clean Next.js production build (`npm run build`).
+
+## Decisions made
+
+- Strictly respected Member 4 module boundary (`app/api/products/`, `app/api/cities/`, `app/api/routes/`, `app/api/stores/`, `app/api/employees/`, `app/api/customers/`, `app/(dashboard)/admin/master-data/`) on branch `member4` without modifying shared foundation files owned by Member 1 (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `db/migrations/`).
+- Handled subtype table insertions in transactions inside `/api/employees` to honor MySQL DB triggers.
+- Formatted money as floats/numbers over JSON wire with non-negative constraints.
+
+---
+
 # Memory — Member 2 (Linari) Phase 1 Train Scheduling
 
 Last updated: 2026-09-05 10:53:00

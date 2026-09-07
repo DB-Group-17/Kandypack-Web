@@ -14,10 +14,12 @@ import { MOCK_CITIES } from '../mockData';
 interface AddCustomerModalProps {
   /** Whether the modal dialog is currently visible */
   isOpen: boolean;
+  /** Available destination cities list */
+  cities?: Array<{ city_id: number; city_name: string; is_destination?: boolean }>;
   /** Callback when the modal is dismissed */
   onClose: () => void;
   /** Callback when valid customer payload is submitted */
-  onSubmit: (payload: NewCustomerPayload) => void;
+  onSubmit: (payload: NewCustomerPayload) => Promise<{ success: boolean; error?: string } | void> | void;
 }
 
 /**
@@ -25,16 +27,22 @@ interface AddCustomerModalProps {
  */
 export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
   isOpen,
+  cities = MOCK_CITIES,
   onClose,
   onSubmit,
 }) => {
+  const availableCities = cities && cities.length > 0 ? cities : MOCK_CITIES;
+
   const [customerName, setCustomerName] = useState('');
   const [customerType, setCustomerType] = useState<'retail' | 'wholesale'>('retail');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [cityId, setCityId] = useState<number>(MOCK_CITIES.find((c) => c.is_destination)?.city_id || 2);
+  const [cityId, setCityId] = useState<number>(
+    availableCities.find((c) => ('is_destination' in c ? c.is_destination : true))?.city_id || 2
+  );
   const [addressLine, setAddressLine] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -43,7 +51,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
    *
    * @param e Form submit event
    */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -56,23 +64,39 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
       return;
     }
 
-    onSubmit({
-      customer_name: trimmedName,
-      customer_type: customerType,
-      phone: trimmedPhone,
-      email: email.trim() || undefined,
-      registered_city_id: cityId,
-      address_line: trimmedAddress,
-    });
+    try {
+      setIsSubmitting(true);
+      const result = await onSubmit({
+        customer_name: trimmedName,
+        customer_type: customerType,
+        phone: trimmedPhone,
+        email: email.trim() || undefined,
+        registered_city_id: cityId,
+        address_line: trimmedAddress,
+      });
 
-    // Reset and close
-    setCustomerName('');
-    setCustomerType('retail');
-    setPhone('');
-    setEmail('');
-    setAddressLine('');
-    setErrorMessage(null);
-    onClose();
+      if (result && typeof result === 'object' && result.success === false) {
+        setErrorMessage(result.error || 'Failed to create customer.');
+        return;
+      }
+
+      // Reset and close
+      setCustomerName('');
+      setPhone('');
+      setEmail('');
+      setAddressLine('');
+      setErrorMessage(null);
+      onClose();
+    } catch (err: unknown) {
+      console.error('Error submitting customer:', err);
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('Failed to register customer account. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -185,7 +209,7 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                 onChange={(e) => setCityId(Number(e.target.value))}
                 className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
-                {MOCK_CITIES.filter((c) => c.is_destination).map((c) => (
+                {availableCities.filter((c) => 'is_destination' in c ? c.is_destination : true).map((c) => (
                   <option key={c.city_id} value={c.city_id}>
                     {c.city_name}
                   </option>
@@ -251,9 +275,17 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
-              + Add Customer
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Registering Customer...</span>
+                </>
+              ) : (
+                <span>+ Add Customer</span>
+              )}
             </button>
           </div>
         </form>
