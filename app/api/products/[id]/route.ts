@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { queryOne, execute, QueryParam } from '@/lib/db';
+import { queryOne, withUserContext } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
 
@@ -98,9 +98,23 @@ export async function PATCH(
       );
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid or malformed JSON payload.'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     const updateFields: string[] = [];
-    const params: QueryParam[] = [];
+    const params: (string | number)[] = [];
 
     // Validate and build dynamic update statement
     if (body.product_name !== undefined) {
@@ -180,10 +194,14 @@ export async function PATCH(
     }
 
     params.push(productId);
-    await execute(
-      `UPDATE products SET ${updateFields.join(', ')} WHERE product_id = ? AND is_deleted = 0`,
-      params
-    );
+
+    // Execute update statement with user session context (sets @current_user_id for audit logging)
+    await withUserContext(session.user_id, session.role, async (conn) => {
+      await conn.execute(
+        `UPDATE products SET ${updateFields.join(', ')} WHERE product_id = ? AND is_deleted = 0`,
+        params
+      );
+    });
 
     // Fetch updated row
     const updated = await queryOne<ProductRow>(
@@ -206,6 +224,26 @@ export async function PATCH(
     );
   } catch (error: unknown) {
     console.error('Error updating product:', error);
+
+    // Database-level backstop for foreign key constraint errors
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === 'ER_NO_REFERENCED_ROW_2' ||
+       (error as { code: string }).code === 'ER_NO_REFERENCED_ROW')
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'A referenced entity does not exist.'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: {

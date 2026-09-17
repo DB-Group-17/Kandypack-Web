@@ -30,19 +30,12 @@ import { EmployeesTab } from './components/EmployeesTab';
 import { CustomersTab } from './components/CustomersTab';
 import { MasterDataPagination } from './components/MasterDataPagination';
 import { AddProductModal } from './components/AddProductModal';
+import { EditProductModal } from './components/EditProductModal';
 import { AddRouteModal } from './components/AddRouteModal';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { AddCustomerModal } from './components/AddCustomerModal';
 
-import {
-  MOCK_CITIES,
-  MOCK_STORES,
-  INITIAL_PRODUCTS,
-  INITIAL_ROUTES,
-  INITIAL_EMPLOYEES,
-  INITIAL_CUSTOMERS,
-  getStatsForTab,
-} from './mockData';
+import { getStatsForTab } from './mockData';
 
 import {
   MasterDataTab,
@@ -53,6 +46,7 @@ import {
   CustomerItem,
   PaginationState,
   NewProductPayload,
+  UpdateProductPayload,
   NewRoutePayload,
   NewEmployeePayload,
   NewCustomerPayload,
@@ -102,13 +96,13 @@ export default function MasterDataPage(): React.JSX.Element {
     customers: 1,
   });
 
-  // Master Data entity lists initialized with seed baselines then hydrated from live APIs
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
-  const [routes, setRoutes] = useState<RouteItem[]>(INITIAL_ROUTES);
-  const [cities, setCities] = useState<CityItem[]>(MOCK_CITIES);
-  const [stores, setStores] = useState<StoreRef[]>(MOCK_STORES);
-  const [employees, setEmployees] = useState<EmployeeItem[]>(INITIAL_EMPLOYEES);
-  const [customers, setCustomers] = useState<CustomerItem[]>(INITIAL_CUSTOMERS);
+  // Master Data entity lists initialized as empty arrays and populated exclusively via live APIs
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [routes, setRoutes] = useState<RouteItem[]>([]);
+  const [cities, setCities] = useState<CityItem[]>([]);
+  const [stores, setStores] = useState<StoreRef[]>([]);
+  const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
 
   // Loading and error states for live data fetching
   const [isLoading, setIsLoading] = useState(true);
@@ -116,6 +110,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
   // Modal dialog visibility states
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
@@ -139,11 +134,9 @@ export default function MasterDataPage(): React.JSX.Element {
 
   /**
    * Fetches master data from all 6 backend endpoints in parallel.
+   * Reusable function used for both initial mount and the error Retry action.
    */
   const fetchMasterData = useCallback(async () => {
-    setIsLoading(true);
-    setFetchError(null);
-
     try {
       const [prodRes, routesRes, citiesRes, storesRes, empRes, custRes] = await Promise.all([
         fetch('/api/products', { cache: 'no-store' }),
@@ -167,24 +160,26 @@ export default function MasterDataPage(): React.JSX.Element {
         custRes.json(),
       ]);
 
-      if (Array.isArray(prodData.items) && prodData.items.length > 0) {
+      // Always populate from API responses directly, including empty arrays []
+      if (Array.isArray(prodData.items)) {
         setProducts(prodData.items);
       }
-      if (Array.isArray(routesData.items) && routesData.items.length > 0) {
+      if (Array.isArray(routesData.items)) {
         setRoutes(routesData.items);
       }
-      if (Array.isArray(citiesData.items) && citiesData.items.length > 0) {
+      if (Array.isArray(citiesData.items)) {
         setCities(citiesData.items);
       }
-      if (Array.isArray(storesData.items) && storesData.items.length > 0) {
+      if (Array.isArray(storesData.items)) {
         setStores(storesData.items);
       }
-      if (Array.isArray(empData.items) && empData.items.length > 0) {
+      if (Array.isArray(empData.items)) {
         setEmployees(empData.items);
       }
-      if (Array.isArray(custData.items) && custData.items.length > 0) {
+      if (Array.isArray(custData.items)) {
         setCustomers(custData.items);
       }
+      setFetchError(null);
     } catch (err: unknown) {
       console.error('Failed to load master data:', err);
       if (err instanceof Error) {
@@ -197,77 +192,22 @@ export default function MasterDataPage(): React.JSX.Element {
     }
   }, []);
 
-  // Hydrate master data on initial component mount asynchronously
+  // Hydrate master data on initial component mount using the shared fetch function
   useEffect(() => {
     let ignore = false;
 
-    const loadInitialData = async () => {
-      try {
-        const [prodRes, routesRes, citiesRes, storesRes, empRes, custRes] = await Promise.all([
-          fetch('/api/products', { cache: 'no-store' }),
-          fetch('/api/routes', { cache: 'no-store' }),
-          fetch('/api/cities', { cache: 'no-store' }),
-          fetch('/api/stores', { cache: 'no-store' }),
-          fetch('/api/employees', { cache: 'no-store' }),
-          fetch('/api/customers', { cache: 'no-store' }),
-        ]);
-
-        if (!prodRes.ok || !routesRes.ok || !citiesRes.ok || !storesRes.ok || !empRes.ok || !custRes.ok) {
-          throw new Error("Couldn't load master data. Please try again.");
-        }
-
-        const [prodData, routesData, citiesData, storesData, empData, custData] = await Promise.all([
-          prodRes.json(),
-          routesRes.json(),
-          citiesRes.json(),
-          storesRes.json(),
-          empRes.json(),
-          custRes.json(),
-        ]);
-
-        if (!ignore) {
-          if (Array.isArray(prodData.items) && prodData.items.length > 0) {
-            setProducts(prodData.items);
-          }
-          if (Array.isArray(routesData.items) && routesData.items.length > 0) {
-            setRoutes(routesData.items);
-          }
-          if (Array.isArray(citiesData.items) && citiesData.items.length > 0) {
-            setCities(citiesData.items);
-          }
-          if (Array.isArray(storesData.items) && storesData.items.length > 0) {
-            setStores(storesData.items);
-          }
-          if (Array.isArray(empData.items) && empData.items.length > 0) {
-            setEmployees(empData.items);
-          }
-          if (Array.isArray(custData.items) && custData.items.length > 0) {
-            setCustomers(custData.items);
-          }
-          setFetchError(null);
-        }
-      } catch (err: unknown) {
-        console.error('Failed to load initial master data:', err);
-        if (!ignore) {
-          if (err instanceof Error) {
-            setFetchError(err.message);
-          } else {
-            setFetchError("Couldn't load master data. Please try again.");
-          }
-        }
-      } finally {
-        if (!ignore) {
-          setIsLoading(false);
-        }
+    const loadData = async () => {
+      if (!ignore) {
+        await fetchMasterData();
       }
     };
 
-    loadInitialData();
+    void loadData();
 
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [fetchMasterData]);
 
   /**
    * Switches the active reference data tab and resets search and pagination.
@@ -477,6 +417,45 @@ export default function MasterDataPage(): React.JSX.Element {
   };
 
   /**
+   * Handles updating an existing product via PATCH /api/products/:id.
+   *
+   * @param productId Unique identifier of product to update
+   * @param payload Validated product specifications
+   */
+  const handleEditProduct = async (productId: number, payload: UpdateProductPayload) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error?.message || 'Failed to update product.',
+        };
+      }
+
+      const updatedProduct: ProductItem = data;
+      setProducts((prev) =>
+        prev.map((p) => (p.product_id === productId ? { ...p, ...updatedProduct } : p))
+      );
+      showToast(`Product "${updatedProduct.product_name}" updated successfully.`);
+      setEditingProduct(null);
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('Failed to update product:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Network error updating product.',
+      };
+    }
+  };
+
+  /**
    * Handles creating a new route via POST /api/routes.
    *
    * @param payload Validated route input
@@ -667,7 +646,11 @@ export default function MasterDataPage(): React.JSX.Element {
             <span className="font-medium">{fetchError}</span>
           </div>
           <button
-            onClick={fetchMasterData}
+            onClick={() => {
+              setIsLoading(true);
+              setFetchError(null);
+              void fetchMasterData();
+            }}
             className="px-4 py-1.5 rounded-full bg-[#F93C65] text-white font-semibold text-[12px] hover:bg-[#d6284e] transition-colors cursor-pointer"
           >
             Retry
@@ -809,7 +792,7 @@ export default function MasterDataPage(): React.JSX.Element {
               <ProductsTab
                 items={paginatedItems as ProductItem[]}
                 onAddClick={() => setIsAddProductOpen(true)}
-                onEditClick={(item) => showToast(`Edit mode for "${item.product_name}" triggered.`, 'info')}
+                onEditClick={(item) => setEditingProduct(item)}
               />
             )}
 
@@ -850,12 +833,19 @@ export default function MasterDataPage(): React.JSX.Element {
         )}
       </div>
 
-      {/* Creation Modals wired to real endpoints */}
+      {/* Creation and Edit Modals wired to real endpoints */}
       <AddProductModal
         isOpen={isAddProductOpen}
         existingProducts={products}
         onClose={() => setIsAddProductOpen(false)}
         onSubmit={handleAddProduct}
+      />
+
+      <EditProductModal
+        isOpen={editingProduct !== null}
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSubmit={handleEditProduct}
       />
 
       <AddRouteModal

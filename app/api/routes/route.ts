@@ -12,7 +12,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { query, queryOne, withTransaction, QueryParam } from '@/lib/db';
+import { query, queryOne, withUserContext, QueryParam } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
 
@@ -93,6 +93,16 @@ export async function GET(req: Request): Promise<NextResponse> {
     if (storeIdParam && !isNaN(Number(storeIdParam))) {
       sql += ` AND r.store_id = ?`;
       params.push(Number(storeIdParam));
+    }
+
+    if (cityIdParam && !isNaN(Number(cityIdParam))) {
+      sql += ` AND EXISTS (
+        SELECT 1
+        FROM route_coverage_areas rca
+        WHERE rca.route_id = r.route_id
+          AND rca.city_id = ?
+      )`;
+      params.push(Number(cityIdParam));
     }
 
     if (searchParam) {
@@ -217,7 +227,21 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid or malformed JSON payload.'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       store_id,
       route_name,
@@ -267,6 +291,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
+    // 2. Validate and clean coverage areas (Should Fix 5: trim names first, require at least one valid area)
     if (!Array.isArray(coverage_areas) || coverage_areas.length === 0) {
       return NextResponse.json(
         {
@@ -280,7 +305,48 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    // 2. Verify store exists
+    const validatedAreas: Array<{ city_id: number; area_name: string }> = [];
+    for (const area of coverage_areas) {
+      if (!area || typeof area !== 'object') continue;
+      const rawName = typeof (area as { area_name?: unknown }).area_name === 'string'
+        ? (area as { area_name: string }).area_name.trim()
+        : '';
+
+      if (!rawName) {
+        continue;
+      }
+
+      const rawCityId = Number((area as { city_id?: unknown }).city_id);
+      if (isNaN(rawCityId) || rawCityId <= 0) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Invalid city ID specified in coverage areas.',
+              field: 'coverage_areas'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      validatedAreas.push({ city_id: rawCityId, area_name: rawName });
+    }
+
+    if (validatedAreas.length === 0) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'At least one valid coverage area with a non-blank name is required.',
+            field: 'coverage_areas'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Verify store exists and is active
     const store = await queryOne<{ store_id: number; store_name: string; city_id: number }>(
       'SELECT store_id, store_name, city_id FROM stores WHERE store_id = ? AND is_deleted = 0',
       [Number(store_id)]
@@ -299,60 +365,84 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
+    // 4. Verify all referenced city IDs exist in the database (Must Fix 3)
+    const uniqueCityIds = Array.from(new Set(validatedAreas.map((a) => a.city_id)));
+    const cityPlaceholders = uniqueCityIds.map(() => '?').join(', ');
+    const existingCities = await query<{ city_id: number }[]>(
+      `SELECT city_id FROM cities WHERE city_id IN (${cityPlaceholders})`,
+      uniqueCityIds
+    );
+    const existingCitySet = new Set(existingCities.map((c) => Number(c.city_id)));
+
+    const invalidCity = uniqueCityIds.find((id) => !existingCitySet.has(id));
+    if (invalidCity !== undefined) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: `Coverage area references a city ID (${invalidCity}) that does not exist.`,
+            field: 'coverage_areas'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     const cleanRouteName = route_name.trim();
     const cleanDesc = coverage_description ? String(coverage_description).trim() : null;
 
-    // 3. Atomically insert route and coverage areas
-    const created = await withTransaction(async (connection) => {
-      // Insert main route row
-      const [routeResult] = await connection.execute(
-        `INSERT INTO routes (store_id, route_name, coverage_description, max_delivery_time_hours)
-         VALUES (?, ?, ?, ?)`,
-        [store.store_id, cleanRouteName, cleanDesc, maxHours]
-      );
-
-      const newRouteId = (routeResult as { insertId: number }).insertId;
-
-      // Insert coverage areas
-      const createdAreas: Array<{
-        coverage_id: number;
-        route_id: number;
-        city_id: number;
-        area_name: string;
-      }> = [];
-
-      for (const area of coverage_areas) {
-        const areaCityId = Number(area.city_id) || store.city_id;
-        const areaName = String(area.area_name || '').trim();
-
-        if (!areaName) {
-          continue;
-        }
-
-        const [areaResult] = await connection.execute(
-          `INSERT INTO route_coverage_areas (route_id, city_id, area_name)
-           VALUES (?, ?, ?)`,
-          [newRouteId, areaCityId, areaName]
+    // 5. Atomically insert route and coverage areas within user context connection (Must Fix 2)
+    const created = await withUserContext(session.user_id, session.role, async (connection) => {
+      await connection.beginTransaction();
+      try {
+        // Insert main route row
+        const [routeResult] = await connection.execute(
+          `INSERT INTO routes (store_id, route_name, coverage_description, max_delivery_time_hours)
+           VALUES (?, ?, ?, ?)`,
+          [store.store_id, cleanRouteName, cleanDesc, maxHours]
         );
 
-        createdAreas.push({
-          coverage_id: (areaResult as { insertId: number }).insertId,
-          route_id: newRouteId,
-          city_id: areaCityId,
-          area_name: areaName
-        });
-      }
+        const newRouteId = (routeResult as { insertId: number }).insertId;
 
-      return {
-        route_id: newRouteId,
-        store_id: store.store_id,
-        store_name: store.store_name,
-        route_name: cleanRouteName,
-        coverage_description: cleanDesc || undefined,
-        max_delivery_time_hours: maxHours,
-        status: 'Active' as const,
-        coverage_areas: createdAreas
-      };
+        // Insert coverage areas
+        const createdAreas: Array<{
+          coverage_id: number;
+          route_id: number;
+          city_id: number;
+          area_name: string;
+        }> = [];
+
+        for (const area of validatedAreas) {
+          const [areaResult] = await connection.execute(
+            `INSERT INTO route_coverage_areas (route_id, city_id, area_name)
+             VALUES (?, ?, ?)`,
+            [newRouteId, area.city_id, area.area_name]
+          );
+
+          createdAreas.push({
+            coverage_id: (areaResult as { insertId: number }).insertId,
+            route_id: newRouteId,
+            city_id: area.city_id,
+            area_name: area.area_name
+          });
+        }
+
+        await connection.commit();
+
+        return {
+          route_id: newRouteId,
+          store_id: store.store_id,
+          store_name: store.store_name,
+          route_name: cleanRouteName,
+          coverage_description: cleanDesc || undefined,
+          max_delivery_time_hours: maxHours,
+          status: 'Active' as const,
+          coverage_areas: createdAreas
+        };
+      } catch (txError) {
+        await connection.rollback();
+        throw txError;
+      }
     });
 
     return NextResponse.json(created, { status: 201 });
@@ -375,6 +465,26 @@ export async function POST(req: Request): Promise<NextResponse> {
           }
         },
         { status: 409 }
+      );
+    }
+
+    // Database-level backstop for foreign key constraint violation (e.g. invalid store_id or city_id)
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === 'ER_NO_REFERENCED_ROW_2' ||
+       (error as { code: string }).code === 'ER_NO_REFERENCED_ROW')
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'A referenced store or city does not exist.',
+            field: 'coverage_areas'
+          }
+        },
+        { status: 400 }
       );
     }
 

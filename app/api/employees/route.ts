@@ -12,10 +12,10 @@
  */
 
 import { NextResponse } from 'next/server';
-import { query, withTransaction, QueryParam } from '@/lib/db';
+import { query, queryOne, withUserContext, QueryParam } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
-import { EmployeeRole } from '@/app/(dashboard)/admin/master-data/types';
+import { EmployeeRole } from '@/types/master-data';
 
 interface EmployeeDbRow {
   employee_id: number;
@@ -103,7 +103,6 @@ export async function GET(req: Request): Promise<NextResponse> {
       FROM employees e
       LEFT JOIN stores s ON e.home_store_id = s.store_id
       LEFT JOIN drivers d ON e.employee_id = d.employee_id AND d.is_deleted = 0
-      LEFT JOIN assistants a ON e.employee_id = a.employee_id AND a.is_deleted = 0
       WHERE e.is_deleted = 0
     `;
     const params: QueryParam[] = [];
@@ -205,7 +204,21 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid or malformed JSON payload.'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       full_name,
       nic_number,
@@ -267,7 +280,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       'system_administrator'
     ];
 
-    if (!validRoles.includes(employee_type)) {
+    if (!validRoles.includes(employee_type as EmployeeRole)) {
       return NextResponse.json(
         {
           error: {
@@ -296,58 +309,108 @@ export async function POST(req: Request): Promise<NextResponse> {
       }
     }
 
+    // 2. Validate home_store_id existence in stores table if provided (Must Fix 3)
+    const storeId =
+      home_store_id !== undefined && home_store_id !== null && home_store_id !== ''
+        ? Number(home_store_id)
+        : null;
+    let assignedStoreName: string | undefined = undefined;
+
+    if (storeId !== null) {
+      if (isNaN(storeId) || storeId <= 0) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Invalid home store ID.',
+              field: 'home_store_id'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      const store = await queryOne<{ store_id: number; store_name: string }>(
+        'SELECT store_id, store_name FROM stores WHERE store_id = ? AND is_deleted = 0',
+        [storeId]
+      );
+
+      if (!store) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'The selected home store does not exist.',
+              field: 'home_store_id'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
+      assignedStoreName = store.store_name;
+    }
+
     const cleanName = full_name.trim();
     const cleanNic = nic_number.trim().toUpperCase();
     const cleanPhone = phone.trim();
     const cleanEmail = email ? String(email).trim() : null;
-    const storeId = home_store_id ? Number(home_store_id) : null;
     const cleanLicense = license_number ? String(license_number).trim().toUpperCase() : null;
     const cleanLicenseExpiry = license_expiry ? String(license_expiry).trim() : null;
 
-    // 2. Insert into employees and subtype tables atomically
-    const createdEmployee = await withTransaction(async (connection) => {
-      // Insert base employee record
-      const [empResult] = await connection.execute(
-        `INSERT INTO employees 
-          (full_name, nic_number, phone, email, employee_type, home_store_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [cleanName, cleanNic, cleanPhone, cleanEmail, employee_type, storeId]
-      );
-
-      const newEmpId = (empResult as { insertId: number }).insertId;
-
-      // Handle driver subtype insert (enforces trg_validate_driver_subtype)
-      if (employee_type === 'driver' && cleanLicense) {
-        await connection.execute(
-          `INSERT INTO drivers (employee_id, license_number, license_expiry)
-           VALUES (?, ?, ?)`,
-          [newEmpId, cleanLicense, cleanLicenseExpiry]
+    // 3. Insert into employees and subtype tables atomically within user context connection (Must Fix 2)
+    const createdEmployee = await withUserContext(session.user_id, session.role, async (connection) => {
+      await connection.beginTransaction();
+      try {
+        // Insert base employee record
+        const [empResult] = await connection.execute(
+          `INSERT INTO employees 
+            (full_name, nic_number, phone, email, employee_type, home_store_id)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [cleanName, cleanNic, cleanPhone, cleanEmail, employee_type as string, storeId]
         );
-      }
 
-      // Handle assistant subtype insert (enforces trg_validate_assistant_subtype)
-      if (employee_type === 'assistant') {
-        await connection.execute(
-          `INSERT INTO assistants (employee_id)
-           VALUES (?)`,
-          [newEmpId]
-        );
-      }
+        const newEmpId = (empResult as { insertId: number }).insertId;
 
-      return {
-        employee_id: newEmpId,
-        full_name: cleanName,
-        nic_number: cleanNic,
-        phone: cleanPhone,
-        email: cleanEmail || undefined,
-        employee_type,
-        employee_type_label: ROLE_LABELS[employee_type as EmployeeRole] || employee_type,
-        home_store_id: storeId,
-        license_number: cleanLicense || undefined,
-        license_expiry: cleanLicenseExpiry || undefined,
-        status: 'Active' as const,
-        hire_date: new Date().toISOString().split('T')[0]
-      };
+        // Handle driver subtype insert (enforces trg_validate_driver_subtype)
+        if (employee_type === 'driver' && cleanLicense) {
+          await connection.execute(
+            `INSERT INTO drivers (employee_id, license_number, license_expiry)
+             VALUES (?, ?, ?)`,
+            [newEmpId, cleanLicense, cleanLicenseExpiry]
+          );
+        }
+
+        // Handle assistant subtype insert (enforces trg_validate_assistant_subtype)
+        if (employee_type === 'assistant') {
+          await connection.execute(
+            `INSERT INTO assistants (employee_id)
+             VALUES (?)`,
+            [newEmpId]
+          );
+        }
+
+        await connection.commit();
+
+        return {
+          employee_id: newEmpId,
+          full_name: cleanName,
+          nic_number: cleanNic,
+          phone: cleanPhone,
+          email: cleanEmail || undefined,
+          employee_type: employee_type as EmployeeRole,
+          employee_type_label: ROLE_LABELS[employee_type as EmployeeRole] || String(employee_type),
+          home_store_id: storeId,
+          home_store_name: assignedStoreName,
+          license_number: cleanLicense || undefined,
+          license_expiry: cleanLicenseExpiry || undefined,
+          status: 'Active' as const,
+          hire_date: new Date().toISOString().split('T')[0]
+        };
+      } catch (txError) {
+        await connection.rollback();
+        throw txError;
+      }
     });
 
     return NextResponse.json(createdEmployee, { status: 201 });
@@ -394,6 +457,26 @@ export async function POST(req: Request): Promise<NextResponse> {
           }
         },
         { status: 409 }
+      );
+    }
+
+    // Database-level backstop for foreign key constraint violation (e.g. invalid store_id)
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === 'ER_NO_REFERENCED_ROW_2' ||
+       (error as { code: string }).code === 'ER_NO_REFERENCED_ROW')
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'The selected home store does not exist.',
+            field: 'home_store_id'
+          }
+        },
+        { status: 400 }
       );
     }
 

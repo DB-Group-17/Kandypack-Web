@@ -12,7 +12,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { query, execute, queryOne, QueryParam } from '@/lib/db';
+import { query, queryOne, withUserContext, QueryParam } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
 
@@ -172,7 +172,21 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid or malformed JSON payload.'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       customer_name,
       customer_type,
@@ -222,17 +236,46 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    const cityId = registered_city_id ? Number(registered_city_id) : null;
+    const cityId =
+      registered_city_id !== undefined && registered_city_id !== null && registered_city_id !== ''
+        ? Number(registered_city_id)
+        : null;
     let cityName = 'Unassigned';
 
-    if (cityId) {
+    // Verify destination city exists in the database if provided
+    if (cityId !== null) {
+      if (isNaN(cityId) || cityId <= 0) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Invalid registered city ID.',
+              field: 'registered_city_id'
+            }
+          },
+          { status: 400 }
+        );
+      }
+
       const city = await queryOne<{ city_id: number; city_name: string }>(
         'SELECT city_id, city_name FROM cities WHERE city_id = ?',
         [cityId]
       );
-      if (city) {
-        cityName = city.city_name;
+
+      if (!city) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'The selected registered city does not exist.',
+              field: 'registered_city_id'
+            }
+          },
+          { status: 400 }
+        );
       }
+
+      cityName = city.city_name;
     }
 
     const cleanName = customer_name.trim();
@@ -240,15 +283,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     const cleanEmail = email ? String(email).trim() : null;
     const cleanAddress = address_line ? String(address_line).trim() : '';
 
-    // 2. Insert into customers table
-    const result = await execute(
-      `INSERT INTO customers 
-        (customer_name, customer_type, phone, email, registered_city_id, address_line)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [cleanName, customer_type, cleanPhone, cleanEmail, cityId, cleanAddress]
-    );
-
-    const newCustomerId = result.insertId;
+    // 2. Insert into customers table within user session context (sets @current_user_id for audit logging)
+    const newCustomerId = await withUserContext(session.user_id, session.role, async (conn) => {
+      const [result] = await conn.execute(
+        `INSERT INTO customers 
+          (customer_name, customer_type, phone, email, registered_city_id, address_line)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [cleanName, customer_type, cleanPhone, cleanEmail, cityId, cleanAddress]
+      );
+      return (result as { insertId: number }).insertId;
+    });
 
     const createdCustomer = {
       customer_id: newCustomerId,
@@ -266,6 +310,27 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json(createdCustomer, { status: 201 });
   } catch (error: unknown) {
     console.error('Error creating customer:', error);
+
+    // Database-level backstop for foreign key constraint violation (e.g. invalid city_id)
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === 'ER_NO_REFERENCED_ROW_2' ||
+       (error as { code: string }).code === 'ER_NO_REFERENCED_ROW')
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'The selected registered city does not exist.',
+            field: 'registered_city_id'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
       {
         error: {

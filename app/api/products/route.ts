@@ -12,7 +12,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { query, execute, QueryParam } from '@/lib/db';
+import { query, withUserContext, QueryParam } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
 
@@ -174,7 +174,21 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Invalid or malformed JSON payload.'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       sku,
       product_name,
@@ -244,15 +258,16 @@ export async function POST(req: Request): Promise<NextResponse> {
     const cleanCategory = category ? String(category).trim() : 'General';
     const cleanUom = unit_of_measure ? String(unit_of_measure).trim() : 'unit';
 
-    // 2. Insert into products table
-    const result = await execute(
-      `INSERT INTO products 
-        (sku, product_name, category, unit_of_measure, unit_price, space_rate)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [cleanSku, cleanName, cleanCategory, cleanUom, priceNum, spaceNum]
-    );
-
-    const newProductId = result.insertId;
+    // 2. Insert into products table within user session context (sets @current_user_id for audit logging)
+    const newProductId = await withUserContext(session.user_id, session.role, async (conn) => {
+      const [result] = await conn.execute(
+        `INSERT INTO products 
+          (sku, product_name, category, unit_of_measure, unit_price, space_rate)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [cleanSku, cleanName, cleanCategory, cleanUom, priceNum, spaceNum]
+      );
+      return (result as { insertId: number }).insertId;
+    });
 
     const createdProduct = {
       product_id: newProductId,
@@ -285,6 +300,25 @@ export async function POST(req: Request): Promise<NextResponse> {
           }
         },
         { status: 409 }
+      );
+    }
+
+    // Database-level backstop for foreign key constraint errors
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ((error as { code: string }).code === 'ER_NO_REFERENCED_ROW_2' ||
+       (error as { code: string }).code === 'ER_NO_REFERENCED_ROW')
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'A referenced entity does not exist.'
+          }
+        },
+        { status: 400 }
       );
     }
 

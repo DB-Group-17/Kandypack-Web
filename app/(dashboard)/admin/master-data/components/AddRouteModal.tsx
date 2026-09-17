@@ -9,7 +9,6 @@
 
 import React, { useState } from 'react';
 import { NewRoutePayload } from '../types';
-import { MOCK_STORES, MOCK_CITIES } from '../mockData';
 
 interface AddRouteModalProps {
   /** Whether the modal dialog is currently visible */
@@ -31,40 +30,39 @@ interface TempAreaRow {
 }
 
 /**
- * AddRouteModal Component
+ * AddRouteModalContent Component
+ *
+ * Inner form component initialized when dialog opens.
  */
-export const AddRouteModal: React.FC<AddRouteModalProps> = ({
-  isOpen,
-  stores = MOCK_STORES,
-  cities = MOCK_CITIES,
+const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
+  stores = [],
+  cities = [],
   onClose,
   onSubmit,
 }) => {
-  const availableStores = stores && stores.length > 0 ? stores : MOCK_STORES;
-  const availableCities = cities && cities.length > 0 ? cities : MOCK_CITIES;
+  const defaultStoreId = stores[0]?.store_id || 0;
+  const defaultCityId = stores[0]?.city_id || cities[0]?.city_id || 0;
 
   const [routeName, setRouteName] = useState('');
-  const [storeId, setStoreId] = useState<number>(availableStores[0]?.store_id || 1);
+  const [storeId, setStoreId] = useState<number>(defaultStoreId);
   const [maxHours, setMaxHours] = useState('4.0');
   const [coverageDesc, setCoverageDesc] = useState('');
   const [coverageAreas, setCoverageAreas] = useState<TempAreaRow[]>([
-    { id: '1', city_id: availableStores[0]?.city_id || availableCities[0]?.city_id || 2, area_name: '' },
+    { id: '1', city_id: defaultCityId, area_name: '' },
   ]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isOpen) return null;
 
   /**
    * Adds an empty coverage area row to the form.
    */
   const handleAddAreaRow = () => {
-    const selectedStore = availableStores.find((s) => s.store_id === storeId);
+    const selectedStore = stores.find((s) => s.store_id === storeId);
     setCoverageAreas((prev) => [
       ...prev,
       {
         id: String(Date.now() + Math.random()),
-        city_id: selectedStore ? selectedStore.city_id : availableCities[0]?.city_id || 2,
+        city_id: selectedStore ? selectedStore.city_id : cities[0]?.city_id || 0,
         area_name: '',
       },
     ]);
@@ -109,12 +107,17 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
       return;
     }
 
+    if (!storeId || storeId <= 0) {
+      setErrorMessage('Please select a valid assigned store station.');
+      return;
+    }
+
     const validAreas = coverageAreas
       .map((a) => ({ city_id: a.city_id, area_name: a.area_name.trim() }))
-      .filter((a) => a.area_name.length > 0);
+      .filter((a) => a.area_name.length > 0 && a.city_id > 0);
 
     if (validAreas.length === 0) {
-      setErrorMessage('Please specify at least one valid coverage area name.');
+      setErrorMessage('Please specify at least one valid coverage area name with an assigned city.');
       return;
     }
 
@@ -137,7 +140,7 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
       setRouteName('');
       setMaxHours('4.0');
       setCoverageDesc('');
-      setCoverageAreas([{ id: '1', city_id: availableStores[0]?.city_id || availableCities[0]?.city_id || 2, area_name: '' }]);
+      setCoverageAreas([{ id: '1', city_id: stores[0]?.city_id || cities[0]?.city_id || 0, area_name: '' }]);
       setErrorMessage(null);
       onClose();
     } catch (err: unknown) {
@@ -231,11 +234,15 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
                 onChange={(e) => setStoreId(Number(e.target.value))}
                 className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
-                {availableStores.map((s) => (
-                  <option key={s.store_id} value={s.store_id}>
-                    {s.store_name}
-                  </option>
-                ))}
+                {stores.length === 0 ? (
+                  <option value={0}>No stores available</option>
+                ) : (
+                  stores.map((s) => (
+                    <option key={s.store_id} value={s.store_id}>
+                      {s.store_name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
@@ -302,11 +309,17 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
                     }
                     className="w-1/3 h-10 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[12px] text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
                   >
-                    {availableCities.filter((c) => 'is_destination' in c ? c.is_destination : true).map((c) => (
-                      <option key={c.city_id} value={c.city_id}>
-                        {c.city_name}
-                      </option>
-                    ))}
+                    {cities.length === 0 ? (
+                      <option value={0}>No cities</option>
+                    ) : (
+                      cities
+                        .filter((c) => ('is_destination' in c ? c.is_destination : true))
+                        .map((c) => (
+                          <option key={c.city_id} value={c.city_id}>
+                            {c.city_name}
+                          </option>
+                        ))
+                    )}
                   </select>
                   <input
                     type="text"
@@ -364,3 +377,28 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
     </div>
   );
 };
+
+/**
+ * AddRouteModal Component
+ *
+ * Renders the modal dialog when isOpen is true.
+ */
+export const AddRouteModal: React.FC<AddRouteModalProps> = ({
+  isOpen,
+  stores = [],
+  cities = [],
+  onClose,
+  onSubmit,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <AddRouteModalContent
+      stores={stores}
+      cities={cities}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+};
+

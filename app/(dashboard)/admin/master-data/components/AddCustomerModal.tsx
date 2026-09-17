@@ -9,7 +9,6 @@
 
 import React, { useState } from 'react';
 import { NewCustomerPayload } from '../types';
-import { MOCK_CITIES } from '../mockData';
 
 interface AddCustomerModalProps {
   /** Whether the modal dialog is currently visible */
@@ -23,28 +22,24 @@ interface AddCustomerModalProps {
 }
 
 /**
- * AddCustomerModal Component
+ * AddCustomerModalContent Component
+ *
+ * Inner form component initialized when dialog opens.
  */
-export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
-  isOpen,
-  cities = MOCK_CITIES,
+const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> = ({
+  cities = [],
   onClose,
   onSubmit,
 }) => {
-  const availableCities = cities && cities.length > 0 ? cities : MOCK_CITIES;
-
+  const defaultCity = cities.find((c) => ('is_destination' in c ? c.is_destination : true));
   const [customerName, setCustomerName] = useState('');
   const [customerType, setCustomerType] = useState<'retail' | 'wholesale'>('retail');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [cityId, setCityId] = useState<number>(
-    availableCities.find((c) => ('is_destination' in c ? c.is_destination : true))?.city_id || 2
-  );
+  const [cityId, setCityId] = useState<number>(defaultCity ? defaultCity.city_id : (cities[0]?.city_id || 0));
   const [addressLine, setAddressLine] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isOpen) return null;
 
   /**
    * Validates customer information before triggering callback.
@@ -61,6 +56,11 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
 
     if (!trimmedName || !trimmedPhone || !trimmedAddress) {
       setErrorMessage('Please fill in Customer Name, Phone, and Delivery Address.');
+      return;
+    }
+
+    if (!cityId || cityId <= 0) {
+      setErrorMessage('Please select a valid destination city.');
       return;
     }
 
@@ -209,11 +209,17 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
                 onChange={(e) => setCityId(Number(e.target.value))}
                 className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
-                {availableCities.filter((c) => 'is_destination' in c ? c.is_destination : true).map((c) => (
-                  <option key={c.city_id} value={c.city_id}>
-                    {c.city_name}
-                  </option>
-                ))}
+                {cities.length === 0 ? (
+                  <option value={0}>No cities available</option>
+                ) : (
+                  cities
+                    .filter((c) => ('is_destination' in c ? c.is_destination : true))
+                    .map((c) => (
+                      <option key={c.city_id} value={c.city_id}>
+                        {c.city_name}
+                      </option>
+                    ))
+                )}
               </select>
             </div>
           </div>
@@ -293,3 +299,26 @@ export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
     </div>
   );
 };
+
+/**
+ * AddCustomerModal Component
+ *
+ * Renders the modal dialog when isOpen is true.
+ */
+export const AddCustomerModal: React.FC<AddCustomerModalProps> = ({
+  isOpen,
+  cities = [],
+  onClose,
+  onSubmit,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <AddCustomerModalContent
+      cities={cities}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+};
+

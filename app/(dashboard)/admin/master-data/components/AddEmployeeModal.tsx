@@ -10,7 +10,6 @@
 
 import React, { useState } from 'react';
 import { NewEmployeePayload, EmployeeRole } from '../types';
-import { MOCK_STORES } from '../mockData';
 
 interface AddEmployeeModalProps {
   /** Whether the modal dialog is currently visible */
@@ -43,18 +42,16 @@ const ROLE_OPTIONS: RoleOption[] = [
  */
 export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   isOpen,
-  stores = MOCK_STORES,
+  stores = [],
   onClose,
   onSubmit,
 }) => {
-  const availableStores = stores && stores.length > 0 ? stores : MOCK_STORES;
-
   const [fullName, setFullName] = useState('');
   const [nicNumber, setNicNumber] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<EmployeeRole>('driver');
-  const [storeId, setStoreId] = useState<string>(String(availableStores[0]?.store_id || '1'));
+  const [storeId, setStoreId] = useState<string>('');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [licenseExpiry, setLicenseExpiry] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -268,7 +265,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
                 <option value="">Central HQ / Unassigned</option>
-                {availableStores.map((s) => (
+                {stores.map((s) => (
                   <option key={s.store_id} value={String(s.store_id)}>
                     {s.store_name}
                   </option>
