@@ -64,7 +64,10 @@ JWT_SECRET=<ask a teammate for the shared dev secret — must match across the t
 UPSTASH_REDIS_REST_URL=<from Upstash>
 UPSTASH_REDIS_REST_TOKEN=<from Upstash>
 NODE_ENV=development
+SEED_TEST_PASSWORD=<optional — only needed if you run the seed and want the test role accounts>
 ```
+
+`SEED_TEST_PASSWORD` has no default. If it is empty, `npm run db:seed` skips the four test role accounts (`06_seed-data-spec.md` §12) with a warning.
 
 **Never commit `.env.local`.** It's already in `.gitignore` — double check before your first commit anyway.
 
@@ -87,6 +90,16 @@ To load the baseline seed data (per `06_seed-data-spec.md`) via `scripts/seed.ts
 ```bash
 npm run db:seed
 ```
+
+Rehearse first with a dry run, which executes every insert and then rolls back (requires the bootstrap admin to exist):
+
+```bash
+npx tsx scripts/seed.ts --dry-run
+```
+
+Seed behaviour to know:
+- Re-running is safe: only rows whose ID is missing are inserted; existing rows are never changed.
+- Train trip dates are relative to the **first** run. Later runs do not move them forward, so once the seeded future trips have departed, `place_order` will report "no trip with capacity" until newer trips are added.
 
 ---
 
