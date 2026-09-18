@@ -158,8 +158,13 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 - If scheduled: `Truck: {plate_number}` · `Driver: {driver_name}` · `Assistant: {assistant_name}` · `Scheduled: {start_time}–{end_time}`
 
 **Section — Status History**
-- Table columns: From · To · Changed By · Date · Notes
+- Fields: From · To · Changed By · Date · Notes
 - Empty state: *No status changes yet.*
+- **Resolved 2026-09-18:** this section was originally specified as a table, while
+  `UI/order_detail` renders it as a vertical timeline. Resolved in favour of the
+  timeline (the `UI/` references are an implementation contract per
+  `Docs/11_ui-rules.md` §1), with all five fields above carried inside each timeline
+  entry so no specified content is lost.
 
 **Update status (role-gated):**
 - Label: `Change status to` — dropdown of valid next statuses only
