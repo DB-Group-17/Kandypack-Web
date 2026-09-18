@@ -2,17 +2,19 @@
  * @file scripts/seed/orders.ts
  * @description Baseline order stage (Docs/06_seed-data-spec.md §9).
  *
- * This module currently seeds the **historical** block only — orders 1–23, dated in the previous
- * completed quarter and finishing at `Delivered` or `Cancelled`. The current-quarter block goes
- * through `place_order` instead and is added to this file separately.
+ * Three stages, run in this order because each depends on the IDs the previous one leaves behind:
+ * 1. `seedHistoricalOrders` — orders 1–23, previous quarter, `Delivered`/`Cancelled`, direct INSERT.
+ * 2. `seedCurrentQuarterOrders` — orders 24–45, current quarter, in-progress statuses, via
+ *    `place_order` so their train bookings are real.
+ * 3. `seedOverflowTestOrder` — order 46, the Phase 1 capacity-overflow gate case.
  *
- * Why direct INSERT rather than `place_order` (spec §9 Decision A):
+ * Why the historical block uses direct INSERT rather than `place_order` (spec §9 Decision A):
  * `place_order` books space on a trip departing after the order date, and §8's trip window only
  * spans three weeks either side of the seed run. Previous-quarter orders have no trip to attach
  * to, so they are written as closed sales records with no `train_bookings` — and must therefore
  * supply `route_id` themselves, which the data module resolves from each order's customer.
  *
- * Data flow per order:
+ * Data flow per directly-inserted order:
  * 1. INSERT into `orders` as `Pending` (dates resolved on the database clock).
  * 2. INSERT its `order_items`; `trg_snapshot_order_item_prices` fills price and space rate, and
  *    `trg_maintain_order_totals_ins` then maintains `total_value` / `total_space_required`.
@@ -30,7 +32,8 @@
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { BOOTSTRAP_ADMIN } from './admin';
 import { insertMissing, logStage, sql, type SeedRow } from './helpers';
-import { SEED_ORDERS, STATUS_WALK, type SeedOrder } from './data/orders';
+import { OVERFLOW_TEST_ORDER, SEED_ORDERS, STATUS_WALK, type SeedOrder } from './data/orders';
+import { THIS_MONDAY } from './train-trips';
 
 /**
  * SQL for the first day of the previous completed calendar quarter.
@@ -284,8 +287,11 @@ export async function seedCurrentQuarterOrders(conn: PoolConnection): Promise<{
     // baseline IDs other members reference would silently shift, so stop rather than continue.
     if (orderId !== order.order_id) {
       throw new Error(
-        `Seed error: place_order created order ${orderId} where spec §9 expects ${order.order_id}. ` +
-          'The orders table is not in its expected baseline state.'
+        `Seed error: place_order created order ${orderId} where spec §9 expects ${order.order_id}.\n` +
+          "  The orders table's AUTO_INCREMENT has drifted past the baseline range. InnoDB does not\n" +
+          '  reclaim AUTO_INCREMENT values on rollback, so each rolled-back dry run advances it, and\n' +
+          '  inserting the historical block with explicit IDs cannot pull it back down.\n' +
+          '  Fix: with the orders table empty, run ALTER TABLE orders AUTO_INCREMENT = 1 before seeding.'
       );
     }
 
@@ -296,6 +302,136 @@ export async function seedCurrentQuarterOrders(conn: PoolConnection): Promise<{
   logStage('orders (place_order)', toCreate.length, current.length - toCreate.length);
   logStage('order status walk', transitions, 0);
   return { orders: toCreate.length, transitions };
+}
+
+/**
+ * Seeds the capacity-overflow test order (spec §9, `order_id` 46) and verifies the split.
+ *
+ * This is the Phase 1 gate case from `Docs/09_task-tracker.md`: `place_order()` verified against
+ * the small-capacity trip. The order is dated after Colombo's `+1` week trip departs, so the
+ * procedure's trip search starts at the 50-unit `+2` trip, fills it, and overflows onto `+3`.
+ *
+ * **Order #46 — capacity overflow test case, booked across Trip #5 (50-unit) and Trip #6.**
+ * Both trip IDs are deterministic: `trip_id = city_index × 6 + offset_index + 1` with Colombo at
+ * city_index 0, and §8 fixes the trip dates at first seed run.
+ *
+ * Must run after the other 45 orders so AUTO_INCREMENT yields 46.
+ *
+ * @param conn - Transactional connection with user context applied
+ * @returns The order ID created and the bookings it produced, or null if it already existed
+ * @throws If the order lands on an unexpected ID, or the split fails any gate assertion
+ */
+export async function seedOverflowTestOrder(conn: PoolConnection): Promise<{
+  orderId: number;
+  bookings: Array<{ tripId: number; spaceBooked: number }>;
+} | null> {
+  const existingIds = await readExistingOrderIds(conn);
+  if (existingIds.has(String(OVERFLOW_TEST_ORDER.order_id))) {
+    logStage('overflow test order', 0, 1);
+    return null;
+  }
+
+  // Placed one hour after the +1 week trip's 08:00 departure, so the trip search skips it and
+  // starts at the 50-unit +2 trip. See OVERFLOW_TEST_ORDER's comment for why this is future-dated.
+  const placedAt = `DATE_ADD(${THIS_MONDAY}, INTERVAL ? HOUR)`;
+  const expectedDate = `DATE_ADD(DATE_ADD(${THIS_MONDAY}, INTERVAL ? HOUR), INTERVAL ? DAY)`;
+
+  await conn.query(
+    `CALL place_order(?, ?, ?, ?, ${expectedDate}, CAST(? AS JSON), ?, ${placedAt}, @seed_order_id)`,
+    [
+      OVERFLOW_TEST_ORDER.customer_id,
+      OVERFLOW_TEST_ORDER.delivery_address,
+      OVERFLOW_TEST_ORDER.delivery_area,
+      OVERFLOW_TEST_ORDER.destination_city_id,
+      OVERFLOW_TEST_ORDER.placedHoursAfterThisMonday,
+      OVERFLOW_TEST_ORDER.deliveryLeadDays,
+      JSON.stringify(OVERFLOW_TEST_ORDER.items),
+      BOOTSTRAP_ADMIN.user_id,
+      OVERFLOW_TEST_ORDER.placedHoursAfterThisMonday
+    ]
+  );
+
+  const [idRows] = await conn.query<RowDataPacket[]>('SELECT @seed_order_id AS order_id');
+  const orderId = Number(idRows[0]?.order_id);
+  if (orderId !== OVERFLOW_TEST_ORDER.order_id) {
+    throw new Error(
+      `Seed error: overflow test order created as ${orderId}, expected ${OVERFLOW_TEST_ORDER.order_id}.`
+    );
+  }
+
+  const bookings = await assertOverflowSplit(conn, orderId);
+  logStage('overflow test order', 1, 0);
+  console.log(
+    `   Order #${orderId} split across trips ${bookings.map((b) => `#${b.tripId}`).join(' and ')} ` +
+      `(${bookings.map((b) => b.spaceBooked.toFixed(2)).join(' + ')} units).`
+  );
+
+  return { orderId, bookings };
+}
+
+/**
+ * Verifies the overflow order actually split, and that the split conserved the whole order.
+ *
+ * These are gate assertions, not diagnostics: a silent failure here would mean Phase 1's overflow
+ * requirement was signed off without ever being exercised.
+ *
+ * @param conn    - Transactional connection
+ * @param orderId - The overflow order to check
+ * @returns The bookings created, in trip order
+ * @throws If fewer than two bookings exist, a trip is over capacity, or space/quantity was lost
+ */
+async function assertOverflowSplit(
+  conn: PoolConnection,
+  orderId: number
+): Promise<Array<{ tripId: number; spaceBooked: number }>> {
+  const [rows] = await conn.query<RowDataPacket[]>(
+    `SELECT b.trip_id, b.space_booked, t.total_capacity, t.booked_space
+       FROM train_bookings b JOIN train_trips t ON t.trip_id = b.trip_id
+      WHERE b.order_id = ? ORDER BY t.departure_datetime`,
+    [orderId]
+  );
+
+  if (rows.length < 2) {
+    throw new Error(
+      `Phase 1 gate failure: order ${orderId} produced ${rows.length} booking(s); the overflow ` +
+        'case requires at least 2. The trip capacities or the order size are no longer aligned.'
+    );
+  }
+
+  for (const row of rows) {
+    if (Number(row.booked_space) > Number(row.total_capacity)) {
+      throw new Error(
+        `Phase 1 gate failure: trip ${row.trip_id} is booked to ${row.booked_space} ` +
+          `against a capacity of ${row.total_capacity}.`
+      );
+    }
+  }
+
+  // The split must conserve the order: no space and no quantity may be dropped between trips.
+  const [totals] = await conn.query<RowDataPacket[]>(
+    `SELECT o.total_space_required,
+            (SELECT COALESCE(SUM(space_booked),0) FROM train_bookings WHERE order_id = o.order_id) booked,
+            (SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi WHERE oi.order_id = o.order_id) ordered_qty,
+            (SELECT COALESCE(SUM(bi.quantity_shipped),0) FROM train_booking_items bi
+               JOIN train_bookings b ON b.booking_id = bi.booking_id
+              WHERE b.order_id = o.order_id) shipped_qty
+       FROM orders o WHERE o.order_id = ?`,
+    [orderId]
+  );
+
+  const { total_space_required: required, booked, ordered_qty: ordered, shipped_qty: shipped } = totals[0];
+  if (Number(booked) !== Number(required)) {
+    throw new Error(
+      `Phase 1 gate failure: order ${orderId} requires ${required} units but ${booked} were booked.`
+    );
+  }
+  if (Number(shipped) !== Number(ordered)) {
+    throw new Error(
+      `Phase 1 gate failure: order ${orderId} ordered ${ordered} units but ${shipped} were shipped.`
+    );
+  }
+
+  return rows.map((row) => ({ tripId: Number(row.trip_id), spaceBooked: Number(row.space_booked) }));
 }
 
 /**

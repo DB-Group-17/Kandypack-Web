@@ -323,3 +323,46 @@ function assertStatusDistribution(orders: SeedOrder[]): void {
 
 /** §9 — the 45 baseline orders, built once at module load so the assertions run early. */
 export const SEED_ORDERS: SeedOrder[] = buildSeedOrders();
+
+/**
+ * §9 — the capacity-overflow test order (`order_id` 46), and the Phase 1 gate case in
+ * `Docs/09_task-tracker.md`: `place_order()` must be verified against the small-capacity trip.
+ *
+ * Deliberately **not** part of `SEED_ORDERS`. Spec §9 calls it "an extra 46th row", and its
+ * `Pending` status would otherwise push that bucket to 6 and fail `assertStatusDistribution`.
+ *
+ * How the split is forced: `place_order` books the earliest `Scheduled` trip departing after the
+ * order's placement time. Colombo's trips are IDs 1–6 at week offsets −3, −2, −1, +1, +2, +3, so
+ * trip 4 is `+1` week, trip 5 is the 50-unit trip at `+2`, and trip 6 is `+3`. Dating this order
+ * *after trip 4 departs* makes the search start at trip 5, which cannot hold the whole order — so
+ * the remainder overflows onto trip 6, producing the two `train_bookings` rows the gate requires.
+ *
+ * Consequence: `order_placed_at` is a few days in the future. That is deliberate and is the only
+ * way to have the order evaluated against the small trip first, as spec §8 words the requirement
+ * ("exceeds the 50-unit small trip's remaining capacity"). The alternative — a much larger order
+ * placed today that cascades out of trip 4 — would make the split depend on how much the other
+ * Colombo orders happened to consume, so editing the baseline would silently change what the gate
+ * test proves.
+ *
+ * Sizing: 80 crates × 1.50 space = 120.00 units. Trip 5 takes `FLOOR(50 / 1.5) = 33` crates
+ * (49.50 units — the allocator floors to whole units, so it does not land on exactly 50.00) and
+ * the remaining 47 crates become 70.50 units on trip 6.
+ */
+export const OVERFLOW_TEST_ORDER = {
+  /** Expected ID once the 45 baseline orders exist; asserted at seed time. */
+  order_id: 46,
+  /** Colombo Retail Mart — city route 1, area "Fort" (see `customerContext`). */
+  customer_id: 1,
+  destination_city_id: 2,
+  delivery_area: 'Fort',
+  route_id: 1,
+  delivery_address: '11 Main Street, Fort, Colombo',
+  /** Hours past this week's Monday 00:00: one week plus an hour after the 08:00 departure. */
+  placedHoursAfterThisMonday: 7 * 24 + 9,
+  /** Days after placement; satisfies `chk_orders_min_lead` and `trg_validate_order_date`. */
+  deliveryLeadDays: 10,
+  /** Soft Drink Crate (`product_id` 9) has the catalog's highest space rate, 1.50 per unit. */
+  items: [{ product_id: 9, quantity: 80 }] as SeedOrderItem[],
+  /** Trips the split is expected to land on, for the verification assertions and QA reference. */
+  expectedTripIds: [5, 6] as const
+};

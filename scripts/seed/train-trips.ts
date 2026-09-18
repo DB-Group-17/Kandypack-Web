@@ -21,21 +21,26 @@ import { insertMissing, sql, type SeedRow } from './helpers';
 import { DESTINATIONS } from './data/locations';
 
 /** Week offsets relative to the seed-run week. There is deliberately no trip in the current week. */
-const WEEK_OFFSETS = [-3, -2, -1, 1, 2, 3] as const;
+export const WEEK_OFFSETS = [-3, -2, -1, 1, 2, 3] as const;
 
 /** The +2 week trip (8–14 days ahead, "roughly 10 days out") is the small overflow-test trip. */
-const OVERFLOW_WEEK_OFFSET = 2;
+export const OVERFLOW_WEEK_OFFSET = 2;
 
 const STANDARD_CAPACITY = 500;
 const OVERFLOW_CAPACITY = 50;
-const DEPARTURE_HOUR = 8;
-const HOURS_PER_WEEK = 7 * 24;
+export const DEPARTURE_HOUR = 8;
+export const HOURS_PER_WEEK = 7 * 24;
 
 /**
  * SQL for Monday 00:00 of the seed-run week. `WEEKDAY()` returns 0 for Monday … 6 for Sunday,
  * matching the Monday–Sunday calendar used by `fn_week_start`.
+ *
+ * Exported (with the offsets and departure hour below) so the overflow test order in
+ * scripts/seed/orders.ts can date itself against the same Monday. Duplicating the arithmetic there
+ * would let the two drift, and that order's whole purpose depends on landing between two specific
+ * trips' departures.
  */
-const THIS_MONDAY = 'DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)';
+export const THIS_MONDAY = 'DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)';
 
 /**
  * Builds the 36 train-trip rows.

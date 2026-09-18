@@ -11,14 +11,22 @@ dotenv.config();
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool, withUserContext } from '../lib/db';
 import { BOOTSTRAP_ADMIN } from './seed/admin';
-import { seedHistoricalOrders, seedCurrentQuarterOrders } from './seed/orders';
+import { seedHistoricalOrders, seedCurrentQuarterOrders, seedOverflowTestOrder } from './seed/orders';
 
 async function main(): Promise<void> {
   await withUserContext(BOOTSTRAP_ADMIN.user_id, BOOTSTRAP_ADMIN.app_role, async (conn) => {
+    // InnoDB keeps AUTO_INCREMENT values consumed by a rolled-back transaction, so every dry run
+    // advances the counter and the next one would allocate order IDs outside the spec range.
+    // Harness concern, not a seed concern: reset it (DDL, so before the transaction opens).
+    for (const table of ['orders', 'order_items', 'order_status_history', 'train_bookings', 'train_booking_items']) {
+      await conn.query(`ALTER TABLE ${table} AUTO_INCREMENT = 1`);
+    }
+
     await conn.beginTransaction();
     try {
       console.log('historical:', await seedHistoricalOrders(conn));
       console.log('current   :', await seedCurrentQuarterOrders(conn));
+      console.log('overflow  :', await seedOverflowTestOrder(conn));
 
       const [dist] = await conn.query<RowDataPacket[]>(
         'SELECT status, COUNT(*) n FROM orders GROUP BY status ORDER BY status'
@@ -65,9 +73,11 @@ async function main(): Promise<void> {
       console.log('\nbookings:', JSON.stringify(bk[0]));
 
       const [multi] = await conn.query<RowDataPacket[]>(
-        'SELECT order_id, COUNT(*) n FROM train_bookings GROUP BY order_id HAVING n > 1'
+        `SELECT b.order_id, COUNT(*) n, GROUP_CONCAT(b.trip_id ORDER BY b.trip_id) trips,
+                GROUP_CONCAT(b.space_booked ORDER BY b.trip_id) spaces
+           FROM train_bookings b GROUP BY b.order_id HAVING n > 1`
       );
-      console.log('orders split across trips (expect none yet):', JSON.stringify(multi));
+      console.log('orders split across trips (expect #46):', JSON.stringify(multi));
 
       const [hist] = await conn.query<RowDataPacket[]>(
         `SELECT o.status, COUNT(*) orders, SUM(h.n) history_rows FROM orders o
