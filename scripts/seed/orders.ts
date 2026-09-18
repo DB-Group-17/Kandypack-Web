@@ -227,3 +227,117 @@ export async function seedHistoricalOrders(conn: PoolConnection): Promise<{
   logStage('order status walk', transitions, 0);
   return { orders, items, transitions };
 }
+
+/**
+ * Seeds the current-quarter orders (spec §9, orders 24–45) through `place_order`.
+ *
+ * These go through the real procedure rather than direct INSERT so the seeded data exercises
+ * route matching, the capacity check and the trip-booking loop exactly as `POST /api/orders` does.
+ * The resulting `train_bookings` are therefore genuine, and a regression in `place_order` shows up
+ * here rather than in someone's manual testing.
+ *
+ * Trip selection, for reference: `place_order` books the *earliest* `Scheduled` trip departing
+ * after the order date with any free space — `expected_delivery_date` plays no part. Every one of
+ * these orders therefore lands on its city's `+1` week trip (capacity 500, worst-city demand 231),
+ * so the deliberately small `+2` trip stays empty for the overflow test order.
+ *
+ * Deliberately no Redis lock: `withLock` guards concurrent API callers racing for the same trip
+ * capacity, whereas this stage is single-threaded inside one transaction and
+ * `trg_check_trip_capacity` already takes `SELECT … FOR UPDATE` on the trip row.
+ *
+ * Idempotency: unlike `insertMissing`, `place_order` always inserts, so a re-run would create a
+ * second set of orders. The stage therefore returns early if its ID range is already present.
+ *
+ * @param conn - Transactional connection with user context applied (role must be allowed to call
+ *               `place_order`: `order_entry_clerk`, `logistics_manager` or `system_administrator`)
+ * @returns Counts of what this run created
+ * @throws If `place_order` returns an unexpected `order_id`, which would mean the seeded IDs no
+ *         longer match the spec that other members' tests rely on
+ */
+export async function seedCurrentQuarterOrders(conn: PoolConnection): Promise<{
+  orders: number;
+  transitions: number;
+}> {
+  const current = SEED_ORDERS.filter((order) => order.anchor === 'today');
+  const existingIds = await readExistingOrderIds(conn);
+  const toCreate = current.filter((order) => !existingIds.has(String(order.order_id)));
+
+  if (toCreate.length === 0) {
+    logStage('orders (place_order)', 0, current.length);
+    return { orders: 0, transitions: 0 };
+  }
+
+  // Partial ranges cannot be repaired safely: place_order assigns IDs by AUTO_INCREMENT, so
+  // filling a gap would hand the new order whatever ID comes next, not the one the spec promises.
+  if (toCreate.length !== current.length) {
+    throw new Error(
+      `Seed error: orders 24–45 are partially present (${current.length - toCreate.length} of ${current.length}). ` +
+        'place_order cannot fill gaps at specific IDs; reset the orders table or seed a fresh database.'
+    );
+  }
+
+  let transitions = 0;
+  for (const order of toCreate) {
+    const orderId = await callPlaceOrder(conn, order);
+
+    // AUTO_INCREMENT should continue straight on from the historical block. If it does not, the
+    // baseline IDs other members reference would silently shift, so stop rather than continue.
+    if (orderId !== order.order_id) {
+      throw new Error(
+        `Seed error: place_order created order ${orderId} where spec §9 expects ${order.order_id}. ` +
+          'The orders table is not in its expected baseline state.'
+      );
+    }
+
+    // Current-quarter history keeps its natural NOW() timestamps: these orders really are days old.
+    transitions += await walkStatus(conn, order);
+  }
+
+  logStage('orders (place_order)', toCreate.length, current.length - toCreate.length);
+  logStage('order status walk', transitions, 0);
+  return { orders: toCreate.length, transitions };
+}
+
+/**
+ * Calls `place_order` for one seeded order and returns the ID it assigned.
+ *
+ * Called directly on the transactional connection rather than through `callProcedure`, which
+ * borrows its own pooled connection (so it would run outside this transaction and survive a dry
+ * run's rollback) and has no way to read an `OUT` parameter back.
+ *
+ * `order_placed_at` is resolved server-side from `CURDATE()` for the same clock-consistency reason
+ * the direct inserts use, and `expected_delivery_date` is derived from it so the 7-day lead rule
+ * (`chk_orders_min_lead` and `trg_validate_order_date`) holds however the two clocks differ.
+ *
+ * @param conn  - Transactional connection with user context applied
+ * @param order - Order definition to place
+ * @returns The `order_id` the procedure assigned
+ * @throws If the procedure signals a business-rule violation, or returns no ID
+ */
+async function callPlaceOrder(conn: PoolConnection, order: SeedOrder): Promise<number> {
+  const anchor = ANCHOR_SQL[order.anchor];
+  const placedAt = `DATE_ADD(${anchor}, INTERVAL ? DAY)`;
+  const expectedDate = `DATE_ADD(${anchor}, INTERVAL ? DAY)`;
+
+  await conn.query(
+    `CALL place_order(?, ?, ?, ?, ${expectedDate}, CAST(? AS JSON), ?, ${placedAt}, @seed_order_id)`,
+    [
+      order.customer_id,
+      order.delivery_address,
+      order.delivery_area,
+      order.destination_city_id,
+      order.placedOffsetDays + order.deliveryLeadDays,
+      JSON.stringify(order.items),
+      BOOTSTRAP_ADMIN.user_id,
+      order.placedOffsetDays
+    ]
+  );
+
+  const [rows] = await conn.query<RowDataPacket[]>('SELECT @seed_order_id AS order_id');
+  const orderId = rows[0]?.order_id;
+  if (orderId === null || orderId === undefined) {
+    throw new Error(`Seed error: place_order returned no order_id for seed order ${order.order_id}.`);
+  }
+
+  return Number(orderId);
+}
