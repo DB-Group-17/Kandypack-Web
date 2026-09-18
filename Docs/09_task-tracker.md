@@ -70,9 +70,9 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] Open PR → review → merge
 
 ### Member 4 — Master Data (zero dependencies — start here first if blocked on anything else)
-- [ ] `GET/POST /customers`, `GET/POST/PATCH /products`, `GET /cities`, `GET/POST /routes`
-- [ ] `GET/POST /employees`
-- [ ] `/admin/master-data` page wired to real data
+- [x] `GET/POST /customers`, `GET/POST/PATCH /products`, `GET /cities`, `GET/POST /routes`
+- [x] `GET/POST /employees`
+- [x] `/admin/master-data` page wired to real data
 - [ ] Open PR → review → merge
 
 ---
