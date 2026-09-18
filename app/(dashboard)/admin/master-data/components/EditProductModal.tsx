@@ -1,24 +1,25 @@
 'use client';
 
 /**
- * @file AddProductModal.tsx
- * @description Accessible modal dialog for creating a new product catalog item.
- * Collects SKU, Product name, Category, Unit of measure, Unit price, and Space consumption rate.
- * Conforms to Docs/07_content-copy.md §372 ("A product with this SKU already exists.").
+ * @file EditProductModal.tsx
+ * @description Accessible modal dialog for modifying an existing product catalog specification.
+ * Supports updating product name, category, unit of measure, unit price, and space consumption rate.
+ * The SKU remains read-only as the permanent canonical identifier.
+ * Conforms to Docs/05_api-and-pages.md §A3, §384 and DESIGN.md.
  */
 
 import React, { useState } from 'react';
-import { NewProductPayload, ProductItem } from '../types';
+import { ProductItem, UpdateProductPayload } from '../types';
 
-interface AddProductModalProps {
+interface EditProductModalProps {
   /** Whether the modal dialog is currently visible */
   isOpen: boolean;
-  /** Existing products to check for duplicate SKU validation */
-  existingProducts: ProductItem[];
+  /** The product item currently being edited */
+  product: ProductItem | null;
   /** Callback when the modal is dismissed */
   onClose: () => void;
-  /** Callback when valid product payload is submitted */
-  onSubmit: (payload: NewProductPayload) => Promise<{ success: boolean; error?: string } | void> | void;
+  /** Callback when valid updated product payload is submitted */
+  onSubmit: (productId: number, payload: UpdateProductPayload) => Promise<{ success: boolean; error?: string } | void> | void;
 }
 
 const CATEGORY_OPTIONS = [
@@ -35,27 +36,29 @@ const CATEGORY_OPTIONS = [
 const UNIT_OPTIONS = ['box', 'bottle', 'pack', 'bag', 'tube', 'crate', 'case', 'unit'];
 
 /**
- * AddProductModal Component
+ * EditProductModalContent Component
+ *
+ * Inner form component initialized cleanly with target product attributes.
  */
-export const AddProductModal: React.FC<AddProductModalProps> = ({
-  isOpen,
-  existingProducts,
+const EditProductModalContent: React.FC<Omit<EditProductModalProps, 'isOpen'> & { product: ProductItem }> = ({
+  product,
   onClose,
   onSubmit,
 }) => {
-  const [sku, setSku] = useState('');
-  const [productName, setProductName] = useState('');
-  const [category, setCategory] = useState(CATEGORY_OPTIONS[0]);
-  const [unitOfMeasure, setUnitOfMeasure] = useState(UNIT_OPTIONS[0]);
-  const [unitPrice, setUnitPrice] = useState('');
-  const [spaceRate, setSpaceRate] = useState('');
+  const [productName, setProductName] = useState(product.product_name);
+  const [category, setCategory] = useState(
+    CATEGORY_OPTIONS.includes(product.category) ? product.category : CATEGORY_OPTIONS[0]
+  );
+  const [unitOfMeasure, setUnitOfMeasure] = useState(
+    UNIT_OPTIONS.includes(product.unit_of_measure) ? product.unit_of_measure : product.unit_of_measure || UNIT_OPTIONS[0]
+  );
+  const [unitPrice, setUnitPrice] = useState(String(product.unit_price));
+  const [spaceRate, setSpaceRate] = useState(String(product.space_rate));
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!isOpen) return null;
-
   /**
-   * Validates form inputs and checks for SKU uniqueness before submitting.
+   * Validates form inputs and submits updated product payload to backend.
    *
    * @param e Form submit event
    */
@@ -63,40 +66,28 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
-    const trimmedSku = sku.trim();
     const trimmedName = productName.trim();
     const parsedPrice = parseFloat(unitPrice);
     const parsedSpace = parseFloat(spaceRate);
 
-    // Basic required field validation
-    if (!trimmedSku || !trimmedName || isNaN(parsedPrice) || isNaN(parsedSpace)) {
-      setErrorMessage('Please fill in all required fields with valid values.');
+    if (!trimmedName) {
+      setErrorMessage('Product name is required.');
       return;
     }
 
-    // SKU duplication check per Docs/07_content-copy.md §373
-    const isDuplicateSku = existingProducts.some(
-      (p) => p.sku.toLowerCase() === trimmedSku.toLowerCase()
-    );
-    if (isDuplicateSku) {
-      setErrorMessage('A product with this SKU already exists.');
+    if (isNaN(parsedPrice) || parsedPrice < 0) {
+      setErrorMessage('Unit price must be a valid non-negative number.');
       return;
     }
 
-    if (parsedPrice < 0) {
-      setErrorMessage('Unit price cannot be negative.');
-      return;
-    }
-
-    if (parsedSpace <= 0) {
+    if (isNaN(parsedSpace) || parsedSpace <= 0) {
       setErrorMessage('Space consumption rate must be greater than zero.');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const result = await onSubmit({
-        sku: trimmedSku,
+      const result = await onSubmit(product.product_id, {
         product_name: trimmedName,
         category,
         unit_of_measure: unitOfMeasure,
@@ -105,23 +96,17 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       });
 
       if (result && typeof result === 'object' && result.success === false) {
-        setErrorMessage(result.error || 'Failed to create product.');
+        setErrorMessage(result.error || 'Failed to update product.');
         return;
       }
 
-      // Reset and close on success
-      setSku('');
-      setProductName('');
-      setUnitPrice('');
-      setSpaceRate('');
-      setErrorMessage(null);
       onClose();
     } catch (err: unknown) {
-      console.error('Error submitting product:', err);
+      console.error('Error submitting product update:', err);
       if (err instanceof Error) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage('Failed to save product. Please try again.');
+        setErrorMessage('Failed to update product. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -143,13 +128,18 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[#EBE9FE] text-[#4132C7] flex items-center justify-center">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                />
               </svg>
             </div>
             <div>
-              <h3 className="text-[17px] font-bold text-[#121C2C]">Add Product</h3>
+              <h3 className="text-[17px] font-bold text-[#121C2C]">Edit Product</h3>
               <p className="text-[12px] text-[#474554]">
-                Register a new inventory product to master data
+                Update specifications for SKU <span className="font-mono font-semibold text-[#4132C7]">{product.sku}</span>
               </p>
             </div>
           </div>
@@ -182,25 +172,24 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* SKU */}
+            {/* SKU (Read-Only) */}
             <div>
               <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
-                SKU <span className="text-[#F93C65]">*</span>
+                SKU (Catalog Code)
               </label>
               <input
                 type="text"
-                value={sku}
-                onChange={(e) => setSku(e.target.value)}
-                placeholder="e.g. PRD-8915"
-                required
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                value={product.sku}
+                disabled
+                className="w-full h-11 px-3.5 bg-[#F1F1F5] border border-[#C8C4D7]/40 rounded-lg text-[13px] text-[#777586] font-mono cursor-not-allowed select-none"
               />
+              <span className="text-[11px] text-[#777586] mt-1 block">SKU cannot be modified.</span>
             </div>
 
             {/* Category */}
             <div>
               <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
-                Category
+                Category <span className="text-[#F93C65]">*</span>
               </label>
               <select
                 value={category}
@@ -225,26 +214,26 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               type="text"
               value={productName}
               onChange={(e) => setProductName(e.target.value)}
-              placeholder="e.g. Ceylon Black Tea 500g Pack"
+              placeholder="e.g. Milk Powder 400g"
               required
               className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Unit of measure */}
+            {/* Unit of Measure */}
             <div>
               <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
-                Unit
+                Unit of Measure
               </label>
               <select
                 value={unitOfMeasure}
                 onChange={(e) => setUnitOfMeasure(e.target.value)}
-                className="w-full h-11 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
-                {UNIT_OPTIONS.map((u) => (
-                  <option key={u} value={u}>
-                    {u}
+                {UNIT_OPTIONS.map((uom) => (
+                  <option key={uom} value={uom}>
+                    {uom}
                   </option>
                 ))}
               </select>
@@ -253,7 +242,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             {/* Unit Price */}
             <div>
               <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
-                Unit Price (Rs.) <span className="text-[#F93C65]">*</span>
+                Price (LKR) <span className="text-[#F93C65]">*</span>
               </label>
               <input
                 type="number"
@@ -263,24 +252,24 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 onChange={(e) => setUnitPrice(e.target.value)}
                 placeholder="450.00"
                 required
-                className="w-full h-11 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
 
             {/* Space Rate */}
             <div>
               <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
-                Space Rate (m³) <span className="text-[#F93C65]">*</span>
+                Space (m³) <span className="text-[#F93C65]">*</span>
               </label>
               <input
                 type="number"
                 step="0.01"
-                min="0.01"
+                min="0.0001"
                 value={spaceRate}
                 onChange={(e) => setSpaceRate(e.target.value)}
-                placeholder="0.50"
+                placeholder="0.25"
                 required
-                className="w-full h-11 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
           </div>
@@ -297,16 +286,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] hover:bg-[#3527a8] text-white font-semibold text-[13px] shadow-sm disabled:opacity-50 transition-all flex items-center gap-2"
             >
-              {isSubmitting ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Saving Product...</span>
-                </>
-              ) : (
-                <span>+ Add Product</span>
+              {isSubmitting && (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               )}
+              <span>Save Changes</span>
             </button>
           </div>
         </form>
@@ -314,3 +299,27 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
     </div>
   );
 };
+
+/**
+ * EditProductModal Component
+ *
+ * Renders the modal dialog when open with target product data.
+ */
+export const EditProductModal: React.FC<EditProductModalProps> = ({
+  isOpen,
+  product,
+  onClose,
+  onSubmit,
+}) => {
+  if (!isOpen || !product) return null;
+
+  return (
+    <EditProductModalContent
+      key={product.product_id}
+      product={product}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+};
+

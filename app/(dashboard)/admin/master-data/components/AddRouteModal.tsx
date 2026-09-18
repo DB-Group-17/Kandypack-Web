@@ -9,15 +9,18 @@
 
 import React, { useState } from 'react';
 import { NewRoutePayload } from '../types';
-import { MOCK_STORES, MOCK_CITIES } from '../mockData';
 
 interface AddRouteModalProps {
   /** Whether the modal dialog is currently visible */
   isOpen: boolean;
+  /** Available destination stores list */
+  stores?: Array<{ store_id: number; store_name: string; city_id: number; city_name: string }>;
+  /** Available cities list */
+  cities?: Array<{ city_id: number; city_name: string }>;
   /** Callback when the modal is dismissed */
   onClose: () => void;
   /** Callback when valid route payload is submitted */
-  onSubmit: (payload: NewRoutePayload) => void;
+  onSubmit: (payload: NewRoutePayload) => Promise<{ success: boolean; error?: string } | void> | void;
 }
 
 interface TempAreaRow {
@@ -27,34 +30,39 @@ interface TempAreaRow {
 }
 
 /**
- * AddRouteModal Component
+ * AddRouteModalContent Component
+ *
+ * Inner form component initialized when dialog opens.
  */
-export const AddRouteModal: React.FC<AddRouteModalProps> = ({
-  isOpen,
+const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
+  stores = [],
+  cities = [],
   onClose,
   onSubmit,
 }) => {
+  const defaultStoreId = stores[0]?.store_id || 0;
+  const defaultCityId = stores[0]?.city_id || cities[0]?.city_id || 0;
+
   const [routeName, setRouteName] = useState('');
-  const [storeId, setStoreId] = useState<number>(MOCK_STORES[0].store_id);
+  const [storeId, setStoreId] = useState<number>(defaultStoreId);
   const [maxHours, setMaxHours] = useState('4.0');
   const [coverageDesc, setCoverageDesc] = useState('');
   const [coverageAreas, setCoverageAreas] = useState<TempAreaRow[]>([
-    { id: '1', city_id: MOCK_STORES[0].city_id, area_name: '' },
+    { id: '1', city_id: defaultCityId, area_name: '' },
   ]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  if (!isOpen) return null;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
    * Adds an empty coverage area row to the form.
    */
   const handleAddAreaRow = () => {
-    const selectedStore = MOCK_STORES.find((s) => s.store_id === storeId);
+    const selectedStore = stores.find((s) => s.store_id === storeId);
     setCoverageAreas((prev) => [
       ...prev,
       {
         id: String(Date.now() + Math.random()),
-        city_id: selectedStore ? selectedStore.city_id : MOCK_CITIES[0].city_id,
+        city_id: selectedStore ? selectedStore.city_id : cities[0]?.city_id || 0,
         area_name: '',
       },
     ]);
@@ -87,7 +95,7 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
    *
    * @param e Form submit event
    */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -99,30 +107,52 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
       return;
     }
 
-    const validAreas = coverageAreas
-      .map((a) => ({ city_id: a.city_id, area_name: a.area_name.trim() }))
-      .filter((a) => a.area_name.length > 0);
-
-    if (validAreas.length === 0) {
-      setErrorMessage('Please specify at least one valid coverage area name.');
+    if (!storeId || storeId <= 0) {
+      setErrorMessage('Please select a valid assigned store station.');
       return;
     }
 
-    onSubmit({
-      route_name: trimmedName,
-      store_id: storeId,
-      max_delivery_time_hours: parsedHours,
-      coverage_description: coverageDesc.trim() || undefined,
-      coverage_areas: validAreas,
-    });
+    const validAreas = coverageAreas
+      .map((a) => ({ city_id: a.city_id, area_name: a.area_name.trim() }))
+      .filter((a) => a.area_name.length > 0 && a.city_id > 0);
 
-    // Reset and close
-    setRouteName('');
-    setMaxHours('4.0');
-    setCoverageDesc('');
-    setCoverageAreas([{ id: '1', city_id: MOCK_STORES[0].city_id, area_name: '' }]);
-    setErrorMessage(null);
-    onClose();
+    if (validAreas.length === 0) {
+      setErrorMessage('Please specify at least one valid coverage area name with an assigned city.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const result = await onSubmit({
+        route_name: trimmedName,
+        store_id: storeId,
+        max_delivery_time_hours: parsedHours,
+        coverage_description: coverageDesc.trim() || undefined,
+        coverage_areas: validAreas,
+      });
+
+      if (result && typeof result === 'object' && result.success === false) {
+        setErrorMessage(result.error || 'Failed to create route.');
+        return;
+      }
+
+      // Reset and close
+      setRouteName('');
+      setMaxHours('4.0');
+      setCoverageDesc('');
+      setCoverageAreas([{ id: '1', city_id: stores[0]?.city_id || cities[0]?.city_id || 0, area_name: '' }]);
+      setErrorMessage(null);
+      onClose();
+    } catch (err: unknown) {
+      console.error('Error submitting route:', err);
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('Failed to configure route. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -204,11 +234,15 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
                 onChange={(e) => setStoreId(Number(e.target.value))}
                 className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
-                {MOCK_STORES.map((s) => (
-                  <option key={s.store_id} value={s.store_id}>
-                    {s.store_name}
-                  </option>
-                ))}
+                {stores.length === 0 ? (
+                  <option value={0}>No stores available</option>
+                ) : (
+                  stores.map((s) => (
+                    <option key={s.store_id} value={s.store_id}>
+                      {s.store_name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
@@ -275,11 +309,17 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
                     }
                     className="w-1/3 h-10 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[12px] text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
                   >
-                    {MOCK_CITIES.filter((c) => c.is_destination).map((c) => (
-                      <option key={c.city_id} value={c.city_id}>
-                        {c.city_name}
-                      </option>
-                    ))}
+                    {cities.length === 0 ? (
+                      <option value={0}>No cities</option>
+                    ) : (
+                      cities
+                        .filter((c) => ('is_destination' in c ? c.is_destination : true))
+                        .map((c) => (
+                          <option key={c.city_id} value={c.city_id}>
+                            {c.city_name}
+                          </option>
+                        ))
+                    )}
                   </select>
                   <input
                     type="text"
@@ -319,9 +359,17 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
-              + Add Route
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Saving Route...</span>
+                </>
+              ) : (
+                <span>+ Add Route</span>
+              )}
             </button>
           </div>
         </form>
@@ -329,3 +377,28 @@ export const AddRouteModal: React.FC<AddRouteModalProps> = ({
     </div>
   );
 };
+
+/**
+ * AddRouteModal Component
+ *
+ * Renders the modal dialog when isOpen is true.
+ */
+export const AddRouteModal: React.FC<AddRouteModalProps> = ({
+  isOpen,
+  stores = [],
+  cities = [],
+  onClose,
+  onSubmit,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <AddRouteModalContent
+      stores={stores}
+      cities={cities}
+      onClose={onClose}
+      onSubmit={onSubmit}
+    />
+  );
+};
+
