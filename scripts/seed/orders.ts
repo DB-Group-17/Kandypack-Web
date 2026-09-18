@@ -30,6 +30,7 @@
  */
 
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
+import { withUserContext } from '../../lib/db';
 import { BOOTSTRAP_ADMIN } from './admin';
 import { insertMissing, logStage, sql, type SeedRow } from './helpers';
 import { OVERFLOW_TEST_ORDER, SEED_ORDERS, STATUS_WALK, type SeedOrder } from './data/orders';
@@ -189,6 +190,95 @@ async function backdateStatusHistory(conn: PoolConnection, orderId: number): Pro
 
   return rows.length;
 }
+
+/**
+ * Seeds every baseline order (spec §9) in one transaction: historical, current-quarter, overflow.
+ *
+ * Mirrors `seedMasterData`'s shape — one borrowed connection with `@current_user_id` set to the
+ * bootstrap admin, one transaction, commit or roll back as a unit — so a failure anywhere leaves
+ * the database untouched rather than half-seeded.
+ *
+ * The rollback is only trustworthy because migration 22 removed `place_order`'s `TRUNCATE`
+ * statements, which used to force an implicit COMMIT partway through the procedure.
+ *
+ * Stage order is fixed: the historical block must land before `place_order` runs, because that
+ * procedure assigns IDs by AUTO_INCREMENT and the baseline expects 24–45 to follow 1–23.
+ *
+ * @param dryRun - When true, run every insert so all constraints and triggers fire, then roll back
+ * @throws Rethrows the first database or assertion error after rolling the transaction back
+ */
+export async function seedOrders(dryRun: boolean): Promise<void> {
+  console.log(`\n📦 Stage 3 — Orders${dryRun ? ' (dry run)' : ''}`);
+
+  await withUserContext(BOOTSTRAP_ADMIN.user_id, BOOTSTRAP_ADMIN.app_role, async (conn) => {
+    await prepareAutoIncrement(conn);
+
+    await conn.beginTransaction();
+    try {
+      await seedHistoricalOrders(conn);
+      await seedCurrentQuarterOrders(conn);
+      await seedOverflowTestOrder(conn);
+
+      if (dryRun) {
+        await conn.rollback();
+        console.log('   🔁 Dry run complete — all inserts succeeded and were rolled back. No data changed.');
+      } else {
+        await conn.commit();
+        console.log('   ✅ Committed.');
+      }
+    } catch (error) {
+      await conn.rollback();
+      console.error('   ❌ Stage failed — transaction rolled back. No orders were changed.');
+      throw error;
+    }
+  });
+}
+
+/**
+ * Resets the order tables' AUTO_INCREMENT counters, but only when `orders` is empty.
+ *
+ * Why this is needed: `place_order` assigns IDs by AUTO_INCREMENT, and InnoDB does not reclaim
+ * values consumed by a rolled-back transaction. Every dry run therefore advances the counter, and
+ * inserting the historical block with explicit IDs cannot pull it back down — so without this the
+ * current-quarter orders would land outside the 24–45 range the spec pins.
+ *
+ * Why it runs before the transaction: `ALTER TABLE` is DDL and forces an implicit COMMIT, which
+ * would destroy exactly the rollback isolation migration 22 restored.
+ *
+ * Why the empty-table guard: if rows exist, the seed has either already run (and every stage will
+ * no-op) or someone else's data is present. Renumbering underneath either case would be far worse
+ * than failing, so this touches nothing and lets the stages' own ID assertions report the problem.
+ *
+ * @param conn - Connection with user context applied, before any transaction is opened
+ */
+async function prepareAutoIncrement(conn: PoolConnection): Promise<void> {
+  const [rows] = await conn.query<RowDataPacket[]>('SELECT COUNT(*) AS n FROM orders');
+  if (Number(rows[0].n) > 0) return; // already seeded, or not ours to renumber
+
+  // information_schema caches table statistics; expiry 0 forces a read of the live counter.
+  await conn.query('SET SESSION information_schema_stats_expiry = 0');
+  const [meta] = await conn.query<RowDataPacket[]>(
+    `SELECT AUTO_INCREMENT AS next FROM information_schema.TABLES
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'orders'`
+  );
+
+  const next = Number(meta[0]?.next ?? 1);
+  if (next <= 1) return;
+
+  for (const table of ORDER_TABLES) {
+    await conn.query(`ALTER TABLE ${table} AUTO_INCREMENT = 1`);
+  }
+  console.log(`   AUTO_INCREMENT was at ${next} on an empty orders table — reset to 1.`);
+}
+
+/** Order tables whose AUTO_INCREMENT the pre-flight resets together, parents before children. */
+const ORDER_TABLES = [
+  'orders',
+  'order_items',
+  'order_status_history',
+  'train_bookings',
+  'train_booking_items'
+] as const;
 
 /**
  * Seeds the previous-quarter orders (spec §9, orders 1–23).

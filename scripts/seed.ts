@@ -6,6 +6,8 @@
  * 1. Bootstrap admin            — scripts/seed/admin.ts (own transaction)
  * 2. Master data + train trips  — scripts/seed/master-data.ts (one shared transaction,
  *    + test role accounts          run as the bootstrap admin)
+ * 3. Orders                      — scripts/seed/orders.ts (own transaction): the 45 baseline
+ *                                  orders plus the capacity-overflow test order (#46)
  *
  * Usage:
  *   npm run db:seed                   # seed the database pointed to by DATABASE_URL
@@ -29,6 +31,7 @@ dotenv.config();
 import { pool } from '../lib/db';
 import { seedBootstrapAdmin } from './seed/admin';
 import { seedMasterData } from './seed/master-data';
+import { seedOrders } from './seed/orders';
 
 /** True when `--dry-run` was passed: every stage runs, nothing is committed. */
 const DRY_RUN = process.argv.includes('--dry-run');
@@ -46,6 +49,8 @@ async function main(): Promise<void> {
   try {
     await seedBootstrapAdmin(DRY_RUN);
     await seedMasterData(DRY_RUN);
+    // Orders last: every stage above provides foreign keys this one depends on.
+    await seedOrders(DRY_RUN);
   } finally {
     try {
       await pool.end();

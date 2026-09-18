@@ -11,7 +11,7 @@ Meets the project minimums: 40+ orders, 10+ routes, valid train schedule with de
 
 All dates below are **relative to seed run time** (`CURDATE()` / `NOW()`), not fixed dates, so the dataset stays valid (e.g. still respects the 7-day order rule) no matter when someone runs the seed script.
 
-Execution mechanism: Baseline and bootstrap seed data are decoupled from schema migrations and executed via `npm run db:seed` (`scripts/seed.ts`). The script entry point delegates to modules in `scripts/seed/` (logic) and `scripts/seed/data/` (the row constants that implement this spec). Sections 1–8 and 12 are implemented; sections 9–11 are planned.
+Execution mechanism: Baseline and bootstrap seed data are decoupled from schema migrations and executed via `npm run db:seed` (`scripts/seed.ts`). The script entry point delegates to modules in `scripts/seed/` (logic) and `scripts/seed/data/` (the row constants that implement this spec). Sections 1–9 and 12 are implemented; sections 10–11 are planned.
 
 ---
 
