@@ -54,7 +54,7 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 ### Member 1 — Orders
 - [x] `POST /orders` → `place_order()` integration (using Member 5's Redis lock helper)
 - [x] `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
-- [ ] `/orders` (list), `/orders/new`, `/orders/[orderId]` pages wired to real data
+- [ ] `/orders` (list), `/orders/new`, `/orders/[orderId]` pages wired to real data — ⏳ `/orders` and `/orders/[orderId]` done and verified against seeded data (2026-09-18); `/orders/new` not started
 - [x] `useAuth()` hook / auth context finalized for others to import
 - [ ] Open PR → review → merge
 
@@ -78,10 +78,10 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 ---
 
 ### 🔒 PHASE 1 GATE — do not proceed to Phase 2 until ALL of these are true:
-- [ ] Orders module merged to `main` (Member 1)
-- [ ] `place_order()` verified working against the small-capacity overflow test case from `seed_data_spec.md` §8
+- [ ] Orders module merged to `main` (Member 1) — pages built; `/orders/new` outstanding, then PR
+- [x] `place_order()` verified working against the small-capacity overflow test case from `seed_data_spec.md` §8 — **passed 2026-09-18.** Order #46 booked across Trip #5 (the 50-unit Colombo trip, 49.50 units) and Trip #6 (70.50 units), with no trip exceeding capacity and the split conserving both space and quantity. Verified in the database and rendered on `/orders/46`, split-trip banner included. Required three fixes to `place_order` first — see `03_architecture.md`.
 - [ ] Master Data merged (Member 4) — needed because Orders/Truck Scheduling both reference products/routes/customers
-- [ ] Full baseline seed data (`seed_data_spec.md`, all sections) loaded into the shared dev DB — Member 1 runs this once everyone's underlying tables exist
+- [ ] Full baseline seed data (`seed_data_spec.md`, all sections) loaded into the shared dev DB — ⏳ **partially done.** §1–§9 and §12 are loaded (46 orders, 24 train bookings). §10 (truck schedules, deliveries) and §11 (inventory transactions) are still outstanding, and §11 is blocked on the open question recorded in `06_seed-data-spec.md` §9: historical orders carry no train bookings, so completed deliveries have no received stock to dispatch against.
 
 ---
 
