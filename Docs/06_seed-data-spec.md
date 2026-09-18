@@ -154,6 +154,48 @@ For each destination city, 6 trips spaced weekly, spanning **from 3 weeks in the
 
 **Route matching:** every order's `delivery_area`/`destination_city_id` must actually match one of the 12 seeded routes' coverage areas — don't hand-write an order that `place_order` would reject.
 
+### Decision A — historical orders carry no train bookings *(resolved 2026-09-18)*
+
+The §8 trip window spans week offsets −3 to +3 from the seed run, so no train trip exists in the *previous* completed quarter. The ~25 historical orders therefore get **no `train_bookings` rows**: they are closed sales records, with the order and its line items present but no logistics trail.
+
+This costs nothing, because every report that needs historical depth reads only `orders` and `order_items` (`19_reports.sql`):
+
+- `v_quarterly_sales` — `orders JOIN order_items`
+- `v_most_ordered_items` — `orders JOIN order_items JOIN products`
+- `v_city_route_sales` — `orders JOIN order_items JOIN cities LEFT JOIN routes`
+- `v_customer_order_history` — `LEFT JOIN`s deliveries and truck schedules, so NULLs are correct, not missing data
+
+The two reports that do need logistics rows (`v_driver_assistant_hours`, `v_truck_usage_monthly`) read `truck_schedules` and are unaffected by the absence of train bookings.
+
+*Rejected:* extending §8 with older trips (adds rows no report, page or gate check consumes); compressing the history into the −3 week window (leaves `v_quarterly_sales` with a single quarter bucket, defeating the report).
+
+**Consequence for the inserter:** `v_city_route_sales` reads `o.route_id`. `place_order` populates that column itself, but the historical orders are direct inserts, so they **must** resolve `delivery_area` → `route_coverage_areas` → `route_id` and set it explicitly. A NULL `route_id` makes city/route sales silently bucket those orders under no route.
+
+### Decision B — seeded status history is produced by walking the status, not hand-written *(resolved 2026-09-18)*
+
+`trg_log_order_status_change` fires `AFTER UPDATE ON orders` and only when the status actually changes, so an order inserted directly at its final status has **zero** `order_status_history` rows — and the Order Detail page renders that history as a timeline.
+
+Every seeded order is therefore inserted as `Pending` and then `UPDATE`d through each intermediate status, letting the trigger write each transition exactly as it would in production (a `Delivered` order walks Pending → In Transit → At Store → Out for Delivery → Delivered, producing four history rows).
+
+*Rejected:* inserting the final status and hand-writing `order_status_history` rows — fabricated history can silently diverge from what the trigger really does.
+
+**Consequences for the inserter:**
+
+- `@current_user_id` must be set on the session before each `UPDATE`, or `changed_by` lands NULL and the timeline shows no author.
+- `order_status_history.changed_at` defaults to `NOW()`, so a historical order's transitions would all timestamp at seed time. The 25 previous-quarter orders get their `changed_at` values backdated by an explicit `UPDATE` after the walk, spread between `order_placed_at` and `expected_delivery_date`; current-quarter orders keep the natural timestamps.
+- `Cancelled` orders walk only `Pending → Cancelled`.
+
+### Open consequence for §10–§11 — dispatch has nothing to draw down *(raised 2026-09-18, unresolved)*
+
+Decision A leaves the 20 `Delivered` orders without `train_bookings`, and §11 derives `receive` transactions only from bookings on `Arrived` trips. But §11 also wants a `dispatch` transaction per completed delivery, and `trg_check_inventory_before_dispatch` (migration 14) rejects any dispatch that would drive `store_inventory.quantity_on_hand` negative — so a historical delivery has no stock to dispatch against.
+
+Decision A stands: it is correct for §9 and every report reads cleanly. This is a §10/§11 problem to settle when those sections are built, not a reason to add past-quarter trips. Likely resolutions, in rough order of preference:
+
+1. Scope §10's ~20 truck schedules and their deliveries to the **current-quarter** `At Store` / `Out for Delivery` orders only, whose bookings do sit on `Arrived` trips — historical `Delivered` orders then carry no delivery row either, consistent with carrying no booking.
+2. Seed an opening-balance `receive` per store ahead of the historical dispatches.
+
+Option 1 keeps the whole historical set uniformly logistics-free and is the assumption §9's inserter is written against.
+
 ## 10. Truck Schedules & Deliveries
 
 - ~20 truck schedules, only for orders in `At Store`, `Out for Delivery`, or `Delivered` status (orders still `Pending`/`In Transit` haven't reached truck scheduling yet).
