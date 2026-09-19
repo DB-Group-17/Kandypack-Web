@@ -11,6 +11,8 @@ Meets the project minimums: 40+ orders, 10+ routes, valid train schedule with de
 
 All dates below are **relative to seed run time** (`CURDATE()` / `NOW()`), not fixed dates, so the dataset stays valid (e.g. still respects the 7-day order rule) no matter when someone runs the seed script.
 
+Execution mechanism: Baseline and bootstrap seed data are decoupled from schema migrations and executed via `npm run db:seed` (`scripts/seed.ts`).
+
 ---
 
 ## 1. Cities — 7 rows (`city_id` 1–7)

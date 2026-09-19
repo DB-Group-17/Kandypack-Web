@@ -67,9 +67,9 @@ Capture:
 
 When `/remember save` is called in this project, also read `Docs/09_task-tracker.md` and synchronize it with the current session state.
 
-- Mark a task `[x]` only when the current session provides evidence that it is complete.
-- Mark a task `[~]` when work has started but is incomplete.
-- Leave unrelated tasks unchanged.
+- Mark a task `✅` with a green checkmark when the current session provides evidence that it is complete.
+- Mark a task `⏳` when work has started but is incomplete.
+- Leave untouched tasks `[ ]`.
 - Preserve the existing task order, wording, ownership, and phase gates.
 - Do not rewrite the entire tracker or create duplicate tasks.
 - If work does not map clearly to an existing task, add a concise note under the relevant phase rather than inventing a new task category.
