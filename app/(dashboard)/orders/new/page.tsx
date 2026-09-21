@@ -5,9 +5,9 @@
  * @description Place New Order page — the order-entry form used by clerks to place a customer
  * order on their behalf.
  *
- * Build status: STEP 1 of 8 — the static page shell only. Nothing on this page is wired to data
- * yet. It establishes the layout, the Docs/07_content-copy.md copy and the shared card / field
- * styling that the later steps fill in.
+ * Build status: STEP 2 of 8. The layout and Docs/07_content-copy.md copy come from Step 1; Step 2
+ * loads the destination cities and the coverage areas of the chosen city into the two dropdowns.
+ * The customer search, address, date, item lines and submit are still static (Steps 3-6).
  *
  * Page structure:
  * - Header: back affordance, "New Order" heading and subheading.
@@ -16,14 +16,21 @@
  *   summary panel (total value, total space required), followed by the Place Order / Cancel
  *   actions. The rail collapses beneath the form on narrow screens (Docs/11_ui-rules.md §8).
  *
- * Planned data flow (added step by step, not present yet):
- * - GET /api/customers?search=…   customer type-ahead (300ms debounce)
- * - GET /api/cities?destination_only=true  destination city dropdown
- * - GET /api/routes?city_id=…     coverage areas for the chosen city (exact spellings — the
- *   delivery area must be a dropdown because place_order matches it against these names)
- * - GET /api/products             line-item product picker with unit price and space rate
+ * Data flow:
+ * - GET /api/cities?destination_only=true  destination city dropdown        (wired: Step 2)
+ * - GET /api/routes?city_id=…     coverage areas for the chosen city         (wired: Step 2).
+ *   The delivery area is a dropdown, never free text, because place_order matches it against
+ *   these exact names; the flat, de-duplicated, alphabetised area list is built client-side.
+ * - GET /api/customers?search=…   customer type-ahead, 300ms debounce         (Step 3)
+ * - GET /api/products             line-item picker with unit price and space rate (Step 5)
  * - POST /api/orders              submit; a 400 shows the procedure's message inline, a 201
- *   redirects to /orders/[orderId]
+ *   redirects to /orders/[orderId]                                             (Step 6)
+ *
+ * Loading model (Step 2): a lookup is "loading" while its data is still `null`, so no state is
+ * set synchronously inside an effect (the react-hooks/set-state-in-effect rule). Each loader is
+ * written inline in its effect and guarded by a `cancelled` flag so a slow response for an old
+ * city can never overwrite the areas of the city the user has since chosen. Retry bumps a
+ * counter that both effects depend on, so the fetch logic exists in exactly one place.
  *
  * Access: /orders/new is limited to order_entry_clerk and system_administrator. That is enforced
  * by proxy.ts / lib/rbac.ts before this page renders, so no role check is repeated here.
@@ -39,8 +46,31 @@
  * Owner: Member 1 (Dineth)
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+
+/** One destination city from `GET /api/cities`, reduced to what the dropdown needs. */
+interface CityOption {
+  city_id: number;
+  city_name: string;
+}
+
+/** One coverage area inside a route, as returned by `GET /api/routes`. */
+interface CoverageAreaDto {
+  city_id: number;
+  area_name: string;
+}
+
+/** The slice of a `GET /api/routes` item this page reads: only the coverage areas. */
+interface RouteDto {
+  coverage_areas: CoverageAreaDto[];
+}
+
+/** Coverage areas loaded for one specific city, remembering which city they belong to. */
+interface AreasForCity {
+  cityId: string;
+  names: string[];
+}
 
 /**
  * Shared class list for text inputs, selects and date fields, following Docs/11_ui-rules.md §4:
@@ -91,14 +121,131 @@ function SectionCard({
 }
 
 /**
- * NewOrderPage renders the static shell of the Place New Order form.
+ * NewOrderPage renders the Place New Order form.
  *
- * No state, effects or handlers exist yet (Step 1). The Place Order button is disabled so the
- * unwired form cannot be submitted; it is enabled when submit handling is added in Step 6.
+ * Step 2 adds the city and delivery-area lookups. The Place Order button stays disabled so the
+ * partly wired form cannot be submitted; it is enabled when submit handling is added in Step 6.
  *
  * @returns {JSX.Element} The New Order page component.
  */
 export default function NewOrderPage() {
+  // Destination cities; `null` means "not loaded yet" and is what drives the loading label.
+  const [cities, setCities] = useState<CityOption[] | null>(null);
+  const [citiesError, setCitiesError] = useState(false);
+
+  // The chosen city (a <select> value, so a string; "" = none) and the chosen coverage area.
+  const [cityId, setCityId] = useState("");
+  const [area, setArea] = useState("");
+
+  // Areas for the most recently loaded city. Tagged with its city so a stale result for a city
+  // the user has moved away from is recognisably not the current one.
+  const [areaData, setAreaData] = useState<AreasForCity | null>(null);
+  const [areasError, setAreasError] = useState(false);
+
+  // Bumped by Retry; both loader effects depend on it so a retry re-runs whichever one failed.
+  const [lookupToken, setLookupToken] = useState(0);
+
+  // Load the destination cities once (and again on Retry).
+  useEffect(() => {
+    let cancelled = false; // set by cleanup so an unmounted page ignores a late response
+
+    const loadCities = async () => {
+      try {
+        const response = await fetch("/api/cities?destination_only=true", {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(`Cities request failed (${response.status})`);
+        const data = await response.json();
+        if (cancelled) return;
+        setCities(
+          (data.items ?? []).map((c: CityOption) => ({
+            city_id: c.city_id,
+            city_name: c.city_name,
+          }))
+        );
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load destination cities:", err);
+        setCitiesError(true);
+      }
+    };
+
+    loadCities();
+    return () => {
+      cancelled = true;
+    };
+  }, [lookupToken]);
+
+  // Load the coverage areas whenever a city is chosen. `GET /api/routes?city_id=` returns the
+  // city's routes, each with its coverage areas; they are flattened into one sorted name list.
+  useEffect(() => {
+    if (!cityId) return; // nothing chosen yet, so nothing to load
+    let cancelled = false; // a slow response for a previous city must not overwrite this one
+
+    const loadAreas = async () => {
+      try {
+        const response = await fetch(`/api/routes?city_id=${encodeURIComponent(cityId)}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(`Routes request failed (${response.status})`);
+        const data = await response.json();
+        if (cancelled) return;
+
+        // Keep only areas that belong to the chosen city, drop duplicates with a Set, then sort
+        // alphabetically so the dropdown is easy to scan.
+        const names = Array.from(
+          new Set(
+            ((data.items ?? []) as RouteDto[])
+              .flatMap((route) => route.coverage_areas ?? [])
+              .filter((a) => String(a.city_id) === cityId)
+              .map((a) => a.area_name)
+          )
+        ).sort((a, b) => a.localeCompare(b));
+
+        setAreaData({ cityId, names });
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load coverage areas:", err);
+        setAreasError(true);
+      }
+    };
+
+    loadAreas();
+    return () => {
+      cancelled = true;
+    };
+  }, [cityId, lookupToken]);
+
+  // Derived, not stored: the areas are loading when a city is chosen but the loaded areas do
+  // not yet belong to it, and nothing has failed.
+  const areasLoading = cityId !== "" && areaData?.cityId !== cityId && !areasError;
+  const areaOptions = areaData?.cityId === cityId ? areaData.names : [];
+
+  /**
+   * Handles a change of the destination city.
+   *
+   * The delivery area is cleared here, in the handler, rather than in an effect: an area only
+   * makes sense for the city it was chosen under, and resetting derived state in an effect is
+   * what the react-hooks/set-state-in-effect rule forbids.
+   *
+   * @param {React.ChangeEvent<HTMLSelectElement>} event - The select change event.
+   */
+  const handleCityChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setCityId(event.target.value);
+    setArea("");
+    setAreasError(false); // a failure for the previous city does not apply to the new one
+  };
+
+  /**
+   * Retries the lookups after a failure by clearing the error flags and bumping the token, which
+   * re-runs the city and area loaders.
+   */
+  const handleRetryLookups = () => {
+    setCitiesError(false);
+    setAreasError(false);
+    setLookupToken((token) => token + 1);
+  };
+
   return (
     <div className="space-y-6">
       {/* Page header: back affordance to the orders list, heading and subheading (doc 07) */}
@@ -132,6 +279,28 @@ export default function NewOrderPage() {
           Enter order details on behalf of the customer
         </p>
       </div>
+
+      {/* Lookup failure banner: shown when the city or area list could not be loaded. The copy is
+          not in Docs/07_content-copy.md, so it is a plain, neutral message with a retry action. */}
+      {(citiesError || areasError) && (
+        <div
+          role="alert"
+          className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#121C2C] rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm"
+        >
+          <span>
+            {citiesError
+              ? "Couldn't load the destination cities. Please try again."
+              : "Couldn't load the delivery areas for this city. Please try again."}
+          </span>
+          <button
+            type="button"
+            onClick={handleRetryLookups}
+            className="px-4 py-1.5 rounded-full bg-[#4132C7] text-white text-xs font-semibold hover:bg-[#3427A8] transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* 12-column grid: form cards take 8, the order-items rail takes 4 on desktop, and both
           stack in a single column on mobile (Docs/11_ui-rules.md §8) */}
@@ -196,12 +365,19 @@ export default function NewOrderPage() {
                 </label>
                 <select
                   id="destination-city"
-                  defaultValue=""
+                  value={cityId}
+                  onChange={handleCityChange}
+                  disabled={cities === null}
                   className={FIELD_CLASS}
                 >
                   <option value="" disabled>
-                    Select city
+                    {cities === null && !citiesError ? "Loading cities…" : "Select city"}
                   </option>
+                  {(cities ?? []).map((city) => (
+                    <option key={city.city_id} value={String(city.city_id)}>
+                      {city.city_name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -209,14 +385,24 @@ export default function NewOrderPage() {
                 <label htmlFor="delivery-area" className={LABEL_CLASS}>
                   Delivery area
                 </label>
+                {/* A dropdown, not free text: place_order matches the area against the seeded
+                    coverage names exactly, so only those spellings may be chosen. Disabled until a
+                    city is chosen and while its areas load. */}
                 <select
                   id="delivery-area"
-                  defaultValue=""
+                  value={area}
+                  onChange={(event) => setArea(event.target.value)}
+                  disabled={cityId === "" || areasLoading}
                   className={FIELD_CLASS}
                 >
                   <option value="" disabled>
-                    e.g. Wellawatte, Colombo 6
+                    {areasLoading ? "Loading areas…" : "e.g. Wellawatte, Colombo 6"}
                   </option>
+                  {areaOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
