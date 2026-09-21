@@ -12,8 +12,10 @@
  * 3. Validate client-side 7-day advance lead time rule.
  * 4. Acquire an Upstash Redis distributed lock scoped to the destination corridor to prevent race conditions.
  * 5. Set session variables (@current_user_id, @current_app_role) via withUserContext.
- * 6. Execute MySQL stored procedure `place_order(...)` with OUT param `@out_order_id`.
- * 7. Retrieve created order row and return 201 Created with order summary.
+ * 6. Inside one transaction, execute MySQL stored procedure `place_order(...)` with OUT param
+ *    `@out_order_id`, then retrieve the created order row. Commit on success (still holding the
+ *    lock); roll back on any failure so no half-placed order is ever left behind.
+ * 7. Return 201 Created with order summary.
  * 8. Catch and surface SQLSTATE '45000' business violations cleanly as HTTP 400.
  * 9. Always release the Redis lock in a finally block.
  * 
@@ -325,55 +327,69 @@ export async function POST(req: Request): Promise<NextResponse> {
           session.user_id,
           session.role,
           async (conn) => {
-            // Call place_order procedure
-            await conn.execute(
-              `CALL place_order(?, ?, ?, ?, ?, ?, ?, NOW(), @out_order_id)`,
-              [
-                customer_id,
-                delivery_address.trim(),
-                delivery_area.trim(),
-                destination_city_id,
-                expected_delivery_date,
-                serializedItems,
-                session.user_id
-              ]
-            );
+            // place_order is only atomic if the caller opens a transaction (migration 22 removed the
+            // procedure's own implicit COMMIT, but autocommit would still save each statement separately).
+            // Without this, a failure after the order INSERT (e.g. no trip with capacity) leaves a
+            // committed order with no train booking. The transaction is committed *inside* the Redis
+            // lock so the next caller sees this order's booked_space before it can take the lock.
+            await conn.beginTransaction();
+            try {
+              // Call place_order procedure
+              await conn.execute(
+                `CALL place_order(?, ?, ?, ?, ?, ?, ?, NOW(), @out_order_id)`,
+                [
+                  customer_id,
+                  delivery_address.trim(),
+                  delivery_area.trim(),
+                  destination_city_id,
+                  expected_delivery_date,
+                  serializedItems,
+                  session.user_id
+                ]
+              );
 
-            // Retrieve the generated order_id from session OUT variable
-            const [outRows] = await conn.execute<RowDataPacket[]>(
-              'SELECT @out_order_id AS order_id'
-            );
+              // Retrieve the generated order_id from session OUT variable
+              const [outRows] = await conn.execute<RowDataPacket[]>(
+                'SELECT @out_order_id AS order_id'
+              );
 
-            const newOrderId = outRows[0]?.order_id;
-            if (!newOrderId) {
-              throw new Error('Failed to retrieve newly generated order_id from place_order().');
+              const newOrderId = outRows[0]?.order_id;
+              if (!newOrderId) {
+                throw new Error('Failed to retrieve newly generated order_id from place_order().');
+              }
+
+              // Fetch inserted order record to return trigger-calculated summary
+              const [orderRows] = await conn.execute<OrderSummaryRow[]>(
+                `SELECT 
+                   order_id, 
+                   customer_id, 
+                   delivery_address, 
+                   delivery_area, 
+                   destination_city_id, 
+                   route_id, 
+                   order_placed_at, 
+                   expected_delivery_date, 
+                   status, 
+                   total_value, 
+                   total_space_required 
+                 FROM orders 
+                 WHERE order_id = ?`,
+                [newOrderId]
+              );
+
+              const orderSummary = orderRows[0];
+              if (!orderSummary) {
+                throw new Error(`Order #${newOrderId} was placed, but failed to retrieve its record from the database.`);
+              }
+
+              await conn.commit();
+              return orderSummary;
+            } catch (error) {
+              // Every failure path, including the post-INSERT read-back errors above, must undo the order.
+              // The pooled connection must never be returned with a transaction still open.
+              await conn.rollback();
+              throw error;
             }
-
-            // Fetch inserted order record to return trigger-calculated summary
-            const [orderRows] = await conn.execute<OrderSummaryRow[]>(
-              `SELECT 
-                 order_id, 
-                 customer_id, 
-                 delivery_address, 
-                 delivery_area, 
-                 destination_city_id, 
-                 route_id, 
-                 order_placed_at, 
-                 expected_delivery_date, 
-                 status, 
-                 total_value, 
-                 total_space_required 
-               FROM orders 
-               WHERE order_id = ?`,
-              [newOrderId]
-            );
-
-            const orderSummary = orderRows[0];
-            if (!orderSummary) {
-              throw new Error(`Order #${newOrderId} was placed, but failed to retrieve its record from the database.`);
-            }
-
-            return orderSummary;
           }
         );
       },
