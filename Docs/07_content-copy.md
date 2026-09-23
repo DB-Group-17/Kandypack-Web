@@ -99,9 +99,10 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 - Label: `Customer` — Placeholder: `Search by name or phone…`
 - Link/button: + Add new customer *(shown beside the `Customer` label at all times, not only when a search finds nothing)*
 - "Add new customer" mini-form, shown as a **popup dialog** (title: `Add new customer`):
-  - `Customer name` · `Customer type` (Retail / Wholesale) · `Phone` · `Email (optional)` · `Address`
+  - `Customer name` · `Customer type` (Retail / Wholesale) · `Phone` · `Email (optional)` · `Registered city` · `Address`
+  - `Registered city` is a **required** dropdown of destination cities, preselected from the `Destination city` already chosen on the page and editable. It was **added 2026-09-23**: the original list omitted it, so a customer created from this page was saved with no city ("Unassigned") whenever no destination city had been chosen first. Master Data's customer form already carries the same field.
   - Buttons: Save customer · Cancel · button (saving): Saving…
-  - Validation: *"Customer name is required."* · *"Phone number is required."* · *"Enter a valid email address, or leave it blank."*
+  - Validation: *"Customer name is required."* · *"Phone number is required."* · *"Select a registered city."* · *"Enter a valid email address, or leave it blank."*
   - Failure: the server's own message, otherwise *"Couldn't save this customer. Please try again."*
 - Once a customer is chosen, the search box is replaced by a summary (name, `Retail`/`Wholesale`, phone • city) with a **Change** button. Choosing a customer prefills `Destination city` and `Delivery address` from their record (both stay editable); `Delivery area` is left blank.
 - Search states: *"Searching…"* · *"No customers found."* · *"Couldn't search customers. Please try again."* · *"Showing the first 8 of {n}. Keep typing to narrow the list."*

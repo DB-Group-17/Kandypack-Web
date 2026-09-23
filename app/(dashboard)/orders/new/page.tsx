@@ -52,9 +52,10 @@
  * flight), locks page scrolling while open, and returns focus to the link that opened it. It is a
  * separate component that owns its own field state and its own <form>, so this page must NOT be
  * wrapped in an outer <form> (nested forms are invalid HTML); Step 6 submits with a button handler.
- * On success the new customer is selected exactly as if it had been found by search. Doc 07's form
- * has no city field, so the customer is registered under the destination city already chosen on
- * this page, or left without a city if none is.
+ * On success the new customer is selected exactly as if it had been found by search. The form has a
+ * required "Registered city" dropdown (added 2026-09-23; doc 07's list omitted it, which let a
+ * customer be saved with no city depending on whether a destination city happened to be chosen
+ * first). It is prefilled from the destination city already chosen on this page and stays editable.
  *
  * Delivery date (Step 4): the date starts EMPTY on purpose, so a delivery date is always a
  * conscious choice rather than an easily-submitted default. The picker greys out every day before
@@ -586,23 +587,27 @@ function DiscardOrderDialog({
  * A modal dialog: a dimmed backdrop plus a centred card. Rendered only while open, so its state
  * starts fresh every time. Owns its own field, error and saving state so the page component
  * stays focused on the order.
- * Validation mirrors POST /api/customers (name and phone required); the server remains the
- * authority and its message is shown if it rejects the request.
+ * Validation mirrors POST /api/customers (name and phone required) and additionally requires a
+ * registered city, so no customer is ever saved as "Unassigned" from this page. The server remains
+ * the authority and its message is shown if it rejects the request.
  *
  * On success it hands the created customer to `onCreated` and the page selects it.
  *
- * @param {number | null} registeredCityId - City to register the customer under (the destination
- *   city already chosen on the page), or null to save the customer without a city.
+ * @param {CityOption[] | null} cities - Destination cities for the dropdown (null while loading).
+ * @param {string} defaultCityId - City id (as a string, "" if none) to preselect: the destination
+ *   city already chosen on the page.
  * @param {(customer: CustomerOption) => void} onCreated - Called with the saved customer.
  * @param {() => void} onCancel - Called when the user dismisses the dialog without saving.
  * @returns {JSX.Element} The rendered dialog.
  */
 function AddCustomerDialog({
-  registeredCityId,
+  cities,
+  defaultCityId,
   onCreated,
   onCancel,
 }: {
-  registeredCityId: number | null;
+  cities: CityOption[] | null;
+  defaultCityId: string;
   onCreated: (customer: CustomerOption) => void;
   onCancel: () => void;
 }) {
@@ -610,6 +615,9 @@ function AddCustomerDialog({
   const [type, setType] = useState<"retail" | "wholesale">("retail");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  // Preselected from the page's destination city, but a separate value: changing it here must not
+  // change the order's destination.
+  const [registeredCityId, setRegisteredCityId] = useState(defaultCityId);
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -623,7 +631,8 @@ function AddCustomerDialog({
   /**
    * Validates the fields and saves the customer via POST /api/customers.
    *
-   * Rejects blank name / phone and a malformed optional email before any request is sent. A second
+   * Rejects blank name / phone, a missing registered city and a malformed optional email before
+   * any request is sent. A second
    * submit while one is in flight is ignored. A non-2xx answer shows the server's own message when
    * it sent one, otherwise a generic failure line.
    *
@@ -635,6 +644,7 @@ function AddCustomerDialog({
 
     if (!name.trim()) return setError("Customer name is required.");
     if (!phone.trim()) return setError("Phone number is required.");
+    if (!registeredCityId) return setError("Select a registered city.");
     if (email.trim() && !EMAIL_PATTERN.test(email.trim())) {
       return setError("Enter a valid email address, or leave it blank.");
     }
@@ -650,7 +660,7 @@ function AddCustomerDialog({
           customer_type: type,
           phone: phone.trim(),
           email: email.trim() || undefined,
-          registered_city_id: registeredCityId ?? undefined,
+          registered_city_id: Number(registeredCityId),
           address_line: address.trim() || undefined,
         }),
       });
@@ -731,6 +741,28 @@ function AddCustomerDialog({
               onChange={(event) => setEmail(event.target.value)}
               className={FIELD_CLASS}
             />
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="new-customer-city" className={LABEL_CLASS}>
+              Registered city
+            </label>
+            <select
+              id="new-customer-city"
+              value={registeredCityId}
+              onChange={(event) => setRegisteredCityId(event.target.value)}
+              disabled={cities === null}
+              className={FIELD_CLASS}
+            >
+              <option value="" disabled>
+                {cities === null ? "Loading cities…" : "Select city"}
+              </option>
+              {(cities ?? []).map((city) => (
+                <option key={city.city_id} value={String(city.city_id)}>
+                  {city.city_name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="md:col-span-2">
@@ -1947,7 +1979,8 @@ export default function NewOrderPage() {
       {/* "Add new customer" popup. Mounted only while open so its fields start empty every time. */}
       {addingCustomer && (
         <AddCustomerDialog
-          registeredCityId={cityId ? Number(cityId) : null}
+          cities={cities}
+          defaultCityId={cityId}
           onCreated={handleCustomerCreated}
           onCancel={handleCloseAddCustomer}
         />

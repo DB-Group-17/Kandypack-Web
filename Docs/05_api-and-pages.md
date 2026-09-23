@@ -338,7 +338,7 @@ For each page: which API routes it calls, and the interaction flow.
 ## `/orders/new` (Place New Order)
 - **Calls:** `GET /api/customers` (search-as-you-type), `POST /api/customers` (inline "Add new customer" popup), `GET /api/products` (line-item picker), `GET /api/cities`, `GET /api/routes?city_id=` (coverage areas), `POST /api/orders` (on submit)
 - **Flow:**
-  1. Customer search dropdown queries `/api/customers?search=...` after a 300ms typing pause. Choosing a customer prefills the destination city and delivery address from their record (editable); an inline popup can register a new customer with `POST /api/customers` and selects it on success
+  1. Customer search dropdown queries `/api/customers?search=...` after a 300ms typing pause. Choosing a customer prefills the destination city and delivery address from their record (editable); an inline popup can register a new customer with `POST /api/customers` (including a required registered city, preselected from the chosen destination city) and selects it on success
   2. The destination city comes from `/api/cities?destination_only=true`. The delivery area is a **dropdown** built from `/api/routes?city_id=` (each route's `coverage_areas`, flattened and de-duplicated), never free text, because `place_order` matches the area against those exact names
   3. Product line items added from `/api/products`, whole-number quantity per line, no product on more than one line. Totals shown are a preview; the server recalculates
   4. Delivery date picker enforces the 7-day minimum **client-side** first (fast feedback), but the real validation is server-side inside `place_order` — client check is UX only, never trusted
