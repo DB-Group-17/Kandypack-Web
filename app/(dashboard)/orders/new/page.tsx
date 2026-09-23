@@ -5,10 +5,11 @@
  * @description Place New Order page — the order-entry form used by clerks to place a customer
  * order on their behalf.
  *
- * Build status: STEP 6 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
- * the city and coverage-area dropdowns, Step 3 the customer search, and Step 3b the
+ * Build status: STEP 7 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
+ * the city and coverage-area dropdowns, o Step 3 the customer search, and Step 3b the
  * "+ Add new customer" popup, Step 4 the expected-delivery-date field with its 7-day rule, and
- * Step 5 the order item lines with live totals, and Step 6 the Place Order submit.
+ * Step 5 the order item lines with live totals, Step 6 the Place Order submit, and Step 7 the
+ * remaining empty/error states, a keyboard focus trap for dialogs and a leave-the-page warning.
  *
  * Page structure:
  * - Header: back affordance, "New Order" heading and subheading.
@@ -96,6 +97,17 @@
  *   detail page reads that flag, shows "Order #N placed successfully.", adds the Docs/07
  *   "couldn't be fully booked" notice when the order was split across trips (it already loads the
  *   bookings, so the POST response needs no extra field), and then removes the flag from the URL.
+ *
+ * Dialogs (Step 7): both popups (Add new customer, Discard this order?) sit inside one shared
+ * ModalShell that provides the dimmed backdrop, Escape and backdrop-click dismissal, page-scroll
+ * lock and a FOCUS TRAP: Tab and Shift+Tab wrap around inside the dialog instead of escaping to
+ * the page hidden behind it, because aria-modal alone does not stop that in every browser.
+ *
+ * Leaving with unsaved work (Step 7): once anything has been entered, the back arrow and Cancel
+ * ask "Discard this order?" first, and closing or reloading the tab triggers the browser's own
+ * "leave site?" prompt. Known limits, stated plainly: the App Router offers no hook to intercept
+ * other in-app navigation, so clicking a sidebar link or the browser Back button leaves without
+ * asking. The guard covers the two controls on this page and the tab close/reload.
  *
  * Access: /orders/new is limited to order_entry_clerk and system_administrator. That is enforced
  * by proxy.ts / lib/rbac.ts before this page renders, so no role check is repeated here.
@@ -388,6 +400,186 @@ function describePlaceOrderFailure(status: number, body: unknown): string {
 /** Email shape check: something@something.something, no spaces. Deliberately simple. */
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
+/** Everything that can receive keyboard focus, used by the dialog focus trap. */
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Shared modal chrome: dimmed backdrop, centred card with a title and close button, and the
+ * behaviour every dialog on this page needs.
+ *
+ * - Escape and a backdrop click call `onClose` (both ignored while `closeDisabled`, e.g. while a
+ *   save is in flight, so a request cannot be abandoned half-way).
+ * - The page behind cannot scroll while the dialog is open; scrolling is restored on close.
+ * - Focus trap: Tab on the last control wraps to the first and Shift+Tab on the first wraps to
+ *   the last, so keyboard focus never escapes into the hidden page.
+ * - On open, if the content has not already focused something, the first control is focused.
+ *
+ * @param {string} titleId - DOM id for the title, referenced by aria-labelledby.
+ * @param {string} title - Dialog heading text.
+ * @param {() => void} onClose - Called to dismiss the dialog.
+ * @param {boolean} [closeDisabled] - When true, every way of dismissing it is blocked.
+ * @param {React.ReactNode} children - The dialog body.
+ * @returns {JSX.Element} The rendered dialog.
+ */
+function ModalShell({
+  titleId,
+  title,
+  onClose,
+  closeDisabled = false,
+  children,
+}: {
+  titleId: string;
+  title: string;
+  onClose: () => void;
+  closeDisabled?: boolean;
+  children: React.ReactNode;
+}) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Escape dismisses, and the page cannot scroll behind the dialog. The cleanup removes the
+  // listener and restores scrolling when the dialog closes.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !closeDisabled) onClose();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [closeDisabled, onClose]);
+
+  // Move focus into the dialog on open, unless the content already focused a control itself
+  // (children's effects run before this one, so they win).
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (panel && !panel.contains(document.activeElement)) {
+      panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
+    }
+  }, []);
+
+  /**
+   * Keeps Tab focus inside the dialog by wrapping at both ends.
+   *
+   * @param {React.KeyboardEvent<HTMLDivElement>} event - The keydown event on the dialog card.
+   */
+  const handleTrapKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    const outside = !panel.contains(active);
+
+    if (event.shiftKey && (active === first || outside)) {
+      event.preventDefault(); // wrap backwards: first -> last
+      last.focus();
+    } else if (!event.shiftKey && (active === last || outside)) {
+      event.preventDefault(); // wrap forwards: last -> first
+      first.focus();
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+      {/* Backdrop: clicking outside the card dismisses the dialog (unless closing is blocked) */}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+        onClick={() => {
+          if (!closeDisabled) onClose();
+        }}
+      />
+
+      {/* max-h + overflow keep the card usable on short screens by scrolling inside itself */}
+      <div
+        ref={panelRef}
+        onKeyDown={handleTrapKeyDown}
+        className="relative bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border border-[#C8C4D7]/50 p-6 z-10"
+      >
+        <div className="flex items-start justify-between pb-4 border-b border-[#F0F3FF]">
+          <h2 id={titleId} className="text-lg font-bold text-[#121C2C]">
+            {title}
+          </h2>
+          <button
+            type="button"
+            disabled={closeDisabled}
+            onClick={onClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#474554] hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
+            aria-label="Close dialog"
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Discard this order?" confirmation, shown when the clerk tries to leave with unsaved details.
+ * The wording is not in Docs/07_content-copy.md. "Keep editing" is the safe default and gets
+ * initial focus; "Discard order" is styled as the destructive choice.
+ *
+ * @param {() => void} onKeepEditing - Close the dialog and stay on the form.
+ * @param {() => void} onDiscard - Leave the page and lose the entered details.
+ * @returns {JSX.Element} The rendered dialog.
+ */
+function DiscardOrderDialog({
+  onKeepEditing,
+  onDiscard,
+}: {
+  onKeepEditing: () => void;
+  onDiscard: () => void;
+}) {
+  const keepRef = useRef<HTMLButtonElement>(null);
+
+  // Start on the safe choice so an accidental Enter never throws the order away.
+  useEffect(() => {
+    keepRef.current?.focus();
+  }, []);
+
+  return (
+    <ModalShell titleId="discard-order-title" title="Discard this order?" onClose={onKeepEditing}>
+      <p className="mt-4 text-sm text-[#474554]">
+        You have unsaved order details. If you leave now, everything entered will be lost.
+      </p>
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button
+          ref={keepRef}
+          type="button"
+          onClick={onKeepEditing}
+          className="inline-flex items-center justify-center min-h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3427A8] transition-colors"
+        >
+          Keep editing
+        </button>
+        <button
+          type="button"
+          onClick={onDiscard}
+          className="inline-flex items-center justify-center min-h-10 px-6 rounded-full border border-[#F93C65] text-[#F93C65] text-sm font-semibold hover:bg-[#FFF0F0] transition-colors"
+        >
+          Discard order
+        </button>
+      </div>
+    </ModalShell>
+  );
+}
+
 /**
  * "Add new customer" popup (Docs/07_content-copy.md §/orders/new, Section 1).
  *
@@ -427,24 +619,6 @@ function AddCustomerDialog({
   useEffect(() => {
     nameRef.current?.focus();
   }, []);
-
-  // While the dialog is open: Escape dismisses it, and the page behind it cannot scroll. Both are
-  // ignored / kept while a save is in flight so the request cannot be abandoned half-way. The
-  // cleanup removes the listener and restores scrolling when the dialog closes.
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !saving) onCancel();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [saving, onCancel]);
 
   /**
    * Validates the fields and saves the customer via POST /api/customers.
@@ -495,136 +669,110 @@ function AddCustomerDialog({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="add-customer-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    <ModalShell
+      titleId="add-customer-title"
+      title="Add new customer"
+      onClose={onCancel}
+      closeDisabled={saving}
     >
-      {/* Backdrop: clicking outside the card dismisses the dialog (unless a save is running) */}
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-xs"
-        onClick={() => {
-          if (!saving) onCancel();
-        }}
-      />
+      <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
 
-      {/* max-h + overflow keep the card usable on short screens by scrolling inside itself */}
-      <div className="relative bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border border-[#C8C4D7]/50 p-6 z-10">
-        <div className="flex items-start justify-between pb-4 border-b border-[#F0F3FF]">
-          <h2 id="add-customer-title" className="text-lg font-bold text-[#121C2C]">
-            Add new customer
-          </h2>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={onCancel}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[#474554] hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
-            aria-label="Close dialog"
-          >
-            ✕
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="new-customer-name" className={LABEL_CLASS}>
+              Customer name
+            </label>
+            <input
+              ref={nameRef}
+              id="new-customer-name"
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="new-customer-type" className={LABEL_CLASS}>
+              Customer type
+            </label>
+            <select
+              id="new-customer-type"
+              value={type}
+              onChange={(event) => setType(event.target.value as "retail" | "wholesale")}
+              className={FIELD_CLASS}
+            >
+              <option value="retail">Retail</option>
+              <option value="wholesale">Wholesale</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="new-customer-phone" className={LABEL_CLASS}>
+              Phone
+            </label>
+            <input
+              id="new-customer-phone"
+              type="tel"
+              value={phone}
+              onChange={(event) => setPhone(event.target.value)}
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="new-customer-email" className={LABEL_CLASS}>
+              Email (optional)
+            </label>
+            <input
+              id="new-customer-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className={FIELD_CLASS}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="new-customer-address" className={LABEL_CLASS}>
+              Address
+            </label>
+            <input
+              id="new-customer-address"
+              type="text"
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              className={FIELD_CLASS}
+            />
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
+        {/* role="alert" announces a validation or server error the moment it appears */}
+        {error && (
+          <p role="alert" className="text-sm text-[#F93C65]">
+            {error}
+          </p>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="new-customer-name" className={LABEL_CLASS}>
-                Customer name
-              </label>
-              <input
-                ref={nameRef}
-                id="new-customer-name"
-                type="text"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                className={FIELD_CLASS}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="new-customer-type" className={LABEL_CLASS}>
-                Customer type
-              </label>
-              <select
-                id="new-customer-type"
-                value={type}
-                onChange={(event) => setType(event.target.value as "retail" | "wholesale")}
-                className={FIELD_CLASS}
-              >
-                <option value="retail">Retail</option>
-                <option value="wholesale">Wholesale</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="new-customer-phone" className={LABEL_CLASS}>
-                Phone
-              </label>
-              <input
-                id="new-customer-phone"
-                type="tel"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                className={FIELD_CLASS}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="new-customer-email" className={LABEL_CLASS}>
-                Email (optional)
-              </label>
-              <input
-                id="new-customer-email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                className={FIELD_CLASS}
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label htmlFor="new-customer-address" className={LABEL_CLASS}>
-                Address
-              </label>
-              <input
-                id="new-customer-address"
-                type="text"
-                value={address}
-                onChange={(event) => setAddress(event.target.value)}
-                className={FIELD_CLASS}
-              />
-            </div>
-          </div>
-
-          {/* role="alert" announces a validation or server error the moment it appears */}
-          {error && (
-            <p role="alert" className="text-sm text-[#F93C65]">
-              {error}
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center justify-center min-h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3427A8] transition-colors disabled:bg-[#E7E7F2] disabled:text-[#474554]/60 disabled:cursor-not-allowed"
-            >
-              {saving ? "Saving…" : "Save customer"}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={saving}
-              className="inline-flex items-center justify-center min-h-10 px-6 rounded-full border border-[#4132C7] text-[#4132C7] text-sm font-semibold hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex items-center justify-center min-h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3427A8] transition-colors disabled:bg-[#E7E7F2] disabled:text-[#474554]/60 disabled:cursor-not-allowed"
+          >
+            {saving ? "Saving…" : "Save customer"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={saving}
+            className="inline-flex items-center justify-center min-h-10 px-6 rounded-full border border-[#4132C7] text-[#4132C7] text-sm font-semibold hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </ModalShell>
   );
 }
 
@@ -687,6 +835,11 @@ export default function NewOrderPage() {
   const [lines, setLines] = useState<ItemLine[]>([]);
   const nextLineKey = useRef(1);
   const productSelectRefs = useRef(new Map<number, HTMLSelectElement>());
+
+  // Leave-the-page guard: whether the "Discard this order?" dialog is open, and the control that
+  // triggered it (focus returns there if the clerk chooses to keep editing).
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const leaveTriggerRef = useRef<HTMLElement | null>(null);
 
   // Whether the "Add new customer" popup is open, and the link that opened it (focus returns there).
   const [addingCustomer, setAddingCustomer] = useState(false);
@@ -795,6 +948,30 @@ export default function NewOrderPage() {
       cancelled = true;
     };
   }, [lookupToken]);
+
+  // True once the clerk has entered anything worth protecting. Search text counts, so does a
+  // prefilled city or address (choosing a customer fills them), and so does any item line.
+  const isDirty =
+    customer !== null ||
+    searchText.trim() !== "" ||
+    cityId !== "" ||
+    area !== "" ||
+    address.trim() !== "" ||
+    deliveryDate !== "" ||
+    lines.length > 0;
+
+  // While there is unsaved work, closing or reloading the tab shows the browser's own "leave
+  // site?" prompt. Not armed while an order is being placed, so a successful submit is never
+  // interrupted. (In-app navigation does not fire this event; see handleLeaveClick.)
+  useEffect(() => {
+    if (!isDirty || placing) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = ""; // required by some browsers to show the prompt
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [isDirty, placing]);
 
   // Debounce the search box: restart a 300ms timer on every keystroke so a request is only sent
   // once the user pauses. The cleanup cancels the previous timer, so only the last pause counts.
@@ -1028,6 +1205,35 @@ export default function NewOrderPage() {
   };
 
   /**
+   * Intercepts the back arrow and Cancel links. With nothing entered (or an order being placed) the
+   * link works normally; otherwise navigation is cancelled and the "Discard this order?" dialog
+   * opens, remembering the clicked link so focus can return to it.
+   *
+   * @param {React.MouseEvent<HTMLAnchorElement>} event - The click event on the link.
+   */
+  const handleLeaveClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isDirty || placing) return;
+    event.preventDefault();
+    leaveTriggerRef.current = event.currentTarget;
+    setLeaveDialogOpen(true);
+  };
+
+  /**
+   * Closes the discard dialog and returns focus to the link that opened it. Memoised so the
+   * dialog's Escape-key effect is not torn down and re-attached on every render.
+   */
+  const handleKeepEditing = useCallback(() => {
+    setLeaveDialogOpen(false);
+    requestAnimationFrame(() => leaveTriggerRef.current?.focus());
+  }, []);
+
+  /** Confirms the discard: closes the dialog and leaves for the orders list. */
+  const handleDiscard = () => {
+    setLeaveDialogOpen(false);
+    router.push("/orders");
+  };
+
+  /**
    * Handles a click on Place Order.
    *
    * 1. Ignores the click if an order is already being placed (double-click guard).
@@ -1147,6 +1353,7 @@ export default function NewOrderPage() {
         <div className="flex items-center gap-3 flex-wrap">
           <Link
             href="/orders"
+            onClick={handleLeaveClick}
             aria-label="Back to orders"
             className="w-8 h-8 rounded-full flex items-center justify-center bg-white border border-[#C8C4D7]/50 text-[#474554] hover:bg-[#F0F3FF] transition-colors shadow-xs"
           >
@@ -1182,11 +1389,13 @@ export default function NewOrderPage() {
           className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#121C2C] rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm"
         >
           <span>
-            {citiesError
-              ? "Couldn't load the destination cities. Please try again."
-              : productsError
-                ? "Couldn't load the product list. Please try again."
-                : "Couldn't load the delivery areas for this city. Please try again."}
+            {[citiesError, areasError, productsError].filter(Boolean).length > 1
+              ? "Couldn't load some of the form options. Please try again."
+              : citiesError
+                ? "Couldn't load the destination cities. Please try again."
+                : productsError
+                  ? "Couldn't load the product list. Please try again."
+                  : "Couldn't load the delivery areas for this city. Please try again."}
           </span>
           <button
             type="button"
@@ -1432,6 +1641,12 @@ export default function NewOrderPage() {
                     </option>
                   ))}
                 </select>
+                {/* Loaded, but this city has no coverage areas: say why the list is empty */}
+                {cityId !== "" && areaData?.cityId === cityId && areaOptions.length === 0 && (
+                  <p className="text-xs text-[#474554] mt-1.5">
+                    No delivery areas are set up for this city.
+                  </p>
+                )}
                 {submitAttempted && deliveryErrors.area && (
                   <p role="alert" className="text-xs font-medium text-[#F93C65] mt-1">
                     {deliveryErrors.area}
@@ -1634,6 +1849,9 @@ export default function NewOrderPage() {
             >
               + Add item
             </button>
+            {products !== null && products.length === 0 && (
+              <p className="text-xs text-[#474554] mt-3">No products are available to add.</p>
+            )}
             {submitAttempted && itemsError && (
               <p role="alert" className="text-xs font-medium text-[#F93C65] mt-3">
                 {itemsError}
@@ -1707,6 +1925,7 @@ export default function NewOrderPage() {
             </button>
             <Link
               href="/orders"
+              onClick={handleLeaveClick}
               className="inline-flex items-center justify-center min-h-12 px-6 rounded-full border border-[#4132C7] text-[#4132C7] text-sm font-semibold hover:bg-[#F0F3FF] transition-colors"
             >
               Cancel
@@ -1714,6 +1933,11 @@ export default function NewOrderPage() {
           </div>
         </aside>
       </div>
+
+      {/* "Discard this order?" confirmation, shown when leaving with unsaved details. */}
+      {leaveDialogOpen && (
+        <DiscardOrderDialog onKeepEditing={handleKeepEditing} onDiscard={handleDiscard} />
+      )}
 
       {/* "Add new customer" popup. Mounted only while open so its fields start empty every time. */}
       {addingCustomer && (
