@@ -1,21 +1,22 @@
-"use client";
+  "use client";
 
 /**
  * @file app/(dashboard)/orders/new/page.tsx
  * @description Place New Order page — the order-entry form used by clerks to place a customer
  * order on their behalf.
  *
- * Build status: STEP 4 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
+ * Build status: STEP 5 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
  * the city and coverage-area dropdowns, Step 3 the customer search, and Step 3b the
- * "+ Add new customer" popup, and Step 4 the expected-delivery-date field with its 7-day rule. The
- * item lines and submit are still static (Steps 5-6).
+ * "+ Add new customer" popup, Step 4 the expected-delivery-date field with its 7-day rule, and
+ * Step 5 the order item lines with live totals. Only submit is still to come (Step 6).
  *
  * Page structure:
  * - Header: back affordance, "New Order" heading and subheading.
- * - Left column (8/12): "Customer" card, then "Delivery Details" card.
- * - Right rail (4/12, sticky on desktop): "Order Items" card holding the empty state and the
- *   summary panel (total value, total space required), followed by the Place Order / Cancel
- *   actions. The rail collapses beneath the form on narrow screens (Docs/11_ui-rules.md §8).
+ * - Left column (8/12): "Customer", "Delivery Details" and "Order Items" cards (doc 07 Sections
+ *   1-3). Order Items is a real table, so it lives in the wide column.
+ * - Right rail (4/12, sticky on desktop): a "Summary" card (total value, total space required)
+ *   followed by the Place Order / Cancel actions. The rail collapses beneath the form on narrow
+ *   screens (Docs/11_ui-rules.md §8).
  *
  * Data flow:
  * - GET /api/cities?destination_only=true  destination city dropdown        (wired: Step 2)
@@ -23,7 +24,7 @@
  *   The delivery area is a dropdown, never free text, because place_order matches it against
  *   these exact names; the flat, de-duplicated, alphabetised area list is built client-side.
  * - GET /api/customers?search=…   customer type-ahead, 300ms debounce         (wired: Step 3)
- * - GET /api/products             line-item picker with unit price and space rate (Step 5)
+ * - GET /api/products             line-item picker with unit price and space rate (wired: Step 5)
  * - POST /api/orders              submit; a 400 shows the procedure's message inline, a 201
  *   redirects to /orders/[orderId]                                             (Step 6)
  *
@@ -62,6 +63,23 @@
  * the rules cannot drift apart. The date error appears once the field has been left; the other
  * field messages are held back until a submit attempt. The server (API route, then the database)
  * remains the authority: this page check is UX only.
+ *
+ * Order items (Step 5): "+ Add item" appends a blank line (focus moves to its product select);
+ * each line has a product, a whole-number quantity, and a read-only unit price and line total.
+ * - Layout: UI/new_order puts the items in the narrow right rail, but Docs/07 specifies a
+ *   four-column table (Product, Quantity, Unit Price, Line Total), which is cramped in a third of
+ *   the screen. Doc 07 is followed: the table is Section 3 in the wide left column and the rail
+ *   holds the summary. Recorded here, as with the other mockup deviations.
+ * - A product can appear on only one line (already-used products are left out of the other lines'
+ *   dropdowns): two lines for one product would confuse both the totals and the train booking.
+ * - Quantities are whole numbers of 1 or more. The database stores decimals, but the booking
+ *   allocator in place_order rounds down to whole units, so a fraction would leave a remainder.
+ * - Totals are a PREVIEW. The server recalculates from the product's price at save time and the
+ *   order detail page shows the server's numbers. To agree with the database, each line's space
+ *   and value are rounded to 2 decimals FIRST and then summed, because the database rounds its
+ *   generated line columns per line before the order totals are summed.
+ * - Lines that are incomplete (no product, or a bad quantity) count as zero in the totals; Step 6
+ *   refuses to submit while any exist.
  *
  * Access: /orders/new is limited to order_entry_clerk and system_administrator. That is enforced
  * by proxy.ts / lib/rbac.ts before this page renders, so no role check is repeated here.
@@ -118,6 +136,28 @@ interface CustomerOption {
 interface CustomerSearchResults {
   query: string;
   items: CustomerOption[];
+}
+
+/** One product from `GET /api/products`, reduced to what the item table needs. */
+interface ProductOption {
+  product_id: number;
+  sku: string;
+  product_name: string;
+  unit_of_measure: string;
+  unit_price: number;
+  space_rate: number;
+}
+
+/**
+ * One order line as the user is editing it. `productId` is a <select> value ("" = none chosen)
+ * and `quantity` stays TEXT so a half-typed or empty box is representable. `key` is a stable id
+ * (not the array position) so React keeps each row's inputs attached to the right line when a
+ * row above it is removed.
+ */
+interface ItemLine {
+  key: number;
+  productId: string;
+  quantity: string;
 }
 
 /** Most result rows shown at once; the API has no limit, so longer lists are truncated here. */
@@ -246,6 +286,43 @@ function validateDeliveryDetails(
     errors.date = "Delivery date must be at least 7 days from today.";
   }
   return errors;
+}
+
+/**
+ * Rounds to 2 decimal places. `Number.EPSILON` nudges values like 1.005 (stored as 1.00499...) up
+ * so they round the way MySQL's DECIMAL(…,2) columns do.
+ *
+ * @param {number} value - The number to round.
+ * @returns {number} The value rounded to 2 decimals.
+ */
+function roundTo2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Formats an amount in rupees the way the rest of the app does, e.g. "Rs. 144,000.00".
+ *
+ * @param {number} amount - The amount to format.
+ * @returns {string} The formatted string.
+ */
+function formatMoney(amount: number): string {
+  return `Rs. ${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/**
+ * Reads a quantity box as a whole number of 1 or more.
+ *
+ * @param {string} text - The raw text in the quantity input.
+ * @returns {number | null} The quantity, or null if the text is empty, fractional, zero,
+ *   negative or not a number.
+ */
+function parseQuantity(text: string): number | null {
+  if (text.trim() === "") return null;
+  const quantity = Number(text);
+  return Number.isInteger(quantity) && quantity >= 1 ? quantity : null;
 }
 
 /** Email shape check: something@something.something, no spaces. Deliberately simple. */
@@ -534,6 +611,15 @@ export default function NewOrderPage() {
   const [highlightIndex, setHighlightIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Products for the item lines (null = not loaded yet), the lines being edited, and a counter
+  // that hands each new line a stable key. The Map holds each line's product <select> so a freshly
+  // added line can be focused.
+  const [products, setProducts] = useState<ProductOption[] | null>(null);
+  const [productsError, setProductsError] = useState(false);
+  const [lines, setLines] = useState<ItemLine[]>([]);
+  const nextLineKey = useRef(1);
+  const productSelectRefs = useRef(new Map<number, HTMLSelectElement>());
+
   // Whether the "Add new customer" popup is open, and the link that opened it (focus returns there).
   const [addingCustomer, setAddingCustomer] = useState(false);
   const addCustomerLinkRef = useRef<HTMLButtonElement>(null);
@@ -609,6 +695,39 @@ export default function NewOrderPage() {
     };
   }, [cityId, lookupToken]);
 
+  // Load the product list once (and again on Retry), for the item lines.
+  useEffect(() => {
+    let cancelled = false; // set by cleanup so an unmounted page ignores a late response
+
+    const loadProducts = async () => {
+      try {
+        const response = await fetch("/api/products", { cache: "no-store" });
+        if (!response.ok) throw new Error(`Products request failed (${response.status})`);
+        const data = await response.json();
+        if (cancelled) return;
+        setProducts(
+          (data.items ?? []).map((p: ProductOption) => ({
+            product_id: p.product_id,
+            sku: p.sku,
+            product_name: p.product_name,
+            unit_of_measure: p.unit_of_measure,
+            unit_price: Number(p.unit_price),
+            space_rate: Number(p.space_rate),
+          }))
+        );
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load products:", err);
+        setProductsError(true);
+      }
+    };
+
+    loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, [lookupToken]);
+
   // Debounce the search box: restart a 300ms timer on every keystroke so a request is only sent
   // once the user pauses. The cleanup cancels the previous timer, so only the last pause counts.
   useEffect(() => {
@@ -672,6 +791,26 @@ export default function NewOrderPage() {
   const deliveryErrors = validateDeliveryDetails(cityId, area, address, deliveryDate);
   const showDateError = dateTouched && deliveryErrors.date !== undefined;
   const minDeliveryDate = getMinDeliveryDate();
+
+  // Derived item-line figures. Each line's value and space are rounded to 2 decimals before being
+  // summed, matching how the database builds its per-line generated columns and order totals.
+  const productById = new Map((products ?? []).map((product) => [product.product_id, product]));
+  const usedProductIds = new Set(lines.map((line) => line.productId).filter(Boolean));
+  const lineViews = lines.map((line) => {
+    const product = productById.get(Number(line.productId));
+    const quantity = parseQuantity(line.quantity);
+    const complete = product !== undefined && quantity !== null;
+    return {
+      line,
+      product,
+      // A non-empty box that is not a valid whole number gets an inline hint while typing.
+      quantityInvalid: line.quantity.trim() !== "" && quantity === null,
+      lineValue: complete ? roundTo2(quantity * product.unit_price) : 0,
+      lineSpace: complete ? roundTo2(quantity * product.space_rate) : 0,
+    };
+  });
+  const totalValue = roundTo2(lineViews.reduce((sum, view) => sum + view.lineValue, 0));
+  const totalSpace = roundTo2(lineViews.reduce((sum, view) => sum + view.lineSpace, 0));
 
   // Derived, not stored: the areas are loading when a city is chosen but the loaded areas do
   // not yet belong to it, and nothing has failed.
@@ -790,12 +929,43 @@ export default function NewOrderPage() {
   };
 
   /**
+   * Appends a blank item line and moves focus to its product select, so the clerk can keep typing
+   * without reaching for the mouse. Focus waits one frame because the row has not rendered yet.
+   */
+  const handleAddLine = () => {
+    const key = nextLineKey.current++;
+    setLines([...lines, { key, productId: "", quantity: "" }]);
+    requestAnimationFrame(() => productSelectRefs.current.get(key)?.focus());
+  };
+
+  /**
+   * Edits one field of one line. State is rebuilt rather than mutated: `map` returns a new array
+   * in which only the matching line is replaced by a copy carrying the change.
+   *
+   * @param {number} key - The stable key of the line to change.
+   * @param {Partial<Omit<ItemLine, "key">>} changes - The field(s) to overwrite.
+   */
+  const handleLineChange = (key: number, changes: Partial<Omit<ItemLine, "key">>) => {
+    setLines(lines.map((line) => (line.key === key ? { ...line, ...changes } : line)));
+  };
+
+  /**
+   * Removes one line, keeping every other line (and what was typed into it) untouched.
+   *
+   * @param {number} key - The stable key of the line to remove.
+   */
+  const handleRemoveLine = (key: number) => {
+    setLines(lines.filter((line) => line.key !== key));
+  };
+
+  /**
    * Retries the lookups after a failure by clearing the error flags and bumping the token, which
-   * re-runs the city and area loaders.
+   * re-runs the city, area and product loaders.
    */
   const handleRetryLookups = () => {
     setCitiesError(false);
     setAreasError(false);
+    setProductsError(false);
     setLookupToken((token) => token + 1);
   };
 
@@ -835,7 +1005,7 @@ export default function NewOrderPage() {
 
       {/* Lookup failure banner: shown when the city or area list could not be loaded. The copy is
           not in Docs/07_content-copy.md, so it is a plain, neutral message with a retry action. */}
-      {(citiesError || areasError) && (
+      {(citiesError || areasError || productsError) && (
         <div
           role="alert"
           className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#121C2C] rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-sm"
@@ -843,7 +1013,9 @@ export default function NewOrderPage() {
           <span>
             {citiesError
               ? "Couldn't load the destination cities. Please try again."
-              : "Couldn't load the delivery areas for this city. Please try again."}
+              : productsError
+                ? "Couldn't load the product list. Please try again."
+                : "Couldn't load the delivery areas for this city. Please try again."}
           </span>
           <button
             type="button"
@@ -1134,11 +1306,8 @@ export default function NewOrderPage() {
               </div>
             </div>
           </SectionCard>
-        </div>
 
-        {/* RIGHT RAIL — order items and summary. Sticky on desktop so the totals stay in view
-            while a long form scrolls. */}
-        <aside className="lg:col-span-4 lg:sticky lg:top-6 space-y-4">
+          {/* Section 3 — Order Items: a table of lines (doc 07 columns), with "+ Add item". */}
           <SectionCard
             title="Order Items"
             icon={
@@ -1157,20 +1326,152 @@ export default function NewOrderPage() {
               </svg>
             }
           >
-            {/* Empty state (doc 07). Step 5 replaces this with the item table and "+ Add item". */}
-            <p className="text-sm text-[#474554] text-center py-6">
-              No items added yet. Add at least one product to continue.
-            </p>
+            {lines.length === 0 ? (
+              /* Empty state (doc 07) */
+              <p className="text-sm text-[#474554] text-center py-6">
+                No items added yet. Add at least one product to continue.
+              </p>
+            ) : (
+              /* overflow-x-auto lets the four-column table scroll sideways on narrow screens
+                 instead of squashing (Docs/11_ui-rules.md §6) */
+              <div className="overflow-x-auto -mx-2">
+                <table className="w-full min-w-[36rem] text-sm">
+                  <thead>
+                    <tr className="bg-[#F9F9FF] border-b border-[#C8C4D7]/50 text-[11px] font-semibold uppercase tracking-wider text-[#474554]">
+                      <th className="px-2 py-3 text-left">Product</th>
+                      <th className="px-2 py-3 text-left">Quantity</th>
+                      <th className="px-2 py-3 text-right">Unit Price</th>
+                      <th className="px-2 py-3 text-right">Line Total</th>
+                      <th className="px-2 py-3">
+                        <span className="sr-only">Remove</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lineViews.map(({ line, product, quantityInvalid, lineValue }, index) => (
+                      <tr key={line.key} className="border-b border-[#C8C4D7]/30 align-top">
+                        <td className="px-2 py-3 min-w-[14rem]">
+                          <select
+                            ref={(element) => {
+                              // Callback ref: keep the Map in step with the row's lifetime
+                              if (element) productSelectRefs.current.set(line.key, element);
+                              else productSelectRefs.current.delete(line.key);
+                            }}
+                            aria-label={`Product for item ${index + 1}`}
+                            value={line.productId}
+                            onChange={(event) =>
+                              handleLineChange(line.key, { productId: event.target.value })
+                            }
+                            disabled={products === null}
+                            className={FIELD_CLASS}
+                          >
+                            <option value="" disabled>
+                              {products === null && !productsError ? "Loading products…" : "Select product"}
+                            </option>
+                            {(products ?? [])
+                              // Hide products used on OTHER lines; keep this line's own choice.
+                              .filter(
+                                (option) =>
+                                  String(option.product_id) === line.productId ||
+                                  !usedProductIds.has(String(option.product_id))
+                              )
+                              .map((option) => (
+                                <option key={option.product_id} value={String(option.product_id)}>
+                                  {option.product_name} ({option.sku})
+                                </option>
+                              ))}
+                          </select>
+                        </td>
+                        <td className="px-2 py-3 w-32">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step={1}
+                            aria-label={`Quantity for item ${index + 1}`}
+                            aria-invalid={quantityInvalid}
+                            value={line.quantity}
+                            onChange={(event) =>
+                              handleLineChange(line.key, { quantity: event.target.value })
+                            }
+                            className={
+                              quantityInvalid
+                                ? FIELD_CLASS.replace("border-[#C8C4D7]", "border-[#F93C65]")
+                                : FIELD_CLASS
+                            }
+                          />
+                          {quantityInvalid && (
+                            <p role="alert" className="text-xs font-medium text-[#F93C65] mt-1">
+                              Enter a whole number of 1 or more.
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-2 py-3 text-right text-[#474554] whitespace-nowrap">
+                          {product ? formatMoney(product.unit_price) : "—"}
+                        </td>
+                        <td className="px-2 py-3 text-right font-semibold text-[#121C2C] whitespace-nowrap">
+                          {product ? formatMoney(lineValue) : "—"}
+                        </td>
+                        <td className="px-2 py-3 text-right">
+                          <button
+                            type="button"
+                            aria-label={`Remove item ${index + 1}`}
+                            onClick={() => handleRemoveLine(line.key)}
+                            className="text-xs font-semibold text-[#F93C65] hover:underline whitespace-nowrap"
+                          >
+                            × Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-            {/* Summary panel: totals stay at zero until items exist (Step 5) */}
-            <dl className="border-t border-[#C8C4D7]/50 pt-4 mt-2 space-y-2 text-sm">
+            <button
+              type="button"
+              onClick={handleAddLine}
+              // No point adding a line before products load, or once every product is on a line.
+              disabled={products === null || lines.length >= products.length}
+              className="mt-4 inline-flex items-center justify-center min-h-10 px-5 rounded-full border border-[#4132C7] text-[#4132C7] text-sm font-semibold hover:bg-[#F0F3FF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              + Add item
+            </button>
+          </SectionCard>
+        </div>
+
+        {/* RIGHT RAIL — order summary and actions. Sticky on desktop so the totals stay in view
+            while a long form scrolls. */}
+        <aside className="lg:col-span-4 lg:sticky lg:top-6 space-y-4">
+          <SectionCard
+            title="Summary"
+            icon={
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                />
+              </svg>
+            }
+          >
+            {/* Live totals. They preview what the server will calculate; the server's figures are
+                the ones stored and shown on the order detail page. */}
+            <dl className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <dt className="text-[#474554]">Total value</dt>
-                <dd className="font-semibold text-[#121C2C]">Rs. 0.00</dd>
+                <dd className="font-semibold text-[#121C2C]">{formatMoney(totalValue)}</dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-[#474554]">Total space required</dt>
-                <dd className="font-semibold text-[#121C2C]">0.00 units</dd>
+                <dd className="font-semibold text-[#121C2C]">{totalSpace.toFixed(2)} units</dd>
               </div>
             </dl>
           </SectionCard>
