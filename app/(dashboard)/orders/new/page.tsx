@@ -842,8 +842,11 @@ export default function NewOrderPage() {
   const leaveTriggerRef = useRef<HTMLElement | null>(null);
 
   // Whether the "Add new customer" popup is open, and the link that opened it (focus returns there).
+  // The link is remembered imperatively at click time rather than through a JSX `ref` prop: read
+  // back after the popup closes, the JSX ref proved unreliable (browser testing showed it empty
+  // when the focus-restore frame ran), whereas capturing `event.currentTarget` is deterministic.
   const [addingCustomer, setAddingCustomer] = useState(false);
-  const addCustomerLinkRef = useRef<HTMLButtonElement>(null);
+  const addCustomerLinkRef = useRef<HTMLElement | null>(null);
 
   // Load the destination cities once (and again on Retry).
   useEffect(() => {
@@ -1477,9 +1480,11 @@ export default function NewOrderPage() {
                     Customer
                   </label>
                   <button
-                    ref={addCustomerLinkRef}
                     type="button"
-                    onClick={() => setAddingCustomer(true)}
+                    onClick={(event) => {
+                      addCustomerLinkRef.current = event.currentTarget;
+                      setAddingCustomer(true);
+                    }}
                     className="text-xs font-semibold text-[#4132C7] hover:underline"
                   >
                     + Add new customer
