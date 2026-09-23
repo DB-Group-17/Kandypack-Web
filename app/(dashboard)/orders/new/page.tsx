@@ -5,9 +5,10 @@
  * @description Place New Order page — the order-entry form used by clerks to place a customer
  * order on their behalf.
  *
- * Build status: STEP 3b of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
+ * Build status: STEP 4 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
  * the city and coverage-area dropdowns, Step 3 the customer search, and Step 3b the
- * "+ Add new customer" popup. The date, item lines and submit are still static (Steps 4-6).
+ * "+ Add new customer" popup, and Step 4 the expected-delivery-date field with its 7-day rule. The
+ * item lines and submit are still static (Steps 5-6).
  *
  * Page structure:
  * - Header: back affordance, "New Order" heading and subheading.
@@ -52,6 +53,15 @@
  * On success the new customer is selected exactly as if it had been found by search. Doc 07's form
  * has no city field, so the customer is registered under the destination city already chosen on
  * this page, or left without a city if none is.
+ *
+ * Delivery date (Step 4): the date starts EMPTY on purpose, so a delivery date is always a
+ * conscious choice rather than an easily-submitted default. The picker greys out every day before
+ * "today + 7" (`min`), but `min` only guides the picker and a date can still be typed by hand, so
+ * the same rule is also checked in code. That check lives in `validateDeliveryDetails`, one pure
+ * function for the whole Delivery Details section, which Step 6 calls again before submitting so
+ * the rules cannot drift apart. The date error appears once the field has been left; the other
+ * field messages are held back until a submit attempt. The server (API route, then the database)
+ * remains the authority: this page check is UX only.
  *
  * Access: /orders/new is limited to order_entry_clerk and system_administrator. That is enforced
  * by proxy.ts / lib/rbac.ts before this page renders, so no role check is repeated here.
@@ -162,6 +172,80 @@ function SectionCard({
       {children}
     </section>
   );
+}
+
+/** Minimum lead time between placing an order and its expected delivery date (business rule). */
+const MIN_LEAD_DAYS = 7;
+
+/**
+ * Formats a Date as `YYYY-MM-DD` using the LOCAL calendar date.
+ *
+ * Deliberately not `toISOString()`, which converts to UTC first: for a clerk in Sri Lanka
+ * (UTC+5:30) working before 05:30 that would return yesterday's date and shift the 7-day limit
+ * by a day. The API route also counts whole local calendar days, so this matches it.
+ *
+ * @param {Date} date - The moment to format.
+ * @returns {string} The local date, e.g. "2026-09-30" (the format `<input type="date">` uses).
+ */
+function toLocalDateString(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Returns the earliest expected delivery date allowed right now: today plus `MIN_LEAD_DAYS`.
+ *
+ * Called during render rather than once at page load so that a page left open overnight does not
+ * keep offering a date that has since become too soon. `setDate` handles month roll-over.
+ *
+ * @returns {string} The earliest allowed date as `YYYY-MM-DD`.
+ */
+function getMinDeliveryDate(): string {
+  const earliest = new Date();
+  earliest.setDate(earliest.getDate() + MIN_LEAD_DAYS);
+  return toLocalDateString(earliest);
+}
+
+/** Field messages for the Delivery Details section; a missing key means that field is valid. */
+interface DeliveryDetailsErrors {
+  city?: string;
+  area?: string;
+  address?: string;
+  date?: string;
+}
+
+/**
+ * Checks the Delivery Details fields and returns a message for each one that is invalid.
+ *
+ * Pure (no state, no side effects) so the page can use it for live feedback now and Step 6 can
+ * call it again on submit. The date message is verbatim from Docs/07_content-copy.md; the other
+ * three are not in doc 07 and are deliberately short and plain.
+ *
+ * Dates are compared as `YYYY-MM-DD` strings, which sort in calendar order, so a plain string
+ * comparison against the minimum is correct and needs no time-zone arithmetic. Exactly
+ * "today + 7" is accepted, matching the server, which rejects only fewer than 7 days.
+ *
+ * @param {string} cityId - Chosen destination city ("" if none).
+ * @param {string} area - Chosen coverage area ("" if none).
+ * @param {string} address - Delivery address text.
+ * @param {string} date - Chosen expected delivery date as `YYYY-MM-DD` ("" if none).
+ * @returns {DeliveryDetailsErrors} Messages for the invalid fields only.
+ */
+function validateDeliveryDetails(
+  cityId: string,
+  area: string,
+  address: string,
+  date: string
+): DeliveryDetailsErrors {
+  const errors: DeliveryDetailsErrors = {};
+  if (!cityId) errors.city = "Select a destination city.";
+  if (!area) errors.area = "Select a delivery area.";
+  if (!address.trim()) errors.address = "Enter the delivery address.";
+  if (!date || date < getMinDeliveryDate()) {
+    errors.date = "Delivery date must be at least 7 days from today.";
+  }
+  return errors;
 }
 
 /** Email shape check: something@something.something, no spaces. Deliberately simple. */
@@ -435,6 +519,11 @@ export default function NewOrderPage() {
   // Delivery address text. Controlled (rather than static) so choosing a customer can prefill it.
   const [address, setAddress] = useState("");
 
+  // Expected delivery date as YYYY-MM-DD. Starts empty on purpose (see the file header), and the
+  // error is only shown once the field has been left, so it does not shout at an untouched form.
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [dateTouched, setDateTouched] = useState(false);
+
   // Customer search: the chosen customer, the raw text, the debounced text, and the results.
   const [customer, setCustomer] = useState<CustomerOption | null>(null);
   const [searchText, setSearchText] = useState("");
@@ -577,6 +666,12 @@ export default function NewOrderPage() {
   const showList = listOpen && trimmedSearch !== "";
   // Keep the highlight inside the list even if the list shrinks under it.
   const activeIndex = Math.min(highlightIndex, Math.max(visibleMatches.length - 1, 0));
+
+  // Derived, not stored, so the message vanishes the moment the date becomes valid. The other
+  // messages in `deliveryErrors` are used by Step 6's submit check.
+  const deliveryErrors = validateDeliveryDetails(cityId, area, address, deliveryDate);
+  const showDateError = dateTouched && deliveryErrors.date !== undefined;
+  const minDeliveryDate = getMinDeliveryDate();
 
   // Derived, not stored: the areas are loading when a city is chosen but the loaded areas do
   // not yet belong to it, and nothing has failed.
@@ -1002,11 +1097,22 @@ export default function NewOrderPage() {
                 <label htmlFor="expected-delivery-date" className={LABEL_CLASS}>
                   Expected delivery date
                 </label>
+                {/* `min` greys out too-early days in the picker; it does not stop a typed date, which
+                    is why validateDeliveryDetails checks the value as well. */}
                 <input
                   id="expected-delivery-date"
                   type="date"
-                  aria-describedby="expected-delivery-date-help"
-                  className={FIELD_CLASS}
+                  min={minDeliveryDate}
+                  value={deliveryDate}
+                  onChange={(event) => setDeliveryDate(event.target.value)}
+                  onBlur={() => setDateTouched(true)}
+                  aria-invalid={showDateError}
+                  aria-describedby={
+                    showDateError
+                      ? "expected-delivery-date-help expected-delivery-date-error"
+                      : "expected-delivery-date-help"
+                  }
+                  className={showDateError ? FIELD_CLASS.replace("border-[#C8C4D7]", "border-[#F93C65]") : FIELD_CLASS}
                 />
                 {/* Helper text sits directly below its field (Docs/11_ui-rules.md §4) */}
                 <p
@@ -1015,6 +1121,16 @@ export default function NewOrderPage() {
                 >
                   Must be at least 7 days from today
                 </p>
+                {/* role="alert" announces the message to screen readers when it appears */}
+                {showDateError && (
+                  <p
+                    id="expected-delivery-date-error"
+                    role="alert"
+                    className="text-xs font-medium text-[#F93C65] mt-1"
+                  >
+                    {deliveryErrors.date}
+                  </p>
+                )}
               </div>
             </div>
           </SectionCard>
