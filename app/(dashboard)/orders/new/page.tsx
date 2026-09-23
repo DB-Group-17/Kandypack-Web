@@ -5,9 +5,9 @@
  * @description Place New Order page — the order-entry form used by clerks to place a customer
  * order on their behalf.
  *
- * Build status: STEP 2 of 8. The layout and Docs/07_content-copy.md copy come from Step 1; Step 2
- * loads the destination cities and the coverage areas of the chosen city into the two dropdowns.
- * The customer search, address, date, item lines and submit are still static (Steps 3-6).
+ * Build status: STEP 3 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2 the
+ * city and coverage-area dropdowns, and Step 3 the customer search. The date, item lines and
+ * submit are still static (Steps 4-6), and "+ Add new customer" is a separate later step.
  *
  * Page structure:
  * - Header: back affordance, "New Order" heading and subheading.
@@ -21,7 +21,7 @@
  * - GET /api/routes?city_id=…     coverage areas for the chosen city         (wired: Step 2).
  *   The delivery area is a dropdown, never free text, because place_order matches it against
  *   these exact names; the flat, de-duplicated, alphabetised area list is built client-side.
- * - GET /api/customers?search=…   customer type-ahead, 300ms debounce         (Step 3)
+ * - GET /api/customers?search=…   customer type-ahead, 300ms debounce         (wired: Step 3)
  * - GET /api/products             line-item picker with unit price and space rate (Step 5)
  * - POST /api/orders              submit; a 400 shows the procedure's message inline, a 201
  *   redirects to /orders/[orderId]                                             (Step 6)
@@ -31,6 +31,16 @@
  * written inline in its effect and guarded by a `cancelled` flag so a slow response for an old
  * city can never overwrite the areas of the city the user has since chosen. Retry bumps a
  * counter that both effects depend on, so the fetch logic exists in exactly one place.
+ *
+ * Customer search (Step 3): typing waits 300ms after the last keystroke, then searches by name,
+ * phone or email. A result list drops down under the box and is fully keyboard-operable
+ * (Arrow keys, Enter, Escape) with combobox/listbox ARIA roles. Picking a customer replaces the
+ * box with a summary chip (with a Change button) and PREFILLS the destination city and delivery
+ * address from the customer's record. The prefill is a convenience only: both stay editable, and
+ * the delivery area is deliberately left blank because the customer record has no area field and
+ * parsing it out of address text would be guesswork. As in Step 2, "searching" and "no results"
+ * are derived by comparing the loaded results' query with the current text, so a stale result
+ * for older text can never flash on screen and nothing is set synchronously in an effect.
  *
  * Access: /orders/new is limited to order_entry_clerk and system_administrator. That is enforced
  * by proxy.ts / lib/rbac.ts before this page renders, so no role check is repeated here.
@@ -46,7 +56,7 @@
  * Owner: Member 1 (Dineth)
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 /** One destination city from `GET /api/cities`, reduced to what the dropdown needs. */
@@ -71,6 +81,29 @@ interface AreasForCity {
   cityId: string;
   names: string[];
 }
+
+/** One customer from `GET /api/customers`, reduced to what the search and chip display. */
+interface CustomerOption {
+  customer_id: number;
+  customer_name: string;
+  customer_type: "retail" | "wholesale";
+  phone: string;
+  registered_city_id: number;
+  registered_city_name: string;
+  address_line: string;
+}
+
+/** Search results tagged with the exact query they answer, so stale results are recognisable. */
+interface CustomerSearchResults {
+  query: string;
+  items: CustomerOption[];
+}
+
+/** Most result rows shown at once; the API has no limit, so longer lists are truncated here. */
+const MAX_VISIBLE_RESULTS = 8;
+
+/** How long typing must pause before a search request is sent. */
+const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * Shared class list for text inputs, selects and date fields, following Docs/11_ui-rules.md §4:
@@ -145,6 +178,19 @@ export default function NewOrderPage() {
   // Bumped by Retry; both loader effects depend on it so a retry re-runs whichever one failed.
   const [lookupToken, setLookupToken] = useState(0);
 
+  // Delivery address text. Controlled (rather than static) so choosing a customer can prefill it.
+  const [address, setAddress] = useState("");
+
+  // Customer search: the chosen customer, the raw text, the debounced text, and the results.
+  const [customer, setCustomer] = useState<CustomerOption | null>(null);
+  const [searchText, setSearchText] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<CustomerSearchResults | null>(null);
+  const [searchErrorFor, setSearchErrorFor] = useState<string | null>(null); // query that failed
+  const [listOpen, setListOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Load the destination cities once (and again on Retry).
   useEffect(() => {
     let cancelled = false; // set by cleanup so an unmounted page ignores a late response
@@ -216,10 +262,132 @@ export default function NewOrderPage() {
     };
   }, [cityId, lookupToken]);
 
+  // Debounce the search box: restart a 300ms timer on every keystroke so a request is only sent
+  // once the user pauses. The cleanup cancels the previous timer, so only the last pause counts.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchText.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [searchText]);
+
+  // Search customers whenever the debounced text changes. Results are tagged with their query.
+  useEffect(() => {
+    if (!debouncedSearch) return; // empty box: nothing to search for
+    let cancelled = false; // a slow answer for older text must not overwrite newer results
+
+    const searchCustomers = async () => {
+      try {
+        const response = await fetch(
+          `/api/customers?search=${encodeURIComponent(debouncedSearch)}`,
+          { cache: "no-store" }
+        );
+        if (!response.ok) throw new Error(`Customer search failed (${response.status})`);
+        const data = await response.json();
+        if (cancelled) return;
+        setSearchResults({
+          query: debouncedSearch,
+          items: (data.items ?? []).map((c: CustomerOption) => ({
+            customer_id: c.customer_id,
+            customer_name: c.customer_name,
+            customer_type: c.customer_type,
+            phone: c.phone,
+            registered_city_id: c.registered_city_id,
+            registered_city_name: c.registered_city_name,
+            address_line: c.address_line,
+          })),
+        });
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to search customers:", err);
+        setSearchErrorFor(debouncedSearch);
+      }
+    };
+
+    searchCustomers();
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedSearch]);
+
+  // Derived search state. Results only count once they answer exactly what is in the box now,
+  // which is what stops stale results flashing while the user is still typing.
+  const trimmedSearch = searchText.trim();
+  const resultsAreCurrent = searchResults?.query === trimmedSearch;
+  const searchFailed = searchErrorFor === trimmedSearch && trimmedSearch !== "";
+  const searching = trimmedSearch !== "" && !resultsAreCurrent && !searchFailed;
+  const allMatches = resultsAreCurrent ? searchResults.items : [];
+  const visibleMatches = allMatches.slice(0, MAX_VISIBLE_RESULTS);
+  const showList = listOpen && trimmedSearch !== "";
+  // Keep the highlight inside the list even if the list shrinks under it.
+  const activeIndex = Math.min(highlightIndex, Math.max(visibleMatches.length - 1, 0));
+
   // Derived, not stored: the areas are loading when a city is chosen but the loaded areas do
   // not yet belong to it, and nothing has failed.
   const areasLoading = cityId !== "" && areaData?.cityId !== cityId && !areasError;
   const areaOptions = areaData?.cityId === cityId ? areaData.names : [];
+
+  /**
+   * Handles typing in the customer search box: stores the text, opens the result list and puts the
+   * highlight back on the first row. Done here, not in an effect, for the same lint-rule reason
+   * as the city reset below.
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} event - The input change event.
+   */
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(event.target.value);
+    setListOpen(true);
+    setHighlightIndex(0);
+  };
+
+  /**
+   * Chooses a customer from the results.
+   *
+   * Prefills the destination city and delivery address from the customer's record. The area is
+   * cleared because the record has no area field, so it must be picked from the dropdown. The
+   * prefill overwrites those two fields on purpose: a customer is normally picked first, and
+   * both fields remain editable afterwards.
+   *
+   * @param {CustomerOption} chosen - The customer the user picked.
+   */
+  const handleSelectCustomer = (chosen: CustomerOption) => {
+    setCustomer(chosen);
+    setSearchText("");
+    setListOpen(false);
+    setCityId(String(chosen.registered_city_id));
+    setArea("");
+    setAreasError(false);
+    setAddress(chosen.address_line);
+  };
+
+  /**
+   * Clears the chosen customer so a different one can be searched for, then returns keyboard
+   * focus to the search box once it has rendered. The prefilled city and address are kept.
+   */
+  const handleChangeCustomer = () => {
+    setCustomer(null);
+    requestAnimationFrame(() => searchInputRef.current?.focus());
+  };
+
+  /**
+   * Keyboard support for the search combobox: ArrowDown/ArrowUp move the highlight (ArrowDown
+   * also opens a closed list), Enter chooses the highlighted customer, Escape closes the list.
+   *
+   * @param {React.KeyboardEvent<HTMLInputElement>} event - The keydown event.
+   */
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault(); // stop the caret jumping to the end of the text
+      setListOpen(true);
+      setHighlightIndex(Math.min(activeIndex + 1, Math.max(visibleMatches.length - 1, 0)));
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setHighlightIndex(Math.max(activeIndex - 1, 0));
+    } else if (event.key === "Enter" && showList && visibleMatches[activeIndex]) {
+      event.preventDefault(); // do not submit or reload; just choose the row
+      handleSelectCustomer(visibleMatches[activeIndex]);
+    } else if (event.key === "Escape") {
+      setListOpen(false);
+    }
+  };
 
   /**
    * Handles a change of the destination city.
@@ -307,7 +475,7 @@ export default function NewOrderPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN — form sections */}
         <div className="lg:col-span-8 space-y-6">
-          {/* Section 1 — Customer. Step 3 turns this into a type-ahead search. */}
+          {/* Section 1 — Customer: a type-ahead search, or a summary chip once one is chosen. */}
           <SectionCard
             title="Customer"
             icon={
@@ -326,15 +494,124 @@ export default function NewOrderPage() {
               </svg>
             }
           >
-            <label htmlFor="customer-search" className={LABEL_CLASS}>
-              Customer
-            </label>
-            <input
-              id="customer-search"
-              type="text"
-              placeholder="Search by name or phone…"
-              className={FIELD_CLASS}
-            />
+            {customer ? (
+              /* Chosen customer: who the order is for, at a glance, with a way to change it. */
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#C8C4D7]/60 bg-[#F9F9FF] px-4 py-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-[#121C2C]">
+                      {customer.customer_name}
+                    </span>
+                    {/* Type is shown as text as well as colour, never colour alone */}
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                        customer.customer_type === "wholesale"
+                          ? "bg-[#EBE9FE] text-[#5B3CDD]"
+                          : "bg-[#E0F2FF] text-[#0047CC]"
+                      }`}
+                    >
+                      {customer.customer_type === "wholesale" ? "Wholesale" : "Retail"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#474554] mt-0.5">
+                    {customer.phone} • {customer.registered_city_name}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleChangeCustomer}
+                  className="px-4 py-1.5 rounded-full border border-[#4132C7] text-[#4132C7] text-xs font-semibold hover:bg-[#F0F3FF] transition-colors"
+                >
+                  Change
+                </button>
+              </div>
+            ) : (
+              <div
+                className="relative"
+                onBlur={(event) => {
+                  // Close the list when focus leaves the whole widget (not when it merely moves
+                  // between the input and a result row inside it).
+                  if (!event.currentTarget.contains(event.relatedTarget)) setListOpen(false);
+                }}
+              >
+                <label htmlFor="customer-search" className={LABEL_CLASS}>
+                  Customer
+                </label>
+                <input
+                  ref={searchInputRef}
+                  id="customer-search"
+                  type="text"
+                  role="combobox"
+                  aria-expanded={showList}
+                  aria-controls="customer-listbox"
+                  aria-autocomplete="list"
+                  aria-activedescendant={
+                    showList && visibleMatches[activeIndex]
+                      ? `customer-option-${visibleMatches[activeIndex].customer_id}`
+                      : undefined
+                  }
+                  autoComplete="off"
+                  value={searchText}
+                  onChange={handleSearchChange}
+                  onFocus={() => setListOpen(true)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="Search by name or phone…"
+                  className={FIELD_CLASS}
+                />
+
+                {showList && (
+                  <div className="absolute z-20 left-0 right-0 mt-1 bg-white rounded-xl border border-[#C8C4D7]/60 shadow-lg overflow-hidden">
+                    {visibleMatches.length > 0 ? (
+                      <ul id="customer-listbox" role="listbox" aria-label="Matching customers">
+                        {visibleMatches.map((match, index) => (
+                          <li
+                            key={match.customer_id}
+                            id={`customer-option-${match.customer_id}`}
+                            role="option"
+                            aria-selected={index === activeIndex}
+                            // mousedown would blur the input before click registers, closing the
+                            // list first; preventing it lets the click land.
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handleSelectCustomer(match)}
+                            onMouseEnter={() => setHighlightIndex(index)}
+                            className={`px-4 py-3 cursor-pointer flex items-center justify-between gap-3 ${
+                              index === activeIndex ? "bg-[#F0F3FF]" : "bg-white"
+                            }`}
+                          >
+                            <span className="min-w-0">
+                              <span className="block text-sm font-medium text-[#121C2C] truncate">
+                                {match.customer_name}
+                              </span>
+                              <span className="block text-xs text-[#474554]">
+                                {match.phone} • {match.registered_city_name}
+                              </span>
+                            </span>
+                            <span className="text-[11px] font-semibold text-[#474554] shrink-0">
+                              {match.customer_type === "wholesale" ? "Wholesale" : "Retail"}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      /* role="status" announces searching / empty / error to screen readers */
+                      <p role="status" className="px-4 py-3 text-sm text-[#474554]">
+                        {searchFailed
+                          ? "Couldn't search customers. Please try again."
+                          : searching
+                            ? "Searching…"
+                            : "No customers found."}
+                      </p>
+                    )}
+                    {allMatches.length > MAX_VISIBLE_RESULTS && (
+                      <p className="px-4 py-2 text-xs text-[#474554] border-t border-[#C8C4D7]/40">
+                        Showing the first {MAX_VISIBLE_RESULTS} of {allMatches.length}. Keep typing
+                        to narrow the list.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </SectionCard>
 
           {/* Section 2 — Delivery Details. Step 4 wires the city → area dependency and the
@@ -413,6 +690,8 @@ export default function NewOrderPage() {
                 <input
                   id="delivery-address"
                   type="text"
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
                   placeholder="Full delivery address"
                   className={FIELD_CLASS}
                 />
