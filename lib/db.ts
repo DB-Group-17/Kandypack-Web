@@ -178,7 +178,13 @@ export async function withTransaction<T>(
  * Executes a database operation with MySQL session variables set for user context.
  * Sets `@current_user_id` and `@current_app_role` on the connection before running the callback.
  * Required for stored procedures, triggers, and audit logging.
- * 
+ *
+ * Session variables live on the physical connection, and pooled connections are reused
+ * across requests. Both variables are therefore reset to NULL before the connection is
+ * returned to the pool, so a later caller can never inherit this user's identity. If the
+ * reset itself fails (e.g. the connection dropped), the connection is destroyed instead
+ * of being released back into the pool.
+ *
  * @template T - Return type of the callback
  * @param userId - CHAR(36) UUID of the authenticated user
  * @param role - Role of the authenticated user (e.g., 'system_administrator')
@@ -203,7 +209,14 @@ export async function withUserContext<T>(
     ]);
     return await callback(connection);
   } finally {
-    connection.release();
+    try {
+      // Clear the identity so the next borrower of this pooled connection starts clean
+      await connection.query('SET @current_user_id = NULL, @current_app_role = NULL');
+      connection.release();
+    } catch {
+      // A connection whose session state cannot be reset must never re-enter the pool
+      connection.destroy();
+    }
   }
 }
 

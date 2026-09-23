@@ -59,6 +59,8 @@ export const REDIS_KEYS = {
   LOCK_ASSISTANT_SCHEDULE: (assistantId: number | string) => `lock:assistant:${assistantId}`,
   /** Lock for truck assignment conflict check (truck_id) */
   LOCK_TRUCK_SCHEDULE: (truckId: number | string) => `lock:truck:${truckId}`,
+  /** Lock for order placement train capacity reservation (destination_city_id) */
+  LOCK_ORDER_DESTINATION: (cityId: number | string) => `lock:orders:destination:${cityId}`,
   /** Cache key for dashboard summary statistics */
   CACHE_DASHBOARD_SUMMARY: (role: string, storeId: number | string = "global") =>
     `cache:dashboard:summary:${role}:${storeId}`,

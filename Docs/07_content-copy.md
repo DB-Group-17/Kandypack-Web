@@ -97,14 +97,20 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 
 **Section 1 — Customer**
 - Label: `Customer` — Placeholder: `Search by name or phone…`
-- Link/button (if not found): + Add new customer
-- Inline "Add new customer" mini-form:
-  - `Customer name` · `Customer type` (Retail / Wholesale) · `Phone` · `Email (optional)` · `Address`
-  - Button: Save customer
+- Link/button: + Add new customer *(shown beside the `Customer` label at all times, not only when a search finds nothing)*
+- "Add new customer" mini-form, shown as a **popup dialog** (title: `Add new customer`):
+  - `Customer name` · `Customer type` (Retail / Wholesale) · `Phone` · `Email (optional)` · `Registered city` · `Address`
+  - `Registered city` is a **required** dropdown of destination cities, preselected from the `Destination city` already chosen on the page and editable. It was **added 2026-09-23**: the original list omitted it, so a customer created from this page was saved with no city ("Unassigned") whenever no destination city had been chosen first. Master Data's customer form already carries the same field.
+  - Buttons: Save customer · Cancel · button (saving): Saving…
+  - Validation: *"Customer name is required."* · *"Phone number is required."* · *"Select a registered city."* · *"Enter a valid email address, or leave it blank."*
+  - Failure: the server's own message, otherwise *"Couldn't save this customer. Please try again."*
+- Once a customer is chosen, the search box is replaced by a summary (name, `Retail`/`Wholesale`, phone • city) with a **Change** button. Choosing a customer prefills `Destination city` and `Delivery address` from their record (both stay editable); `Delivery area` is left blank.
+- Search states: *"Searching…"* · *"No customers found."* · *"Couldn't search customers. Please try again."* · *"Showing the first 8 of {n}. Keep typing to narrow the list."*
 
 **Section 2 — Delivery Details**
 - Label: `Destination city` — Placeholder: `Select city`
-- Label: `Delivery area` — Placeholder: `e.g. Wellawatte, Colombo 6`
+- Label: `Delivery area` — Placeholder: `e.g. Wellawatte, Colombo 6` *(a dropdown of the chosen city's coverage areas, not free text: `place_order` matches the area against the seeded names exactly. The placeholder is kept as the empty option's label.)*
+- Area states: *"Loading areas…"* · *"No delivery areas are set up for this city."*
 - Label: `Delivery address` — Placeholder: `Full delivery address`
 - Label: `Expected delivery date` — Helper text: *Must be at least 7 days from today*
 
@@ -113,10 +119,13 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 - Button: + Add item
 - Button (remove row): × Remove
 - Empty state: *No items added yet. Add at least one product to continue.*
+- Each line: a product dropdown (`{product_name} ({sku})`), a whole-number quantity of 1 or more, and read-only unit price and line total. A product already used on another line is left out of that line's dropdown.
+- States: *"Loading products…"* · *"No products are available to add."* · quantity hint *"Enter a whole number of 1 or more."*
 
-**Summary panel:**
+**Summary panel** *(card titled `Summary`, in the right rail)*:
 - `Total value: {amount}`
 - `Total space required: {space} units`
+- These are a **preview**; the server recalculates from the product price at save time.
 
 **Buttons:** Place Order (primary) · Cancel (secondary)
 **Button (loading):** Placing order…
@@ -129,6 +138,21 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 - Generic failure: *"Couldn't place this order. Please check the details and try again."*
 
 **Success message (toast):** *Order #{order_id} placed successfully.*
+
+**Additional copy (added 2026-09-23 with the build — not in the original specification):**
+- Field messages shown after a failed Place Order click: *"Select a customer."* · *"Select a destination city."* · *"Select a delivery area."* · *"Enter the delivery address."* · *"Choose a product and a whole-number quantity for every item."*
+- Summary line above the buttons: *"Please fix the highlighted fields before placing the order."*
+- Lookup failure banner (with a Retry button): *"Couldn't load the destination cities. Please try again."* · *"Couldn't load the delivery areas for this city. Please try again."* · *"Couldn't load the product list. Please try again."* · *"Couldn't load some of the form options. Please try again."*
+- Session ended: *"Your session has expired. Please sign in again."*
+- Unconfirmed placement: *"The order may have been placed, but we couldn't confirm it. Check the orders list before trying again."* *(deliberately does not invite a retry, which could create a duplicate)*
+- Leave-the-page dialog: title `Discard this order?` · *"You have unsaved order details. If you leave now, everything entered will be lost."* · buttons `Keep editing` · `Discard order`
+
+**Server message mapping on submit:** the procedure's own message is shown inline for business-rule violations (Docs/05). Two are replaced by the wording above: `No route covers area …` → *"No delivery route covers this address. Please check the city and area."* and the 7-day rule → *"Delivery date must be at least 7 days from today."* Anything unrecognised shows the generic failure line.
+
+**Resolved 2026-09-23 — differences from `UI/new_order`:** the mockup was followed for the overall look and doc 07 for all content.
+- The mockup puts the order items in the narrow right rail. They are a four-column table (doc 07), which is cramped there, so **Order Items is Section 3 in the wide left column** and the right rail holds the `Summary` card and the buttons.
+- The mockup fields with no backing in the data model are **omitted**: tax (8%), shipping base, Save Draft, State/Region, Postal Code and Contact Person.
+- "Add new customer" is a **popup** rather than an inline form, so the search and the form do not compete for the same space.
 
 ---
 
@@ -152,14 +176,20 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 **Section — Train Booking**
 - `Trip: {destination_city} departing {departure_datetime}` · `Space booked: {space_booked}`
 - If split across trips: *"This order was split across {n} train trips due to capacity."*
+- After placing an order (arriving with `?placed=1`): a toast *"Order #{order_id} placed successfully."* and, when the order has more than one booking, the informational notice *"This order couldn't be fully booked on the requested train — part of it has been scheduled on the next available trip."* The flag is removed from the URL after it is read, so a refresh does not repeat the message.
 
 **Section — Delivery Status**
 - If not yet scheduled: *"Not yet scheduled for delivery."*
 - If scheduled: `Truck: {plate_number}` · `Driver: {driver_name}` · `Assistant: {assistant_name}` · `Scheduled: {start_time}–{end_time}`
 
 **Section — Status History**
-- Table columns: From · To · Changed By · Date · Notes
+- Fields: From · To · Changed By · Date · Notes
 - Empty state: *No status changes yet.*
+- **Resolved 2026-09-18:** this section was originally specified as a table, while
+  `UI/order_detail` renders it as a vertical timeline. Resolved in favour of the
+  timeline (the `UI/` references are an implementation contract per
+  `Docs/11_ui-rules.md` §1), with all five fields above carried inside each timeline
+  entry so no specified content is lost.
 
 **Update status (role-gated):**
 - Label: `Change status to` — dropdown of valid next statuses only

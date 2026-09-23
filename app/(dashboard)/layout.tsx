@@ -1,8 +1,46 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { canAccessRoute } from "@/lib/rbac";
+
+/**
+ * Formats snake_case AppRole into clean Title Case for UI display.
+ * e.g., 'system_administrator' -> 'System Administrator'
+ *
+ * @param {string | null | undefined} role - AppRole string or null
+ * @returns {string} Formatted human-readable role name
+ */
+function formatRoleName(role?: string | null): string {
+  if (!role) return "Staff";
+  return role
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+/**
+ * Computes 1-2 letter uppercase avatar initials from display name or email.
+ *
+ * @param {string | null | undefined} name - User's display name
+ * @param {string | null | undefined} email - User's login email
+ * @returns {string} Initials string
+ */
+function getInitials(name?: string | null, email?: string | null): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  if (email) {
+    return email.slice(0, 2).toUpperCase();
+  }
+  return "U";
+}
 
 /**
  * Navigation item structure for the dashboard sidebar.
@@ -23,6 +61,114 @@ interface DashboardLayoutProps {
 }
 
 /**
+ * Sidebar navigation configuration mapping to the system's operational modules.
+ * Defined at module level so it remains stable across renders.
+ */
+const NAV_ITEMS: NavItem[] = [
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    section: "Main",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Orders",
+    href: "/orders",
+    section: "Main",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Train Schedule",
+    href: "/train-schedule",
+    section: "Operations",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+      </svg>
+    ),
+  },
+  {
+    label: "Truck Schedule",
+    href: "/truck-schedule",
+    section: "Operations",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1h4l3 3v4a1 1 0 01-1 1h-2" />
+      </svg>
+    ),
+  },
+  {
+    label: "Deliveries",
+    href: "/deliveries",
+    section: "Operations",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+      </svg>
+    ),
+  },
+  {
+    label: "Inventory",
+    href: "/inventory",
+    section: "Operations",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      </svg>
+    ),
+  },
+  {
+    label: "Reports",
+    href: "/reports",
+    section: "Analytics",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Master Data",
+    href: "/admin/master-data",
+    section: "Administration",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+      </svg>
+    ),
+  },
+  {
+    label: "Users",
+    href: "/admin/users",
+    section: "Administration",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+  {
+    label: "Audit Log",
+    href: "/admin/audit-log",
+    section: "Administration",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0zM9 12h6m-6 4h4" />
+      </svg>
+    ),
+  },
+];
+
+/**
  * DashboardLayout provides the core application shell for all authenticated pages.
  * It renders:
  * 1. A deep violet fixed/sticky desktop sidebar (260px width, #5A4FE0 container) with pill active items.
@@ -36,111 +182,18 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const { user, role, logout, isLoading } = useAuth();
 
-  // Sidebar navigation configuration mapping to the system's operational modules
-  const navItems: NavItem[] = [
-    {
-      label: "Dashboard",
-      href: "/dashboard",
-      section: "Main",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-        </svg>
-      ),
-    },
-    {
-      label: "Orders",
-      href: "/orders",
-      section: "Main",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-        </svg>
-      ),
-    },
-    {
-      label: "Train Schedule",
-      href: "/train-schedule",
-      section: "Operations",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-        </svg>
-      ),
-    },
-    {
-      label: "Truck Schedule",
-      href: "/truck-schedule",
-      section: "Operations",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1h4l3 3v4a1 1 0 01-1 1h-2" />
-        </svg>
-      ),
-    },
-    {
-      label: "Deliveries",
-      href: "/deliveries",
-      section: "Operations",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      ),
-    },
-    {
-      label: "Inventory",
-      href: "/inventory",
-      section: "Operations",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-        </svg>
-      ),
-    },
-    {
-      label: "Reports",
-      href: "/reports",
-      section: "Analytics",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-    },
-    {
-      label: "Master Data",
-      href: "/admin/master-data",
-      section: "Administration",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
-        </svg>
-      ),
-    },
-    {
-      label: "Users",
-      href: "/admin/users",
-      section: "Administration",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      ),
-    },
-    {
-      label: "Audit Log",
-      href: "/admin/audit-log",
-      section: "Administration",
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0zM9 12h6m-6 4h4" />
-        </svg>
-      ),
-    },
-  ];
+  /**
+   * Filter navigation items according to active user role permissions.
+   * If still hydrating initial session, shows full structure to avoid layout jump.
+   */
+  const visibleNavItems = useMemo(() => {
+    if (!role) {
+      return isLoading ? NAV_ITEMS : [];
+    }
+    return NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
+  }, [role, isLoading]);
 
   /**
    * Evaluates whether a given navigation item is currently active.
@@ -171,10 +224,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         {/* Navigation Items List grouped by operational domain */}
         <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
-          {navItems.map((item, index) => {
+          {visibleNavItems.map((item, index) => {
             const active = isItemActive(item.href);
             const showSectionHeading =
-              index === 0 || item.section !== navItems[index - 1].section;
+              index === 0 || item.section !== visibleNavItems[index - 1].section;
 
             return (
               <React.Fragment key={item.href}>
@@ -209,13 +262,29 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         {/* Sidebar Footer User Scope Preview */}
         <div className="p-4 border-t border-white/10 bg-black/5">
           <div className="flex items-center gap-3 px-2 py-1.5">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-semibold text-white">
-              LM
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-white truncate">Linari</p>
-              <p className="text-[11px] text-white/70 truncate">Logistics Manager</p>
-            </div>
+            {isLoading ? (
+              <div className="flex items-center gap-3 w-full animate-pulse">
+                <div className="w-8 h-8 rounded-full bg-white/20" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 bg-white/20 rounded w-20" />
+                  <div className="h-2.5 bg-white/10 rounded w-24" />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-xs font-semibold text-white">
+                  {getInitials(user?.display_name, user?.email)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-white truncate">
+                    {user?.display_name || user?.email || "User"}
+                  </p>
+                  <p className="text-[11px] text-white/70 truncate">
+                    {formatRoleName(role)}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </aside>
@@ -247,26 +316,44 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* User Profile & Global Utility Menu */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-right">
-              <div>
-                <p className="text-xs md:text-sm font-semibold text-[#121C2C]">Linari</p>
-                <p className="text-[11px] text-[#474554] capitalize">Logistics Manager</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-[#E0F2FF] text-[#0047CC] flex items-center justify-center font-bold text-xs">
-                L
-              </div>
+              {isLoading ? (
+                <div className="flex items-center gap-2 animate-pulse">
+                  <div className="space-y-1 text-right">
+                    <div className="h-3 bg-gray-200 rounded w-16" />
+                    <div className="h-2.5 bg-gray-100 rounded w-20" />
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-gray-200" />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-xs md:text-sm font-semibold text-[#121C2C]">
+                      {user?.display_name || user?.email || "User"}
+                    </p>
+                    <p className="text-[11px] text-[#474554] capitalize">
+                      {formatRoleName(role)}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-[#E0F2FF] text-[#0047CC] flex items-center justify-center font-bold text-xs">
+                    {getInitials(user?.display_name, user?.email)}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="h-6 w-px bg-[#C8C4D7]" />
 
-            <Link
-              href="/login"
-              className="text-xs font-medium text-[#474554] hover:text-[#F93C65] transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-[#FFF0F0]"
+            <button
+              type="button"
+              onClick={logout}
+              className="text-xs font-medium text-[#474554] hover:text-[#F93C65] transition-colors flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg hover:bg-[#FFF0F0] cursor-pointer"
+              title="Sign out of your session"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
               <span className="hidden sm:inline">Sign out</span>
-            </Link>
+            </button>
           </div>
         </header>
 
@@ -300,10 +387,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
 
               <nav className="mt-4 flex-1 overflow-y-auto space-y-1">
-                {navItems.map((item, index) => {
+                {visibleNavItems.map((item, index) => {
                   const active = isItemActive(item.href);
                   const showSectionHeading =
-                    index === 0 || item.section !== navItems[index - 1].section;
+                    index === 0 || item.section !== visibleNavItems[index - 1].section;
 
                   return (
                     <React.Fragment key={item.href}>
