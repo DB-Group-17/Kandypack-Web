@@ -6,8 +6,8 @@
  * order on their behalf.
  *
  * Build status: STEP 3b of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
- * the city and coverage-area dropdowns, Step 3 the customer search, and Step 3b the inline
- * "+ Add new customer" form. The date, item lines and submit are still static (Steps 4-6).
+ * the city and coverage-area dropdowns, Step 3 the customer search, and Step 3b the
+ * "+ Add new customer" popup. The date, item lines and submit are still static (Steps 4-6).
  *
  * Page structure:
  * - Header: back affordance, "New Order" heading and subheading.
@@ -42,13 +42,16 @@
  * are derived by comparing the loaded results' query with the current text, so a stale result
  * for older text can never flash on screen and nothing is set synchronously in an effect.
  *
- * Add new customer (Step 3b): a "+ Add new customer" link beside the Customer label swaps the
- * search box for a small inline form (Docs/07: name, type, phone, optional email, address, Save
- * customer). It is its own <form>, so this page must NOT be wrapped in an outer <form> (nested
- * forms are invalid HTML); Step 6 submits with a button handler instead. The form is a separate
- * component that owns its own field state, and on success the new customer is selected exactly as
- * if it had been found by search. Doc 07's form has no city field, so the customer is registered
- * under the destination city already chosen on this page, or left without a city if none is.
+ * Add new customer (Step 3b): a "+ Add new customer" link beside the Customer label opens a
+ * modal popup (same overlay pattern as the Update Status dialog on the order detail page) holding
+ * the Docs/07 form: name, type, phone, optional email, address, Save customer. The dialog closes
+ * on Cancel, the X button, a click on the backdrop or Escape (all ignored while a save is in
+ * flight), locks page scrolling while open, and returns focus to the link that opened it. It is a
+ * separate component that owns its own field state and its own <form>, so this page must NOT be
+ * wrapped in an outer <form> (nested forms are invalid HTML); Step 6 submits with a button handler.
+ * On success the new customer is selected exactly as if it had been found by search. Doc 07's form
+ * has no city field, so the customer is registered under the destination city already chosen on
+ * this page, or left without a city if none is.
  *
  * Access: /orders/new is limited to order_entry_clerk and system_administrator. That is enforced
  * by proxy.ts / lib/rbac.ts before this page renders, so no role check is repeated here.
@@ -64,7 +67,7 @@
  * Owner: Member 1 (Dineth)
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 
 /** One destination city from `GET /api/cities`, reduced to what the dropdown needs. */
@@ -165,9 +168,11 @@ function SectionCard({
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 /**
- * Inline "Add new customer" mini-form (Docs/07_content-copy.md §/orders/new, Section 1).
+ * "Add new customer" popup (Docs/07_content-copy.md §/orders/new, Section 1).
  *
- * Owns its own field, error and saving state so the page component stays focused on the order.
+ * A modal dialog: a dimmed backdrop plus a centred card. Rendered only while open, so its state
+ * starts fresh every time. Owns its own field, error and saving state so the page component
+ * stays focused on the order.
  * Validation mirrors POST /api/customers (name and phone required); the server remains the
  * authority and its message is shown if it rejects the request.
  *
@@ -176,10 +181,10 @@ const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
  * @param {number | null} registeredCityId - City to register the customer under (the destination
  *   city already chosen on the page), or null to save the customer without a city.
  * @param {(customer: CustomerOption) => void} onCreated - Called with the saved customer.
- * @param {() => void} onCancel - Called when the user abandons the form.
- * @returns {JSX.Element} The rendered mini-form.
+ * @param {() => void} onCancel - Called when the user dismisses the dialog without saving.
+ * @returns {JSX.Element} The rendered dialog.
  */
-function AddCustomerForm({
+function AddCustomerDialog({
   registeredCityId,
   onCreated,
   onCancel,
@@ -197,10 +202,28 @@ function AddCustomerForm({
   const [saving, setSaving] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
-  // Put the cursor in the first field as soon as the form appears.
+  // Put the cursor in the first field as soon as the dialog appears.
   useEffect(() => {
     nameRef.current?.focus();
   }, []);
+
+  // While the dialog is open: Escape dismisses it, and the page behind it cannot scroll. Both are
+  // ignored / kept while a save is in flight so the request cannot be abandoned half-way. The
+  // cleanup removes the listener and restores scrolling when the dialog closes.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) onCancel();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [saving, onCancel]);
 
   /**
    * Validates the fields and saves the customer via POST /api/customers.
@@ -251,104 +274,136 @@ function AddCustomerForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      <p className="text-sm font-semibold text-[#121C2C]">Add new customer</p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="add-customer-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+    >
+      {/* Backdrop: clicking outside the card dismisses the dialog (unless a save is running) */}
+      <div
+        className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+        onClick={() => {
+          if (!saving) onCancel();
+        }}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="new-customer-name" className={LABEL_CLASS}>
-            Customer name
-          </label>
-          <input
-            ref={nameRef}
-            id="new-customer-name"
-            type="text"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className={FIELD_CLASS}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="new-customer-type" className={LABEL_CLASS}>
-            Customer type
-          </label>
-          <select
-            id="new-customer-type"
-            value={type}
-            onChange={(event) => setType(event.target.value as "retail" | "wholesale")}
-            className={FIELD_CLASS}
+      {/* max-h + overflow keep the card usable on short screens by scrolling inside itself */}
+      <div className="relative bg-white w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-xl border border-[#C8C4D7]/50 p-6 z-10">
+        <div className="flex items-start justify-between pb-4 border-b border-[#F0F3FF]">
+          <h2 id="add-customer-title" className="text-lg font-bold text-[#121C2C]">
+            Add new customer
+          </h2>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={onCancel}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#474554] hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
+            aria-label="Close dialog"
           >
-            <option value="retail">Retail</option>
-            <option value="wholesale">Wholesale</option>
-          </select>
+            ✕
+          </button>
         </div>
 
-        <div>
-          <label htmlFor="new-customer-phone" className={LABEL_CLASS}>
-            Phone
-          </label>
-          <input
-            id="new-customer-phone"
-            type="tel"
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-            className={FIELD_CLASS}
-          />
-        </div>
+        <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
 
-        <div>
-          <label htmlFor="new-customer-email" className={LABEL_CLASS}>
-            Email (optional)
-          </label>
-          <input
-            id="new-customer-email"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            className={FIELD_CLASS}
-          />
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="new-customer-name" className={LABEL_CLASS}>
+                Customer name
+              </label>
+              <input
+                ref={nameRef}
+                id="new-customer-name"
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </div>
 
-        <div className="md:col-span-2">
-          <label htmlFor="new-customer-address" className={LABEL_CLASS}>
-            Address
-          </label>
-          <input
-            id="new-customer-address"
-            type="text"
-            value={address}
-            onChange={(event) => setAddress(event.target.value)}
-            className={FIELD_CLASS}
-          />
-        </div>
+            <div>
+              <label htmlFor="new-customer-type" className={LABEL_CLASS}>
+                Customer type
+              </label>
+              <select
+                id="new-customer-type"
+                value={type}
+                onChange={(event) => setType(event.target.value as "retail" | "wholesale")}
+                className={FIELD_CLASS}
+              >
+                <option value="retail">Retail</option>
+                <option value="wholesale">Wholesale</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="new-customer-phone" className={LABEL_CLASS}>
+                Phone
+              </label>
+              <input
+                id="new-customer-phone"
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="new-customer-email" className={LABEL_CLASS}>
+                Email (optional)
+              </label>
+              <input
+                id="new-customer-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="new-customer-address" className={LABEL_CLASS}>
+                Address
+              </label>
+              <input
+                id="new-customer-address"
+                type="text"
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+                className={FIELD_CLASS}
+              />
+            </div>
+          </div>
+
+          {/* role="alert" announces a validation or server error the moment it appears */}
+          {error && (
+            <p role="alert" className="text-sm text-[#F93C65]">
+              {error}
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center justify-center min-h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3427A8] transition-colors disabled:bg-[#E7E7F2] disabled:text-[#474554]/60 disabled:cursor-not-allowed"
+            >
+              {saving ? "Saving…" : "Save customer"}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={saving}
+              className="inline-flex items-center justify-center min-h-10 px-6 rounded-full border border-[#4132C7] text-[#4132C7] text-sm font-semibold hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       </div>
-
-      {/* role="alert" announces a validation or server error the moment it appears */}
-      {error && (
-        <p role="alert" className="text-sm text-[#F93C65]">
-          {error}
-        </p>
-      )}
-
-      <div className="flex flex-wrap gap-3">
-        <button
-          type="submit"
-          disabled={saving}
-          className="inline-flex items-center justify-center min-h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3427A8] transition-colors disabled:bg-[#E7E7F2] disabled:text-[#474554]/60 disabled:cursor-not-allowed"
-        >
-          {saving ? "Saving…" : "Save customer"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={saving}
-          className="inline-flex items-center justify-center min-h-10 px-6 rounded-full border border-[#4132C7] text-[#4132C7] text-sm font-semibold hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+    </div>
   );
 }
 
@@ -390,8 +445,9 @@ export default function NewOrderPage() {
   const [highlightIndex, setHighlightIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Whether the inline "Add new customer" form is showing instead of the search box.
+  // Whether the "Add new customer" popup is open, and the link that opened it (focus returns there).
   const [addingCustomer, setAddingCustomer] = useState(false);
+  const addCustomerLinkRef = useRef<HTMLButtonElement>(null);
 
   // Load the destination cities once (and again on Retry).
   useEffect(() => {
@@ -569,9 +625,20 @@ export default function NewOrderPage() {
   };
 
   /**
-   * Called when the inline form has saved a new customer: closes the form, drops the cached search
-   * results (they were fetched before this customer existed, so a repeat search for the same text
-   * would otherwise miss them), and selects the new customer exactly as a search pick would.
+   * Dismisses the "Add new customer" popup without saving and returns keyboard focus to the link
+   * that opened it, so a keyboard user is not dropped back at the top of the page. Memoised so
+   * the dialog's Escape-key effect is not torn down and re-attached on every keystroke.
+   */
+  const handleCloseAddCustomer = useCallback(() => {
+    setAddingCustomer(false);
+    requestAnimationFrame(() => addCustomerLinkRef.current?.focus());
+  }, []);
+
+  /**
+   * Called when the popup has saved a new customer: closes it, drops the cached search results
+   * (they were fetched before this customer existed, so a repeat search for the same text would
+   * otherwise miss them), and selects the new customer exactly as a search pick would. Focus is
+   * not returned to the link because the search box it lives beside is replaced by the chip.
    *
    * @param {CustomerOption} created - The customer returned by POST /api/customers.
    */
@@ -748,12 +815,6 @@ export default function NewOrderPage() {
                   Change
                 </button>
               </div>
-            ) : addingCustomer ? (
-              <AddCustomerForm
-                registeredCityId={cityId ? Number(cityId) : null}
-                onCreated={handleCustomerCreated}
-                onCancel={() => setAddingCustomer(false)}
-              />
             ) : (
               <div
                 className="relative"
@@ -769,6 +830,7 @@ export default function NewOrderPage() {
                     Customer
                   </label>
                   <button
+                    ref={addCustomerLinkRef}
                     type="button"
                     onClick={() => setAddingCustomer(true)}
                     className="text-xs font-semibold text-[#4132C7] hover:underline"
@@ -1016,6 +1078,15 @@ export default function NewOrderPage() {
           </div>
         </aside>
       </div>
+
+      {/* "Add new customer" popup. Mounted only while open so its fields start empty every time. */}
+      {addingCustomer && (
+        <AddCustomerDialog
+          registeredCityId={cityId ? Number(cityId) : null}
+          onCreated={handleCustomerCreated}
+          onCancel={handleCloseAddCustomer}
+        />
+      )}
     </div>
   );
 }
