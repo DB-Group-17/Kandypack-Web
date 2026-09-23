@@ -1,80 +1,72 @@
-# Memory — Member 1 (Dineth) Phase 1: Orders List + Order Detail Pages
+# Memory — Member 1 (Dineth) Phase 1: Orders seed, place_order fixes, /orders/new
 
-Last updated: 2026-09-18
+Last updated: 2026-09-23
 
 ## What was built
 
-### This session
+### Seed §9 — orders (committed, and loaded on the shared dev DB)
+- `scripts/seed/data/orders.ts` — pure data: 45 orders + `OVERFLOW_TEST_ORDER` (#46, deliberately NOT in `SEED_ORDERS`), `STATUS_WALK`, status-count assertions. Deterministic (no random), dates as offsets resolved in SQL.
+- `scripts/seed/orders.ts` — `seedOrders(dryRun)` = one transaction: `seedHistoricalOrders` (1–23, direct INSERT, previous quarter) → `seedCurrentQuarterOrders` (24–45, via `place_order`) → `seedOverflowTestOrder` (#46, asserts ≥2 bookings, no trip over capacity, space + quantity conserved). Guarded `prepareAutoIncrement` resets counters only when `orders` is empty. Wired into `scripts/seed.ts` as Stage 3. `train-trips.ts` now exports `THIS_MONDAY` and the offset constants.
+- Result on dev: 46 seeded orders, 24 train bookings. **Phase 1 gate passed:** order #46 is booked across Trip #5 (the 50-unit Colombo trip, 49.50) and Trip #6 (70.50).
 
-- **`app/(dashboard)/orders/page.tsx`** — Orders list page.
-  - Filters: status, destination city, date range, 300ms-debounced search — all mirrored into the URL query string via `router.replace()` so the view is shareable and survives refresh.
-  - City filter options load from `GET /api/cities?destination_only=true` (reused Member 4 endpoint, not hardcoded).
-  - Role-aware: City filter hidden for `store_manager` (API already forces their scope); "+ New Order" only for roles with `orders:place_order`.
-  - Loading / error+retry / empty / table+pagination states, all copy verbatim from `Docs/07_content-copy.md` §/orders.
-  - Split into `OrdersPageContent` + a `Suspense`-wrapped default export (required — see Problems solved).
+### Migrations (applied to shared dev)
+- `21_fix_place_order_collation.sql` and `22_fix_place_order_temp_tables.sql` replace `place_order`. Migration 20 had never actually been applied to dev; it went in alongside them. Applied through **22**.
 
-- **`app/(dashboard)/orders/[orderId]/page.tsx`** — Order Detail page.
-  - One call to `GET /api/orders/:id` for the whole composite payload; 8/4 bento grid.
-  - Left: items table (Product+SKU · Qty · Unit price · Line total, with Total / Space required footer); rail transport cards with per-trip shipped items.
-  - Right: customer, delivery destination, delivery status (or "Not yet scheduled for delivery."), status history timeline.
-  - "This order was split across {n} train trips due to capacity." banner when `train_bookings.length > 1`.
-  - Role-gated Update Status modal: legal-next-status dropdown + optional notes → in-modal confirmation step → `PATCH /api/orders/:id/status` → toast + full refetch.
+### `POST /api/orders`
+- `app/api/orders/route.ts` now wraps the `CALL place_order` in `beginTransaction` / `commit` (inside the Redis lock) / `rollback`. Verified: a failing order leaves no rows.
 
-- **`Docs/07_content-copy.md`** — recorded the Status History timeline-vs-table conflict resolution inline in the `/orders/[orderId]` section.
-- **`.claude/launch.json`** — dev-server config so the browser preview tool can drive the app.
+### `/orders/new` (built, verified in a browser, all 8 steps)
+- `app/(dashboard)/orders/new/page.tsx` (~2000 lines): customer type-ahead + chip + prefill, required-city "Add new customer" popup, city → coverage-area dropdowns (from `/api/routes?city_id=`), 7-day date rule (starts empty), item table with live totals, submit with pre-flight validation, shared `ModalShell` (focus trap), "Discard this order?" leave guard.
+- `app/(dashboard)/orders/[orderId]/page.tsx`: reads `?placed=1` once, shows the placement toast and the split notice, strips the flag. Default export is now a `<Suspense>` wrapper.
 
-### Earlier in Phase 1 (already on `development`)
-
-- `app/login/page.tsx`, `context/AuthContext.tsx` + `types/auth.ts`.
-- Orders API — all 4 endpoints (`POST /api/orders`, `GET /api/orders`, `GET /api/orders/[id]`, `PATCH /api/orders/[id]/status`).
-- Baseline seed modules (`scripts/seed/*`, spec §1–§8 and §12) + `lib/db.ts` pooled-connection user-context reset.
+### Docs
+- `Docs/05` (procedure signatures corrected; POST 201 shape is `{ order: {...}, message }`; transaction requirement; new `/orders/new` flow), `Docs/06` §9 (Decisions A and B, implementation status), `Docs/07` (popup, table layout, new-copy block, mockup deviations), `Docs/09` (gate + `/orders/new` ticked), `Docs/10` (shared dev state), `Docs/03` §19.1 (the three `place_order` defects).
 
 ## Decisions made
 
-- **Status History renders as a timeline, not the table doc 07 originally specified** — but each entry carries all five specified fields (From → To, Changed By, Date, Notes) so no content is lost. Rationale: `Docs/11_ui-rules.md` §1 calls the `UI/` references an implementation contract. Resolution is written into doc 07 so it doesn't resurface.
-- **`StatusBadge` is deliberately duplicated** in the list and detail pages rather than extracted. A code comment marks the extraction point: do it when a third page needs the pill.
-- **Status update is a single modal with two steps** (choose status + notes → explicit "This cannot be undone" confirmation), not an inline card plus separate dialog. Matches the `train-schedule` modal precedent.
-- **"Print Invoice" omitted from Phase 1** — mockup-only, no endpoint, no copy, no invoice layout spec. Building it would be inventing scope.
-- **Refetch after a successful PATCH, never an optimistic merge** — mandated by `Docs/05_api-and-pages.md` §347, and necessary anyway since the PATCH response carries neither the new `order_status_history` row nor the cascaded delivery cancellation.
-- **Detail page drives refetch with a `refreshToken` counter** rather than a memoized fetch function, so the fetch logic exists in exactly one place (Retry and post-update refresh both just bump the token).
-- **The client-side `ALLOWED_TRANSITIONS` table is a UX affordance only** — the server route stays the sole authority and its rejection message is surfaced verbatim if the two diverge (e.g. concurrent edits by two staff).
-- **404 and 403 share one message** on the detail page ("This order doesn't exist or you don't have access to it.") — preserves the API's deliberate non-disclosure of cross-city order existence.
+- **Historical orders carry no train bookings** (no trip exists in the previous quarter; every report needing depth reads only `orders` + `order_items`). They must set `route_id` themselves.
+- **Seeded status history comes from walking the status** (insert `Pending`, UPDATE through each step) so the trigger writes real history; historical `changed_at` values are backdated.
+- **Migrations are never edited once applied** — fixes ship as new numbered files. The DB is one shared instance, so a migration is live for everyone instantly.
+- `/orders/new`: Order Items is a table in the left column (doc 07) with a Summary card in the rail (deviates from the mockup); mockup extras (tax, shipping, Save Draft, State/Region, Postal Code, Contact Person) dropped; whole-number quantities; one product per line; registered city required in the customer popup, preselected from the chosen destination city.
+- The page must not be wrapped in an outer `<form>` (the popup is its own form).
+- `place_order` is only atomic if the caller opens a transaction.
 
 ## Problems solved
 
-- **ESLint `react-hooks/set-state-in-effect`** — calling a `useCallback`-memoized function that sets state *synchronously inside a `useEffect` body* is flagged; defining the loader **inline inside the effect** is not. This is why `train-schedule/page.tsx` duplicates its fetch logic. Also: "reset to page 1 on filter change" must live in the `onChange` handlers, not in a derived effect.
-- **`useSearchParams()` fails the production build** with "missing-suspense-with-csr-bailout" during prerender. Fix: split the component and wrap it in `<Suspense>`. `useParams()` does **not** need this — the detail page is fine without it.
-- **Stale `.next/types/validator.ts`** produces phantom `tsc` errors referencing other branches' routes. Run `rm -rf .next/types` before typechecking.
-- **Next.js static segments beat dynamic ones** — once `app/(dashboard)/orders/new/page.tsx` exists it automatically claims `/orders/new` from `[orderId]`. No config needed, no change to the detail page. `lib/rbac.ts:283` already excludes `/orders/new` from the dynamic-pattern permission match, so the collision was anticipated.
+- **`place_order` was broken for every caller until 2026-09-18**, three ways: (1) collation mismatch on the coverage-area lookup, (2) `tmp_trip_alloc` had no primary key while Aiven runs `sql_require_primary_key=ON`, (3) `TRUNCATE` is DDL and forced an implicit COMMIT, so nothing rolled back. Fixed by migrations 21–22.
+- **Dry runs that call `place_order` were not dry** before migration 22 (the implicit commit persisted 25 rows); cleaned up. Always read row counts afterwards instead of trusting a script's "rolled back" message.
+- InnoDB does not reclaim `AUTO_INCREMENT` on rollback; `ALTER TABLE … AUTO_INCREMENT = 1` sets it to max(id)+1. It is DDL, so it must run outside any transaction.
+- `information_schema` caches table stats in MySQL 8; set `information_schema_stats_expiry = 0` to read a live AUTO_INCREMENT.
+- ESLint `react-hooks/set-state-in-effect`: define loaders inline in the effect, derive "loading" from `null` data, reset dependent fields in the `onChange` handler.
+- `useSearchParams()` needs a `<Suspense>` wrapper or the production build fails.
+- **Testing in the Browser pane:** the pane is hidden (`document.hidden`), so `requestAnimationFrame` is throttled 1–6 s; focus-restore checks need long waits. The pane's session is separate from the user's own browser, and it must be signed in inside the pane itself. Do not type passwords for the user.
+- Heredocs with apostrophes break in the Bash tool; write a script file and run it instead.
 
 ## Current state
 
-- **Pages backed by real data (5):** `/login`, `/admin/master-data`, `/train-schedule`, `/orders`, `/orders/[orderId]`.
-- Still mock: `/inventory`, `/admin/users`, `/admin/audit-log`, `/truck-schedule`, `/truck-schedule/new`, `/deliveries`. `/reports` has tabs only. **`/dashboard` still 404s** and the sidebar links to it.
-- **Lint, typecheck and build all pass.**
-- **Verified live in browser:** orders list (filter change re-fetches with correct query string, URL syncs, empty state, RBAC-gated CTA appears for clerk / hidden for logistics manager); detail page 404 path and malformed-param guard, both showing the correct copy.
-- **NOT verified — no order data exists on the shared dev DB.** The detail page's populated layout (items table, rail cards, split-trip banner, delivery card, history timeline) and the entire status-update flow are untested against real data.
-- `/orders/new` currently falls through to `[orderId]` and shows the not-found message for `order_entry_clerk` (plain 404 for `logistics_manager`, whom the proxy blocks from that route). Cosmetic and self-resolving once the page is built.
-- **Branches:** local `dineth` is **44+ commits ahead of a stale `origin/dineth`** — the seed work, both orders pages, and the `development` merge are all **local only and still unpushed**. Member 3's `m3` is not merged.
-- Test role logins exist per `scripts/seed/test-accounts.ts` (logistics / clerk / store.colombo / fleet @kandypack.lk); password comes from `SEED_TEST_PASSWORD` in `.env.local`.
+- **Works and verified:** seed §9, `POST /api/orders` transaction, and `/orders/new` (rule-violating order left no rows; normal and split orders redirected with the toast and the split notice). All tests were cleaned up by exact order ID.
+- **Uncommitted (check `git status`):** the registered-city change and click-time link capture in `app/(dashboard)/orders/new/page.tsx`, plus the doc 05 / doc 07 edits describing them. Everything before that was committed.
+- **Shared dev DB now:** 47 orders. Order **#47 was placed by someone else** (Rs. 189,000, on trip 6); do not delete it. Next order ID is 48.
+- **Not verified:** a production `next build` (needs the user's dev server on port 3000 stopped — it shares `.next`), and saving a new customer through the popup (would create a real customer; cleanup would be soft-delete).
+- Branches: `dineth` not merged to `development`; verify pushed state before anything else.
 
 ## Next session starts with
 
-**Push `dineth` to origin first** — 44+ commits of work exist only on this machine.
-
-Then build **seed sections §9–§11** (45 orders across two quarters + the overflow test order, ~20 truck schedules with deliveries, derived inventory transactions). Doing this before `/orders/new` is deliberate: it simultaneously unblocks visual verification of the Order Detail page *and* the Phase 1 overflow gate check. Past-quarter orders must be inserted directly, since `place_order` only books upcoming trips.
+1. Run `git status`; commit the uncommitted page + doc changes.
+2. Production build (`npm run build`, dev server stopped), then `npm run lint` and `npm run typecheck`.
+3. Manual role checks (clerk allowed on `/orders/new`; `logistics_manager` blocked), then open the PR `dineth` → `development` with one reviewer.
 
 ## Remaining Phase 1 work for Member 1
 
-1. Seed §9–§11 (above).
-2. `/orders/new` page — customer search, city/area/address, 7-day date rule (client-side for UX only), item lines, totals. `delivery_area` must match a seeded coverage-area name exactly (case-insensitive) — use a dropdown, not free text.
-3. Verify the overflow case — an order exceeding the 50-unit trip's free space must produce 2+ `train_bookings` rows with `booked_space` never exceeding capacity. Record the order ID in the seed comments. **Phase 1 gate item.**
-4. Ship it — lint/typecheck/build, manual role checks, tick `Docs/09_task-tracker.md`, PR `dineth` → `development` with one reviewer.
+- Seed §10–§11 (truck schedules, deliveries, inventory). Blocked on Member 3 (truck-scheduling not started). Preferred plan already in spec §9: scope the ~20 schedules/deliveries to current-quarter `At Store` / `Out for Delivery` orders, because historical orders have no received stock to dispatch against (`trg_check_inventory_before_dispatch` rejects negative stock). Check the real procedure signatures in `18_proc_remaining.sql` first.
+- Ship: tick the tracker's "Orders module merged" gate item after the PR merges.
 
 ## Open questions
 
-- **Order Detail populated layout is unverified.** Deliberately did *not* create a throwaway order on the shared dev DB: order IDs 1–45 are reserved for the seed, and the DB is shared with other members. Needs either the §9–§11 seed or explicit authorization for one test order.
-- The overflow/split-trip banner in particular can only be genuinely proven against the 50-unit trip scenario.
-- **Member 4 follow-ups** (non-blocking, raised on PR #9): soft-delete his test rows on shared dev (product 13, customer 25, employee 31 + assistant 9, route 13 + coverage 39); blank coverage-area names are still dropped silently when others are valid; `mockData.ts` still exports ~600 unused lines.
-- **Team-wide doc conflicts still unresolved:** money fields as strings (doc 05) vs numbers (current code); doc 05's `/reports` section still describes PDF job polling; procedure signatures in doc 05 don't match the actual `receive_goods_at_store` / `complete_delivery` / `schedule_truck_delivery`.
-- `DATABASE_URL`'s `ssl-mode=REQUIRED` is ignored by mysql2 and `lib/db.ts` sets `rejectUnauthorized: false` — encrypted but unverified certificate. Tidy-up for later.
+- Who placed order #47? (Harmless, but confirm it is a teammate's test.)
+- **Team message still owed:** `place_order` changed under everyone (migrations 21–22); migration 20 was only just applied; `POST /api/orders` now works; `receive-goods` no longer takes `items[]` (doc 05 corrected).
+- Member 4 follow-ups (non-blocking): soft-delete their test rows (product 13 "Member 4 Test Product Updated", customer 25, employee 31 + assistant 9, route 13, coverage area "Member 4 Test Area") — they show up in the `/orders/new` dropdowns; `mockData.ts` has ~600 unused lines; duplicate customer phones are allowed (no uniqueness rule).
+- Doc 05 still says money fields are strings while the code returns numbers; its `/reports` section still describes PDF polling.
+- `v_quarterly_sales` filters `status = 'Delivered'`, so it shows one quarter only; if Member 2 wants a period comparison, seed §9 needs Delivered orders in two quarters.
+- The leave-the-page guard cannot intercept sidebar links or the browser Back button (App Router limitation); the `SectionCard` and `StatusBadge` components are duplicated across pages and should be extracted when convenient.
+- `DATABASE_URL`'s `ssl-mode=REQUIRED` is ignored by mysql2 and `lib/db.ts` sets `rejectUnauthorized: false`. `package.json` lists `lucide-react` twice.
