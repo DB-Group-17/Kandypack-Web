@@ -5,10 +5,10 @@
  * @description Place New Order page — the order-entry form used by clerks to place a customer
  * order on their behalf.
  *
- * Build status: STEP 5 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
+ * Build status: STEP 6 of 8. Step 1 built the layout and Docs/07_content-copy.md copy, Step 2
  * the city and coverage-area dropdowns, Step 3 the customer search, and Step 3b the
  * "+ Add new customer" popup, Step 4 the expected-delivery-date field with its 7-day rule, and
- * Step 5 the order item lines with live totals. Only submit is still to come (Step 6).
+ * Step 5 the order item lines with live totals, and Step 6 the Place Order submit.
  *
  * Page structure:
  * - Header: back affordance, "New Order" heading and subheading.
@@ -26,7 +26,7 @@
  * - GET /api/customers?search=…   customer type-ahead, 300ms debounce         (wired: Step 3)
  * - GET /api/products             line-item picker with unit price and space rate (wired: Step 5)
  * - POST /api/orders              submit; a 400 shows the procedure's message inline, a 201
- *   redirects to /orders/[orderId]                                             (Step 6)
+ *   redirects to /orders/[orderId]?placed=1                                    (wired: Step 6)
  *
  * Loading model (Step 2): a lookup is "loading" while its data is still `null`, so no state is
  * set synchronously inside an effect (the react-hooks/set-state-in-effect rule). Each loader is
@@ -81,6 +81,22 @@
  * - Lines that are incomplete (no product, or a bad quantity) count as zero in the totals; Step 6
  *   refuses to submit while any exist.
  *
+ * Submit (Step 6): Place Order is a plain button with an onClick handler (there is deliberately no
+ * outer <form>, see the popup note above). A click first runs a full pre-flight check: customer
+ * chosen, Delivery Details valid (Step 4's validateDeliveryDetails), at least one item, every line
+ * complete. If anything fails NOTHING is sent: every message appears beside its field, a summary
+ * line appears above the button, and focus moves to the first problem. Otherwise the order is
+ * POSTed and the button shows "Placing order…" and stays disabled, so a double click cannot create
+ * two orders. Everything the clerk typed is kept after any failure.
+ * - Server answers are translated by describePlaceOrderFailure: rule violations (400) show the
+ *   procedure's own message inline as Docs/05 requires, "no route covers this area" and the
+ *   7-day rule use the Docs/07 wording, a busy destination lock (409) asks for a retry, and
+ *   anything unexpected gets the generic Docs/07 line.
+ * - Success navigates to /orders/[orderId]?placed=1. A toast cannot survive a page change, so the
+ *   detail page reads that flag, shows "Order #N placed successfully.", adds the Docs/07
+ *   "couldn't be fully booked" notice when the order was split across trips (it already loads the
+ *   bookings, so the POST response needs no extra field), and then removes the flag from the URL.
+ *
  * Access: /orders/new is limited to order_entry_clerk and system_administrator. That is enforced
  * by proxy.ts / lib/rbac.ts before this page renders, so no role check is repeated here.
  *
@@ -97,6 +113,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 /** One destination city from `GET /api/cities`, reduced to what the dropdown needs. */
 interface CityOption {
@@ -323,6 +340,49 @@ function parseQuantity(text: string): number | null {
   if (text.trim() === "") return null;
   const quantity = Number(text);
   return Number.isInteger(quantity) && quantity >= 1 ? quantity : null;
+}
+
+/**
+ * Returns the field class list, switched to a red border when the field is invalid.
+ *
+ * @param {boolean} invalid - Whether the field currently has an error to show.
+ * @returns {string} FIELD_CLASS, with the border colour swapped when `invalid`.
+ */
+function fieldClassFor(invalid: boolean): string {
+  return invalid ? FIELD_CLASS.replace("border-[#C8C4D7]", "border-[#F93C65]") : FIELD_CLASS;
+}
+
+/** Generic failure line from Docs/07_content-copy.md, used when nothing more specific applies. */
+const GENERIC_PLACE_ORDER_ERROR =
+  "Couldn't place this order. Please check the details and try again.";
+
+/**
+ * Turns a failed POST /api/orders answer into the single message shown to the clerk.
+ *
+ * The API error shape is `{ error: { code, message, field? } }`. Business-rule violations arrive as
+ * 400s carrying the stored procedure's own text, which Docs/05 says to show inline; two of them
+ * have Docs/07 wording that reads better and is used instead. Anything unrecognised falls back to
+ * the generic Docs/07 line rather than leaking a raw technical message.
+ *
+ * @param {number} status - HTTP status of the response.
+ * @param {unknown} body - Parsed JSON body (may be anything if the server sent garbage).
+ * @returns {string} The message to display.
+ */
+function describePlaceOrderFailure(status: number, body: unknown): string {
+  const error = (body as { error?: { code?: string; message?: string } } | null)?.error;
+  const message = error?.message?.trim();
+
+  if (status === 401) return "Your session has expired. Please sign in again.";
+  if (error?.code === "LEAD_TIME_VIOLATION") {
+    return "Delivery date must be at least 7 days from today.";
+  }
+  // place_order's wording is 'No route covers area "X" in city N.'; doc 07 has friendlier text.
+  if (message?.startsWith("No route covers")) {
+    return "No delivery route covers this address. Please check the city and area.";
+  }
+  // 400 (rule violations), 403 (role) and 409 (destination busy) carry messages meant for people.
+  if ((status === 400 || status === 403 || status === 409) && message) return message;
+  return GENERIC_PLACE_ORDER_ERROR;
 }
 
 /** Email shape check: something@something.something, no spaces. Deliberately simple. */
@@ -611,6 +671,14 @@ export default function NewOrderPage() {
   const [highlightIndex, setHighlightIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Submit state: a request in flight (also keeps the button disabled while navigating away),
+  // whether Place Order has been clicked at least once (which reveals every field's message), and
+  // the failure message from the last attempt.
+  const router = useRouter();
+  const [placing, setPlacing] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
   // Products for the item lines (null = not loaded yet), the lines being edited, and a counter
   // that hands each new line a stable key. The Map holds each line's product <select> so a freshly
   // added line can be focused.
@@ -789,7 +857,7 @@ export default function NewOrderPage() {
   // Derived, not stored, so the message vanishes the moment the date becomes valid. The other
   // messages in `deliveryErrors` are used by Step 6's submit check.
   const deliveryErrors = validateDeliveryDetails(cityId, area, address, deliveryDate);
-  const showDateError = dateTouched && deliveryErrors.date !== undefined;
+  const showDateError = (dateTouched || submitAttempted) && deliveryErrors.date !== undefined;
   const minDeliveryDate = getMinDeliveryDate();
 
   // Derived item-line figures. Each line's value and space are rounded to 2 decimals before being
@@ -803,6 +871,7 @@ export default function NewOrderPage() {
     return {
       line,
       product,
+      complete,
       // A non-empty box that is not a valid whole number gets an inline hint while typing.
       quantityInvalid: line.quantity.trim() !== "" && quantity === null,
       lineValue: complete ? roundTo2(quantity * product.unit_price) : 0,
@@ -811,6 +880,36 @@ export default function NewOrderPage() {
   });
   const totalValue = roundTo2(lineViews.reduce((sum, view) => sum + view.lineValue, 0));
   const totalSpace = roundTo2(lineViews.reduce((sum, view) => sum + view.lineSpace, 0));
+
+  // Pre-flight messages for the parts of the form outside Delivery Details. They are computed on
+  // every render but only DISPLAYED after a submit attempt, so an untouched form is not scolded.
+  const customerError = customer ? undefined : "Select a customer.";
+  const itemsError =
+    lines.length === 0
+      ? "Please add at least one item to the order."
+      : lineViews.some((view) => !view.complete)
+        ? "Choose a product and a whole-number quantity for every item."
+        : undefined;
+
+  /**
+   * Finds the DOM id of the first field with a problem, in the order the form reads top to
+   * bottom, so the submit handler can move focus there. Returns null when everything is valid.
+   */
+  const firstInvalidFieldId = (): string | null => {
+    if (customerError) return "customer-search";
+    if (deliveryErrors.city) return "destination-city";
+    if (deliveryErrors.area) return "delivery-area";
+    if (deliveryErrors.address) return "delivery-address";
+    if (deliveryErrors.date) return "expected-delivery-date";
+    if (itemsError) {
+      // Jump to the first unfinished line's product box, or to "+ Add item" if there are no lines.
+      const unfinished = lineViews.find((view) => !view.complete);
+      return unfinished ? `item-product-${unfinished.line.key}` : "add-item-button";
+    }
+    return null;
+  };
+
+  const hasFormErrors = firstInvalidFieldId() !== null;
 
   // Derived, not stored: the areas are loading when a city is chosen but the loaded areas do
   // not yet belong to it, and nothing has failed.
@@ -926,6 +1025,78 @@ export default function NewOrderPage() {
     setCityId(event.target.value);
     setArea("");
     setAreasError(false); // a failure for the previous city does not apply to the new one
+  };
+
+  /**
+   * Handles a click on Place Order.
+   *
+   * 1. Ignores the click if an order is already being placed (double-click guard).
+   * 2. Reveals all field messages. If anything is invalid, focuses the first problem and STOPS:
+   *    nothing is sent, and nothing the clerk typed is lost.
+   * 3. Otherwise POSTs the order. On success it navigates to the new order with `?placed=1` (the
+   *    detail page shows the toast) and deliberately leaves `placing` true so the button stays
+   *    disabled through the page change. On any failure it shows a message and re-enables the
+   *    button, keeping every field as it was.
+   *
+   * The server remains the authority on every rule; this only avoids obviously doomed requests.
+   */
+  const handlePlaceOrder = async () => {
+    if (placing) return;
+
+    setSubmitAttempted(true);
+    setSubmitError(null);
+
+    const invalidId = firstInvalidFieldId();
+    if (invalidId !== null || customer === null) {
+      // Focus after the messages have rendered, so the screen reader announces them too.
+      if (invalidId) requestAnimationFrame(() => document.getElementById(invalidId)?.focus());
+      return;
+    }
+
+    setPlacing(true);
+    let redirected = false;
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer_id: customer.customer_id,
+          delivery_address: address.trim(),
+          delivery_area: area,
+          destination_city_id: Number(cityId),
+          expected_delivery_date: deliveryDate,
+          items: lines.map((line) => ({
+            product_id: Number(line.productId),
+            quantity: parseQuantity(line.quantity),
+          })),
+        }),
+      });
+
+      // A body that is not JSON (e.g. a proxy error page) must not throw past the message below.
+      const body = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        setSubmitError(describePlaceOrderFailure(response.status, body));
+        return;
+      }
+
+      const orderId = (body as { order?: { order_id?: number } } | null)?.order?.order_id;
+      if (!orderId) {
+        // Placed, but the answer was unreadable. Do not invite a retry: that could duplicate it.
+        setSubmitError(
+          "The order may have been placed, but we couldn't confirm it. Check the orders list before trying again."
+        );
+        return;
+      }
+
+      redirected = true;
+      router.push(`/orders/${orderId}?placed=1`);
+    } catch (err) {
+      console.error("Failed to place order:", err);
+      setSubmitError(GENERIC_PLACE_ORDER_ERROR);
+    } finally {
+      if (!redirected) setPlacing(false);
+    }
   };
 
   /**
@@ -1180,6 +1351,11 @@ export default function NewOrderPage() {
                 )}
               </div>
             )}
+            {submitAttempted && customerError && (
+              <p role="alert" className="text-xs font-medium text-[#F93C65] mt-2">
+                {customerError}
+              </p>
+            )}
           </SectionCard>
 
           {/* Section 2 — Delivery Details. Step 4 wires the city → area dependency and the
@@ -1213,7 +1389,8 @@ export default function NewOrderPage() {
                   value={cityId}
                   onChange={handleCityChange}
                   disabled={cities === null}
-                  className={FIELD_CLASS}
+                  aria-invalid={submitAttempted && !!deliveryErrors.city}
+                  className={fieldClassFor(submitAttempted && !!deliveryErrors.city)}
                 >
                   <option value="" disabled>
                     {cities === null && !citiesError ? "Loading cities…" : "Select city"}
@@ -1224,6 +1401,11 @@ export default function NewOrderPage() {
                     </option>
                   ))}
                 </select>
+                {submitAttempted && deliveryErrors.city && (
+                  <p role="alert" className="text-xs font-medium text-[#F93C65] mt-1">
+                    {deliveryErrors.city}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1238,7 +1420,8 @@ export default function NewOrderPage() {
                   value={area}
                   onChange={(event) => setArea(event.target.value)}
                   disabled={cityId === "" || areasLoading}
-                  className={FIELD_CLASS}
+                  aria-invalid={submitAttempted && !!deliveryErrors.area}
+                  className={fieldClassFor(submitAttempted && !!deliveryErrors.area)}
                 >
                   <option value="" disabled>
                     {areasLoading ? "Loading areas…" : "e.g. Wellawatte, Colombo 6"}
@@ -1249,6 +1432,11 @@ export default function NewOrderPage() {
                     </option>
                   ))}
                 </select>
+                {submitAttempted && deliveryErrors.area && (
+                  <p role="alert" className="text-xs font-medium text-[#F93C65] mt-1">
+                    {deliveryErrors.area}
+                  </p>
+                )}
               </div>
 
               <div className="md:col-span-2">
@@ -1261,8 +1449,14 @@ export default function NewOrderPage() {
                   value={address}
                   onChange={(event) => setAddress(event.target.value)}
                   placeholder="Full delivery address"
-                  className={FIELD_CLASS}
+                  aria-invalid={submitAttempted && !!deliveryErrors.address}
+                  className={fieldClassFor(submitAttempted && !!deliveryErrors.address)}
                 />
+                {submitAttempted && deliveryErrors.address && (
+                  <p role="alert" className="text-xs font-medium text-[#F93C65] mt-1">
+                    {deliveryErrors.address}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1357,6 +1551,7 @@ export default function NewOrderPage() {
                               if (element) productSelectRefs.current.set(line.key, element);
                               else productSelectRefs.current.delete(line.key);
                             }}
+                            id={`item-product-${line.key}`}
                             aria-label={`Product for item ${index + 1}`}
                             value={line.productId}
                             onChange={(event) =>
@@ -1430,6 +1625,7 @@ export default function NewOrderPage() {
             )}
 
             <button
+              id="add-item-button"
               type="button"
               onClick={handleAddLine}
               // No point adding a line before products load, or once every product is on a line.
@@ -1438,6 +1634,11 @@ export default function NewOrderPage() {
             >
               + Add item
             </button>
+            {submitAttempted && itemsError && (
+              <p role="alert" className="text-xs font-medium text-[#F93C65] mt-3">
+                {itemsError}
+              </p>
+            )}
           </SectionCard>
         </div>
 
@@ -1476,15 +1677,33 @@ export default function NewOrderPage() {
             </dl>
           </SectionCard>
 
-          {/* Primary and secondary actions (doc 07: Place Order / Cancel). Place Order stays
-              disabled until submit handling exists (Step 6); Cancel simply returns to the list. */}
+          {/* Submit feedback, directly above the buttons: a pointer to the fields that need fixing, or
+              the message from a failed attempt. role="alert" announces either when it appears. */}
+          {submitAttempted && hasFormErrors && (
+            <p role="alert" className="text-sm font-medium text-[#F93C65]">
+              Please fix the highlighted fields before placing the order.
+            </p>
+          )}
+          {submitError && (
+            <div
+              role="alert"
+              className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#121C2C] rounded-xl px-4 py-3 text-sm"
+            >
+              {submitError}
+            </div>
+          )}
+
+          {/* Primary and secondary actions (doc 07: Place Order / Cancel). Place Order is disabled
+              only while a request is running or the lookups are still loading; it is NOT greyed out
+              for invalid input, because a click that explains what is wrong beats a dead button. */}
           <div className="flex flex-col sm:flex-row lg:flex-col gap-3">
             <button
               type="button"
-              disabled
-              className="inline-flex items-center justify-center min-h-12 px-6 rounded-full bg-[#4132C7] text-white text-sm font-semibold shadow-sm disabled:bg-[#E7E7F2] disabled:text-[#474554]/60 disabled:shadow-none disabled:cursor-not-allowed"
+              onClick={handlePlaceOrder}
+              disabled={placing || cities === null || products === null}
+              className="inline-flex items-center justify-center min-h-12 px-6 rounded-full bg-[#4132C7] text-white text-sm font-semibold shadow-sm hover:bg-[#3427A8] transition-colors disabled:bg-[#E7E7F2] disabled:text-[#474554]/60 disabled:shadow-none disabled:cursor-not-allowed"
             >
-              Place Order
+              {placing ? "Placing order…" : "Place Order"}
             </button>
             <Link
               href="/orders"

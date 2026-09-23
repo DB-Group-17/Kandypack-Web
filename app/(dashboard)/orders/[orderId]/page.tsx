@@ -23,6 +23,14 @@
  *   than an optimistic merge: the PATCH response carries neither the new status-history
  *   row nor the cascaded delivery cancellation.
  *
+ * Arriving from /orders/new (?placed=1):
+ * - A toast cannot survive the page change after an order is placed, so /orders/new navigates here
+ *   with `?placed=1`. On the first successful load this page shows "Order #N placed successfully."
+ *   and, when the order was split across trips (train_bookings.length > 1), the Docs/07 notice that
+ *   it "couldn't be fully booked on the requested train". The flag is then removed from the URL
+ *   with router.replace so a refresh or a shared link does not repeat the message. The flag lives
+ *   in a ref read once at first render, so removing it does not re-trigger the fetch.
+ *
  * Documented design resolution:
  * - Docs/07_content-copy.md specifies Status History as a five-column table, while
  *   UI/order_detail renders it as a vertical timeline. Resolved in favour of the timeline,
@@ -35,9 +43,9 @@
  * Owner: Member 1 (Dineth)
  */
 
-import React, { useState, useEffect, useId } from "react";
+import React, { Suspense, useState, useEffect, useId, useRef } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/rbac";
 
@@ -326,16 +334,24 @@ function SectionCard({
 }
 
 /**
- * OrderDetailPage renders the complete view of one customer order and, for
+ * OrderDetailPageContent renders the complete view of one customer order and, for
  * authorized roles, the status transition workflow.
  *
  * @returns {JSX.Element} The Order Detail page component.
  */
-export default function OrderDetailPage() {
+function OrderDetailPageContent() {
   const params = useParams<{ orderId: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { role } = useAuth();
 
   const orderId = params?.orderId ?? "";
+
+  // True only when we arrived straight from placing an order. Read once, into a ref, and consumed
+  // by the load below; a ref (not state) so clearing it never causes a re-render or a refetch.
+  const justPlacedRef = useRef<boolean>(searchParams.get("placed") === "1");
+  /** Docs/07 notice shown after placement when the order overflowed onto more than one trip. */
+  const [placementNotice, setPlacementNotice] = useState<string | null>(null);
 
   // --- Data & Async States ---
   const [order, setOrder] = useState<OrderDetail | null>(null);
@@ -405,7 +421,22 @@ export default function OrderDetailPage() {
         }
 
         const data = await response.json();
-        if (!ignore) setOrder(data.order);
+        if (!ignore) {
+          setOrder(data.order);
+
+          // First load after placing an order: confirm it, flag a split, then tidy the URL.
+          if (justPlacedRef.current) {
+            justPlacedRef.current = false;
+            setToastMessage(`Order #${data.order.order_id} placed successfully.`);
+            setTimeout(() => setToastMessage(null), 4000);
+            if (data.order.train_bookings.length > 1) {
+              setPlacementNotice(
+                "This order couldn't be fully booked on the requested train — part of it has been scheduled on the next available trip."
+              );
+            }
+            router.replace(`/orders/${numericId}`);
+          }
+        }
       } catch (err: unknown) {
         console.error("Failed to load order detail:", err);
         if (!ignore) {
@@ -425,7 +456,7 @@ export default function OrderDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [orderId, refreshToken]);
+  }, [orderId, refreshToken, router]);
 
   /**
    * Legal next statuses for the loaded order, from the client-side FSM mirror.
@@ -589,6 +620,25 @@ export default function OrderDetailPage() {
 
   return (
     <div className="space-y-6">
+      {/* Split-order notice after placement (Docs/07). Dismissible; role="status" is announced
+          politely, since it is information rather than an error. */}
+      {placementNotice && (
+        <div
+          role="status"
+          className="bg-[#E0F2FF] border border-[#0047CC]/20 text-[#121C2C] rounded-xl px-4 py-3 flex items-start justify-between gap-3 text-sm"
+        >
+          <span>{placementNotice}</span>
+          <button
+            type="button"
+            onClick={() => setPlacementNotice(null)}
+            className="text-[#474554] hover:text-[#121C2C]"
+            aria-label="Dismiss notice"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Success Toast (auto-dismisses after 4s) */}
       {toastMessage && (
         <div
@@ -1240,5 +1290,27 @@ export default function OrderDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * OrderDetailPage is the routed page component. It wraps `OrderDetailPageContent` in a Suspense
+ * boundary because that component reads `useSearchParams()` (for the `?placed=1` flag), which
+ * Next.js requires to be suspended during static prerendering.
+ *
+ * @returns {JSX.Element} The Order Detail page, suspense-wrapped.
+ */
+export default function OrderDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-white rounded-2xl border border-[#C8C4D7]/40 p-12 text-center shadow-xs">
+          <div className="inline-block w-8 h-8 border-3 border-[#4132C7]/30 border-t-[#4132C7] rounded-full animate-spin mb-4" />
+          <p className="text-sm font-semibold text-[#121C2C]">Loading order details…</p>
+        </div>
+      }
+    >
+      <OrderDetailPageContent />
+    </Suspense>
   );
 }
