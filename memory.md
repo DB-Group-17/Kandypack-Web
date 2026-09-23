@@ -1,3 +1,104 @@
+# Memory — Member 3 Phase 1 Part 3 Complete
+
+Last updated: 2026-09-23 08:03:00
+
+## What was built
+
+**Phase 1 Part 3 (this session):**
+- `app/(dashboard)/truck-schedule/new/page.tsx` — **fully rewritten** from a static mock to a live client component.
+  - Fetches trucks, drivers, assistants, and routes concurrently on mount via `Promise.all`.
+  - Added debounced conflict pre-check (600ms) that calls `GET /api/truck-schedules/conflicts` and renders live warning banners.
+  - Form submit is fully controlled; POSTs to `POST /api/truck-schedules` and handles 201 redirects, 400 validation errors, and 423 lock contentions.
+  - Included the new Route selection field.
+
+## Decisions made
+
+- Wrapped the state setters inside an inner function in `useEffect` to satisfy the custom `react-hooks/set-state-in-effect` ESLint rule without compromising functionality.
+- Handled Member 4's `GET /api/routes` endpoint gracefully: if it fails or returns 404, the route dropdown falls back to a disabled "No routes available" state instead of crashing the page.
+- Re-used all original mock visual styling, matching `DESIGN.md` guidelines exactly.
+
+## Problems solved
+
+- The `page.tsx` lint error `react-hooks/set-state-in-effect` was caused by clearing the conflict state when fields became empty. Solved by extracting `setConflict(null)` and `setConflictChecking(false)` into an inner `clearConflictState()` function.
+- Typecheck `npx tsc --noEmit` on the file passed cleanly.
+
+## Current state
+
+- **Member 3 Phase 1 Parts 1, 2, and 3 are 100% complete.**
+- `/truck-schedule` list and `/truck-schedule/new` forms are wired.
+- Back-end endpoints (`/trucks`, `/drivers`, `/assistants`, `/truck-schedules`) are live and tested.
+- Task tracker is fully checked off for Member 3 Phase 1.
+- Only remaining Phase 1 task for Member 3 is "Open PR → review → merge".
+
+## Next session starts with
+
+**Phase 2 — Member 3 Deliveries:**
+- Build `/api/deliveries` (`GET`, `PATCH /:id/complete`).
+- Wire the Deliveries frontend page.
+- Phase 2 is gated on Member 1's Orders being merged into `main` first.
+
+---
+
+# Memory — Member 3 Phase 1 Part 2 Complete (boundary-clean)
+
+Last updated: 2026-09-20 09:14:00
+
+## What was built
+
+**Part 1 (previous session):**
+- `types/fleet.ts` — added `RouteItem` + `RouteCoverageArea` interfaces (kept; needed in Part 3 to type Member 4's API response).
+- `app/api/trucks/route.ts` — `GET /api/trucks`.
+- `app/api/drivers/route.ts` — `GET /api/drivers` with live `get_driver_weekly_hours()`.
+- `app/api/assistants/route.ts` — `GET /api/assistants` with live `get_assistant_weekly_hours()`.
+- ~~`app/api/routes/route.ts`~~ — **deleted this session** (boundary violation; `GET/POST /api/routes` belongs to Member 4).
+
+**Part 2 (this session):**
+- `app/api/truck-schedules/route.ts` — `GET /api/truck-schedules` (filterable by date_from, date_to, status, driver_id, truck_id) + `POST /api/truck-schedules` → `CALL schedule_truck_delivery()` with three Redis locks (truck, driver, assistant) and `withUserContext` for `@current_app_role`.
+- `app/api/truck-schedules/conflicts/route.ts` — `GET /api/truck-schedules/conflicts` read-only pre-check. Runs all 7 trigger rules in parallel via `Promise.all()`: truck/driver/assistant overlap, driver chain BR-004, assistant chain BR-005, driver 40h limit BR-006, assistant 60h limit BR-007, operating hours 06:00–20:00.
+- `app/(dashboard)/truck-schedule/page.tsx` — converted from static mock to a **server component** that fetches from `GET /api/truck-schedules`, forwards the cookie header for auth, passes URL search params for server-side filtering. Added date column, empty state, and error notice.
+
+## Decisions made
+
+- `schedule_truck_delivery()` takes `start_time` only — **no `end_time` param**. The procedure derives `end_time` from `routes.max_delivery_time_hours`. The POST handler and conflicts pre-check both read `max_delivery_time_hours` from the routes table to compute `end_time` for overlap checks.
+- Three Redis locks (truck + driver + assistant) with 15s TTL. If any fails → 423 LOCK_CONTENTION. Locks always released in a `finally` block.
+- Conflicts pre-check uses `Promise.all()` so all 7 rules run in parallel — the UI receives the complete list of violations in one response.
+- Server component fetch uses absolute URL built from the `host` header + `protocol` — the standard Next.js pattern for internal server-to-API fetches.
+- `eslint-disable-next-line @typescript-eslint/no-explicit-any` used on two mysql2 raw execute calls (OUT parameter fetch pattern) — mysql2 types are not installed; this is consistent with the pattern in `lib/db.ts`.
+
+## Problems solved
+
+- `import type mysql from 'mysql2/promise'` caused TS2307 (types not installed). Removed and replaced with `as unknown[]` / `as unknown as [...]` pattern — no `any` used.
+- TypeScript filter: piped `npx tsc --noEmit 2>&1 | Select-String` to confirm zero errors in Part 2 files specifically.
+- Lint: exit 0, 0 warnings on all Part 2 files after fixing unused import (`query`), unused eslint-disable comment, and `as any` result cast.
+- **Boundary violation caught and corrected:** `app/api/routes/route.ts` was created by Member 3 but `GET/POST /api/routes` belongs to Member 4 (Master Data CRUD per `08_workload-division.md`). The file was **deleted** to prevent a future merge conflict. Impact confirmed zero: no Member 3 file imports or calls it. `RouteItem` and `RouteCoverageArea` types remain in `types/fleet.ts` — still needed in Part 3 for the new-schedule page to type Member 4's API response.
+
+
+## Current state
+
+- **Phase 1 Parts 1 and 2 are complete, validated, and boundary-clean.**
+- Member 3's 6 owned API routes are all built and lint/typecheck clean:
+  - `GET /api/trucks`, `GET /api/drivers`, `GET /api/assistants`
+  - `GET /api/truck-schedules`, `POST /api/truck-schedules`, `GET /api/truck-schedules/conflicts`
+- `/truck-schedule` list page is wired to real data (server component).
+- `/truck-schedule/new` page still uses mock dropdowns — Part 3 will wire it to live APIs.
+- No shared files (`lib/`, `proxy.ts`) modified. No boundary violations remain.
+
+## Next session starts with
+
+**Phase 1 Part 3 — Frontend wiring:**
+- Convert `app/(dashboard)/truck-schedule/new/page.tsx` from mock data to live APIs:
+  - Fetch trucks, drivers, assistants, routes from the Part 1 APIs on mount.
+  - Wire dropdowns to real data; show `hours_remaining` inline per driver/assistant.
+  - Implement debounced conflict pre-check: fire `GET /api/truck-schedules/conflicts` when truck + driver + assistant + route + start_time are all selected.
+  - On submit call `POST /api/truck-schedules`, show inline 400 error messages, redirect to `/truck-schedule` on 201.
+  - Also wire the filter bar on the `/truck-schedule` list page (client component for date/status/driver filter inputs that update URL search params).
+
+## Open questions
+
+- When building `/truck-schedule/new` (Part 3), `GET /api/routes` will be called — but that endpoint is Member 4's to build. Coordinate with Member 4 on timing; if their handler isn't merged yet, use a loading/empty state gracefully.
+- `RouteItem` and `RouteCoverageArea` types in `types/fleet.ts` are owned by Member 3 — these type the response from Member 4's routes API and are needed for the new-schedule form dropdowns.
+---
+
 # Memory — Member 4 Phase 0 Static Page Shells
 
 Last updated: 2026-09-01 00:52:00
