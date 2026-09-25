@@ -29,6 +29,7 @@ import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
 import { withUserContext, query, queryOne, QueryParam } from '@/lib/db';
 import { withLock, REDIS_KEYS } from '@/lib/redis';
+import { applyRateLimit, RATE_LIMIT_PROFILES } from '@/lib/rate-limit';
 
 /**
  * Line item shape expected in the order creation payload.
@@ -147,7 +148,11 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    // 2. Enforce RBAC permission for order creation
+    // 2. Rate-limit order creation: 20 per minute per authenticated user
+    const rateLimited = await applyRateLimit(req, RATE_LIMIT_PROFILES.ORDER_CREATE, session.user_id);
+    if (rateLimited) return rateLimited;
+
+    // 3. Enforce RBAC permission for order creation
     const canPlaceOrder = hasPermission(session.role, 'orders', 'place_order');
     if (!canPlaceOrder) {
       return NextResponse.json(
