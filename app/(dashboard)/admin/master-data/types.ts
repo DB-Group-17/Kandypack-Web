@@ -97,17 +97,9 @@ export interface CityItem {
   created_at?: string;
 }
 
-/**
- * Valid employee roles matching the check constraint in Docs/04_database-schema-v4.md §2.3.
- */
-export type EmployeeRole =
-  | 'system_administrator'
-  | 'logistics_manager'
-  | 'order_entry_clerk'
-  | 'store_manager'
-  | 'fleet_supervisor'
-  | 'driver'
-  | 'assistant';
+import { EmployeeRole } from '@/types/master-data';
+
+export type { EmployeeRole };
 
 /**
  * Employee record conforming to the `employees` table schema.
@@ -254,4 +246,15 @@ export interface NewCustomerPayload {
   email?: string;
   registered_city_id: number;
   address_line: string;
+}
+
+/**
+ * Payload interface for editing an existing product catalog specification.
+ */
+export interface UpdateProductPayload {
+  product_name?: string;
+  category?: string;
+  unit_of_measure?: string;
+  unit_price?: number;
+  space_rate?: number;
 }

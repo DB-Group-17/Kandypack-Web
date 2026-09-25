@@ -2,24 +2,26 @@
 
 /**
  * @file page.tsx
- * @description Static frontend shell for the /admin/master-data route (Member 4, Phase 0).
+ * @description Master client orchestrator for the /admin/master-data route (Member 4, Phase 1).
  *
  * Structure & Data Flow:
- * 1. Manages active tab state across 5 reference data sub-sections:
- *    - Products: Product catalog items, pricing, space rates, and status.
+ * 1. Connects to live backend API endpoints (/api/products, /api/routes, /api/cities, /api/stores, /api/employees, /api/customers).
+ * 2. Manages active tab state across 5 reference data domains:
+ *    - Products: Catalog inventory items, pricing, space rates, and status.
  *    - Routes: Store-specific delivery routes and coverage areas.
  *    - Cities: Read-only geographic reference data for origin and destination hubs.
  *    - Employees: Personnel roster with roles, store assignments, and driver licenses.
  *    - Customers: Retail and wholesale customer accounts.
- * 2. Provides dynamic 3-metric KPI stats banner adaptively calculated per active tab.
- * 3. Supports real-time client-side search filtering within the active tab.
- * 4. Provides accessible modal dialogs for creating new reference entities with duplicate validation.
- * 5. Features chevron pagination, empty states, and toast notifications.
+ * 3. Dynamically calculates 3-metric KPI Bento banner metrics from real active items.
+ * 4. Supports real-time client-side search filtering within the active tab.
+ * 5. Provides accessible creation modals with server constraint and duplicate validation.
+ * 6. Displays loading spinner, error retry banner, chevron pagination, and auto-dismiss toast notifications.
  *
- * Conforms to Docs/05_api-and-pages.md §384, Docs/07_content-copy.md §361, and UI/master_data/.
+ * Authority: Docs/03_architecture.md §4, Docs/05_api-and-pages.md §384, Docs/07_content-copy.md §361, DESIGN.md
+ * Owner: Member 4 (Vidura)
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { QuickStatsBanner } from './components/QuickStatsBanner';
 import { ProductsTab } from './components/ProductsTab';
 import { RoutesTab } from './components/RoutesTab';
@@ -28,19 +30,12 @@ import { EmployeesTab } from './components/EmployeesTab';
 import { CustomersTab } from './components/CustomersTab';
 import { MasterDataPagination } from './components/MasterDataPagination';
 import { AddProductModal } from './components/AddProductModal';
+import { EditProductModal } from './components/EditProductModal';
 import { AddRouteModal } from './components/AddRouteModal';
 import { AddEmployeeModal } from './components/AddEmployeeModal';
 import { AddCustomerModal } from './components/AddCustomerModal';
 
-import {
-  MOCK_CITIES,
-  MOCK_STORES,
-  INITIAL_PRODUCTS,
-  INITIAL_ROUTES,
-  INITIAL_EMPLOYEES,
-  INITIAL_CUSTOMERS,
-  getStatsForTab,
-} from './mockData';
+import { getStatsForTab } from './mockData';
 
 import {
   MasterDataTab,
@@ -51,6 +46,7 @@ import {
   CustomerItem,
   PaginationState,
   NewProductPayload,
+  UpdateProductPayload,
   NewRoutePayload,
   NewEmployeePayload,
   NewCustomerPayload,
@@ -65,6 +61,18 @@ interface ToastState {
   id: number;
   message: string;
   type: 'success' | 'info';
+}
+
+/**
+ * Interface representing a store reference row.
+ */
+interface StoreRef {
+  store_id: number;
+  city_id: number;
+  store_name: string;
+  city_name: string;
+  railway_station_name?: string;
+  contact_phone?: string;
 }
 
 /**
@@ -88,15 +96,21 @@ export default function MasterDataPage(): React.JSX.Element {
     customers: 1,
   });
 
-  // Master Data entity lists stored in local client state for Phase 0 interactive CRUD
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
-  const [routes, setRoutes] = useState<RouteItem[]>(INITIAL_ROUTES);
-  const [cities] = useState<CityItem[]>(MOCK_CITIES);
-  const [employees, setEmployees] = useState<EmployeeItem[]>(INITIAL_EMPLOYEES);
-  const [customers, setCustomers] = useState<CustomerItem[]>(INITIAL_CUSTOMERS);
+  // Master Data entity lists initialized as empty arrays and populated exclusively via live APIs
+  const [products, setProducts] = useState<ProductItem[]>([]);
+  const [routes, setRoutes] = useState<RouteItem[]>([]);
+  const [cities, setCities] = useState<CityItem[]>([]);
+  const [stores, setStores] = useState<StoreRef[]>([]);
+  const [employees, setEmployees] = useState<EmployeeItem[]>([]);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+
+  // Loading and error states for live data fetching
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   // Modal dialog visibility states
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
@@ -119,7 +133,84 @@ export default function MasterDataPage(): React.JSX.Element {
   };
 
   /**
-   * Switches the active reference data tab and resets pagination if needed.
+   * Fetches master data from all 6 backend endpoints in parallel.
+   * Reusable function used for both initial mount and the error Retry action.
+   */
+  const fetchMasterData = useCallback(async () => {
+    try {
+      const [prodRes, routesRes, citiesRes, storesRes, empRes, custRes] = await Promise.all([
+        fetch('/api/products', { cache: 'no-store' }),
+        fetch('/api/routes', { cache: 'no-store' }),
+        fetch('/api/cities', { cache: 'no-store' }),
+        fetch('/api/stores', { cache: 'no-store' }),
+        fetch('/api/employees', { cache: 'no-store' }),
+        fetch('/api/customers', { cache: 'no-store' }),
+      ]);
+
+      if (!prodRes.ok || !routesRes.ok || !citiesRes.ok || !storesRes.ok || !empRes.ok || !custRes.ok) {
+        throw new Error("Couldn't load master data. Please try again.");
+      }
+
+      const [prodData, routesData, citiesData, storesData, empData, custData] = await Promise.all([
+        prodRes.json(),
+        routesRes.json(),
+        citiesRes.json(),
+        storesRes.json(),
+        empRes.json(),
+        custRes.json(),
+      ]);
+
+      // Always populate from API responses directly, including empty arrays []
+      if (Array.isArray(prodData.items)) {
+        setProducts(prodData.items);
+      }
+      if (Array.isArray(routesData.items)) {
+        setRoutes(routesData.items);
+      }
+      if (Array.isArray(citiesData.items)) {
+        setCities(citiesData.items);
+      }
+      if (Array.isArray(storesData.items)) {
+        setStores(storesData.items);
+      }
+      if (Array.isArray(empData.items)) {
+        setEmployees(empData.items);
+      }
+      if (Array.isArray(custData.items)) {
+        setCustomers(custData.items);
+      }
+      setFetchError(null);
+    } catch (err: unknown) {
+      console.error('Failed to load master data:', err);
+      if (err instanceof Error) {
+        setFetchError(err.message);
+      } else {
+        setFetchError("Couldn't load master data. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Hydrate master data on initial component mount using the shared fetch function
+  useEffect(() => {
+    let ignore = false;
+
+    const loadData = async () => {
+      if (!ignore) {
+        await fetchMasterData();
+      }
+    };
+
+    void loadData();
+
+    return () => {
+      ignore = true;
+    };
+  }, [fetchMasterData]);
+
+  /**
+   * Switches the active reference data tab and resets search and pagination.
    *
    * @param tab Target MasterDataTab
    */
@@ -211,7 +302,7 @@ export default function MasterDataPage(): React.JSX.Element {
   }, [customers, searchQuery]);
 
   /**
-   * Computes dynamic KPI statistics cards for current tab.
+   * Computes dynamic KPI statistics cards for current tab from live items.
    */
   const currentTabStats = useMemo(() => {
     return getStatsForTab(activeTab, products, routes, cities, employees, customers);
@@ -291,117 +382,182 @@ export default function MasterDataPage(): React.JSX.Element {
   };
 
   /**
-   * Handles creating a new product.
+   * Handles creating a new product via POST /api/products.
    *
    * @param payload Validated product input
    */
-  const handleAddProduct = (payload: NewProductPayload) => {
-    const newProduct: ProductItem = {
-      product_id: Date.now(),
-      sku: payload.sku,
-      product_name: payload.product_name,
-      category: payload.category,
-      unit_of_measure: payload.unit_of_measure,
-      unit_price: payload.unit_price,
-      space_rate: payload.space_rate,
-      status: 'Active',
-      created_at: new Date().toISOString().slice(0, 10),
-    };
-    setProducts((prev) => [newProduct, ...prev]);
-    showToast(`Product "${payload.product_name}" (${payload.sku}) added successfully.`);
+  const handleAddProduct = async (payload: NewProductPayload) => {
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error?.message || 'Failed to create product.',
+        };
+      }
+
+      const createdProduct: ProductItem = data;
+      setProducts((prev) => [createdProduct, ...prev]);
+      showToast(`Product "${payload.product_name}" (${payload.sku}) added successfully.`);
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('Failed to create product:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Network error creating product.',
+      };
+    }
   };
 
   /**
-   * Handles creating a new route.
+   * Handles updating an existing product via PATCH /api/products/:id.
+   *
+   * @param productId Unique identifier of product to update
+   * @param payload Validated product specifications
+   */
+  const handleEditProduct = async (productId: number, payload: UpdateProductPayload) => {
+    try {
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error?.message || 'Failed to update product.',
+        };
+      }
+
+      const updatedProduct: ProductItem = data;
+      setProducts((prev) =>
+        prev.map((p) => (p.product_id === productId ? { ...p, ...updatedProduct } : p))
+      );
+      showToast(`Product "${updatedProduct.product_name}" updated successfully.`);
+      setEditingProduct(null);
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('Failed to update product:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Network error updating product.',
+      };
+    }
+  };
+
+  /**
+   * Handles creating a new route via POST /api/routes.
    *
    * @param payload Validated route input
    */
-  const handleAddRoute = (payload: NewRoutePayload) => {
-    const assignedStore = MOCK_STORES.find((s) => s.store_id === payload.store_id);
-    const newRoute: RouteItem = {
-      route_id: Date.now(),
-      store_id: payload.store_id,
-      store_name: assignedStore ? assignedStore.store_name : 'Assigned Store',
-      route_name: payload.route_name,
-      coverage_description: payload.coverage_description,
-      max_delivery_time_hours: payload.max_delivery_time_hours,
-      coverage_areas: payload.coverage_areas.map((a, idx) => {
-        const city = MOCK_CITIES.find((c) => c.city_id === a.city_id);
+  const handleAddRoute = async (payload: NewRoutePayload) => {
+    try {
+      const res = await fetch('/api/routes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
         return {
-          coverage_id: Date.now() + idx,
-          route_id: Date.now(),
-          city_id: a.city_id,
-          city_name: city ? city.city_name : 'City',
-          area_name: a.area_name,
+          success: false,
+          error: data.error?.message || 'Failed to configure route.',
         };
-      }),
-      status: 'Active',
-      created_at: new Date().toISOString().slice(0, 10),
-    };
-    setRoutes((prev) => [newRoute, ...prev]);
-    showToast(`Route "${payload.route_name}" configured successfully.`);
+      }
+
+      const createdRoute: RouteItem = data;
+      setRoutes((prev) => [createdRoute, ...prev]);
+      showToast(`Route "${payload.route_name}" configured successfully.`);
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('Failed to configure route:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Network error configuring route.',
+      };
+    }
   };
 
   /**
-   * Handles creating a new employee.
+   * Handles creating a new employee via POST /api/employees.
    *
    * @param payload Validated employee input
    */
-  const handleAddEmployee = (payload: NewEmployeePayload) => {
-    const assignedStore = payload.home_store_id
-      ? MOCK_STORES.find((s) => s.store_id === payload.home_store_id)
-      : null;
+  const handleAddEmployee = async (payload: NewEmployeePayload) => {
+    try {
+      const res = await fetch('/api/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    const roleLabels: Record<string, string> = {
-      system_administrator: 'System Administrator',
-      logistics_manager: 'Logistics Manager',
-      order_entry_clerk: 'Order Entry Clerk',
-      store_manager: 'Store Manager',
-      fleet_supervisor: 'Fleet Supervisor',
-      driver: 'Driver',
-      assistant: 'Assistant',
-    };
+      const data = await res.json().catch(() => ({}));
 
-    const newEmp: EmployeeItem = {
-      employee_id: Date.now(),
-      full_name: payload.full_name,
-      nic_number: payload.nic_number,
-      phone: payload.phone,
-      email: payload.email,
-      employee_type: payload.employee_type,
-      employee_type_label: roleLabels[payload.employee_type] || 'Staff Member',
-      home_store_id: payload.home_store_id || null,
-      home_store_name: assignedStore ? assignedStore.store_name : 'Central HQ (Kandy)',
-      license_number: payload.license_number,
-      license_expiry: payload.license_expiry,
-      status: 'Active',
-      hire_date: new Date().toISOString().slice(0, 10),
-    };
-    setEmployees((prev) => [newEmp, ...prev]);
-    showToast(`Employee "${payload.full_name}" registered successfully.`);
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error?.message || 'Failed to register employee.',
+        };
+      }
+
+      const createdEmp: EmployeeItem = data;
+      setEmployees((prev) => [createdEmp, ...prev]);
+      showToast(`Employee "${payload.full_name}" registered successfully.`);
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('Failed to register employee:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Network error registering employee.',
+      };
+    }
   };
 
   /**
-   * Handles creating a new customer account.
+   * Handles creating a new customer account via POST /api/customers.
    *
    * @param payload Validated customer input
    */
-  const handleAddCustomer = (payload: NewCustomerPayload) => {
-    const regCity = MOCK_CITIES.find((c) => c.city_id === payload.registered_city_id);
-    const newCust: CustomerItem = {
-      customer_id: Date.now(),
-      customer_name: payload.customer_name,
-      customer_type: payload.customer_type,
-      phone: payload.phone,
-      email: payload.email,
-      registered_city_id: payload.registered_city_id,
-      registered_city_name: regCity ? regCity.city_name : 'Colombo',
-      address_line: payload.address_line,
-      status: 'Active',
-      created_at: new Date().toISOString().slice(0, 10),
-    };
-    setCustomers((prev) => [newCust, ...prev]);
-    showToast(`Customer account "${payload.customer_name}" created successfully.`);
+  const handleAddCustomer = async (payload: NewCustomerPayload) => {
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data.error?.message || 'Failed to register customer.',
+        };
+      }
+
+      const createdCust: CustomerItem = data;
+      setCustomers((prev) => [createdCust, ...prev]);
+      showToast(`Customer account "${payload.customer_name}" created successfully.`);
+      return { success: true };
+    } catch (err: unknown) {
+      console.error('Failed to register customer:', err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Network error registering customer.',
+      };
+    }
   };
 
   // Dynamic Add button text
@@ -463,7 +619,7 @@ export default function MasterDataPage(): React.JSX.Element {
         {activeTab !== 'cities' ? (
           <button
             onClick={handleMainAddClick}
-            className="h-11 px-6 rounded-full bg-[#4132C7] hover:bg-[#3527a8] text-white font-semibold text-[13px] flex items-center justify-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.98] whitespace-nowrap"
+            className="h-11 px-6 rounded-full bg-[#4132C7] hover:bg-[#3527a8] text-white font-semibold text-[13px] flex items-center justify-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.98] whitespace-nowrap cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -480,12 +636,34 @@ export default function MasterDataPage(): React.JSX.Element {
         )}
       </div>
 
+      {/* Error Alert Banner */}
+      {fetchError && (
+        <div className="p-4 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center justify-between gap-3 text-[13px] text-[#F93C65]">
+          <div className="flex items-center gap-2.5">
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="font-medium">{fetchError}</span>
+          </div>
+          <button
+            onClick={() => {
+              setIsLoading(true);
+              setFetchError(null);
+              void fetchMasterData();
+            }}
+            className="px-4 py-1.5 rounded-full bg-[#F93C65] text-white font-semibold text-[12px] hover:bg-[#d6284e] transition-colors cursor-pointer"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Navigation Tabs (Products, Routes, Cities, Employees, Customers) */}
       <div className="border-b border-[#C8C4D7]/40">
         <nav aria-label="Master Data Tabs" className="flex gap-6 overflow-x-auto pb-px">
           <button
             onClick={() => handleTabChange('products')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 ${
+            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'products'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -496,7 +674,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('routes')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 ${
+            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'routes'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -507,7 +685,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('cities')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 ${
+            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'cities'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -518,7 +696,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('employees')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 ${
+            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'employees'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -529,7 +707,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('customers')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 ${
+            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'customers'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -573,7 +751,7 @@ export default function MasterDataPage(): React.JSX.Element {
           <div className="flex items-center gap-2">
             <button
               onClick={() => showToast('Filter options are active for this view.', 'info')}
-              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-[12px] font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-[12px] font-semibold transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -587,7 +765,7 @@ export default function MasterDataPage(): React.JSX.Element {
             </button>
             <button
               onClick={() => showToast('Export generated (CSV/PDF ready).', 'info')}
-              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-[12px] font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-[12px] font-semibold transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -602,51 +780,60 @@ export default function MasterDataPage(): React.JSX.Element {
           </div>
         </div>
 
-        {/* Tab Content Display */}
-        {activeTab === 'products' && (
-          <ProductsTab
-            items={paginatedItems as ProductItem[]}
-            onAddClick={() => setIsAddProductOpen(true)}
-            onEditClick={(item) => showToast(`Edit mode for "${item.product_name}" triggered.`, 'info')}
-          />
-        )}
+        {/* Tab Content Display or Loading Indicator */}
+        {isLoading ? (
+          <div className="py-24 text-center">
+            <div className="w-8 h-8 border-3 border-[#4132C7] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-[13px] text-[#474554] font-medium">Loading reference records...</p>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'products' && (
+              <ProductsTab
+                items={paginatedItems as ProductItem[]}
+                onAddClick={() => setIsAddProductOpen(true)}
+                onEditClick={(item) => setEditingProduct(item)}
+              />
+            )}
 
-        {activeTab === 'routes' && (
-          <RoutesTab
-            items={paginatedItems as RouteItem[]}
-            onAddClick={() => setIsAddRouteOpen(true)}
-            onEditClick={(item) => showToast(`Edit mode for "${item.route_name}" triggered.`, 'info')}
-          />
-        )}
+            {activeTab === 'routes' && (
+              <RoutesTab
+                items={paginatedItems as RouteItem[]}
+                onAddClick={() => setIsAddRouteOpen(true)}
+                onEditClick={(item) => showToast(`Edit mode for "${item.route_name}" triggered.`, 'info')}
+              />
+            )}
 
-        {activeTab === 'cities' && (
-          <CitiesTab items={paginatedItems as CityItem[]} />
-        )}
+            {activeTab === 'cities' && (
+              <CitiesTab items={paginatedItems as CityItem[]} />
+            )}
 
-        {activeTab === 'employees' && (
-          <EmployeesTab
-            items={paginatedItems as EmployeeItem[]}
-            onAddClick={() => setIsAddEmployeeOpen(true)}
-            onEditClick={(item) => showToast(`Edit mode for "${item.full_name}" triggered.`, 'info')}
-          />
-        )}
+            {activeTab === 'employees' && (
+              <EmployeesTab
+                items={paginatedItems as EmployeeItem[]}
+                onAddClick={() => setIsAddEmployeeOpen(true)}
+                onEditClick={(item) => showToast(`Edit mode for "${item.full_name}" triggered.`, 'info')}
+              />
+            )}
 
-        {activeTab === 'customers' && (
-          <CustomersTab
-            items={paginatedItems as CustomerItem[]}
-            onAddClick={() => setIsAddCustomerOpen(true)}
-            onEditClick={(item) => showToast(`Edit mode for "${item.customer_name}" triggered.`, 'info')}
-          />
-        )}
+            {activeTab === 'customers' && (
+              <CustomersTab
+                items={paginatedItems as CustomerItem[]}
+                onAddClick={() => setIsAddCustomerOpen(true)}
+                onEditClick={(item) => showToast(`Edit mode for "${item.customer_name}" triggered.`, 'info')}
+              />
+            )}
 
-        {/* Pagination Footer */}
-        <MasterDataPagination
-          pagination={paginationState}
-          onPageChange={handlePageChange}
-        />
+            {/* Pagination Footer */}
+            <MasterDataPagination
+              pagination={paginationState}
+              onPageChange={handlePageChange}
+            />
+          </>
+        )}
       </div>
 
-      {/* Creation Modals */}
+      {/* Creation and Edit Modals wired to real endpoints */}
       <AddProductModal
         isOpen={isAddProductOpen}
         existingProducts={products}
@@ -654,20 +841,31 @@ export default function MasterDataPage(): React.JSX.Element {
         onSubmit={handleAddProduct}
       />
 
+      <EditProductModal
+        isOpen={editingProduct !== null}
+        product={editingProduct}
+        onClose={() => setEditingProduct(null)}
+        onSubmit={handleEditProduct}
+      />
+
       <AddRouteModal
         isOpen={isAddRouteOpen}
+        stores={stores}
+        cities={cities}
         onClose={() => setIsAddRouteOpen(false)}
         onSubmit={handleAddRoute}
       />
 
       <AddEmployeeModal
         isOpen={isAddEmployeeOpen}
+        stores={stores}
         onClose={() => setIsAddEmployeeOpen(false)}
         onSubmit={handleAddEmployee}
       />
 
       <AddCustomerModal
         isOpen={isAddCustomerOpen}
+        cities={cities}
         onClose={() => setIsAddCustomerOpen(false)}
         onSubmit={handleAddCustomer}
       />

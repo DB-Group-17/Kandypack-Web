@@ -6,9 +6,11 @@ on:
       - main
       - desandu
       - development
+      - m3
   pull_request:
     branches:
       - main
+      - development
 
 jobs:
   lint:

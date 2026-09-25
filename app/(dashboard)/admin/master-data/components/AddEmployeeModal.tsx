@@ -10,15 +10,16 @@
 
 import React, { useState } from 'react';
 import { NewEmployeePayload, EmployeeRole } from '../types';
-import { MOCK_STORES } from '../mockData';
 
 interface AddEmployeeModalProps {
   /** Whether the modal dialog is currently visible */
   isOpen: boolean;
+  /** Available destination stores for home store assignment */
+  stores?: Array<{ store_id: number; store_name: string }>;
   /** Callback when the modal is dismissed */
   onClose: () => void;
   /** Callback when valid employee payload is submitted */
-  onSubmit: (payload: NewEmployeePayload) => void;
+  onSubmit: (payload: NewEmployeePayload) => Promise<{ success: boolean; error?: string } | void> | void;
 }
 
 interface RoleOption {
@@ -41,6 +42,7 @@ const ROLE_OPTIONS: RoleOption[] = [
  */
 export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   isOpen,
+  stores = [],
   onClose,
   onSubmit,
 }) => {
@@ -49,10 +51,11 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<EmployeeRole>('driver');
-  const [storeId, setStoreId] = useState<string>('1');
+  const [storeId, setStoreId] = useState<string>('');
   const [licenseNumber, setLicenseNumber] = useState('');
   const [licenseExpiry, setLicenseExpiry] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -61,7 +64,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
    *
    * @param e Form submit event
    */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -79,26 +82,43 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
       return;
     }
 
-    onSubmit({
-      full_name: trimmedName,
-      nic_number: trimmedNic,
-      phone: trimmedPhone,
-      email: email.trim() || undefined,
-      employee_type: role,
-      home_store_id: storeId ? Number(storeId) : null,
-      license_number: role === 'driver' ? licenseNumber.trim() : undefined,
-      license_expiry: role === 'driver' ? licenseExpiry.trim() : undefined,
-    });
+    try {
+      setIsSubmitting(true);
+      const result = await onSubmit({
+        full_name: trimmedName,
+        nic_number: trimmedNic,
+        phone: trimmedPhone,
+        email: email.trim() || undefined,
+        employee_type: role,
+        home_store_id: storeId ? Number(storeId) : null,
+        license_number: role === 'driver' ? licenseNumber.trim() : undefined,
+        license_expiry: role === 'driver' ? licenseExpiry.trim() : undefined,
+      });
 
-    // Reset and close
-    setFullName('');
-    setNicNumber('');
-    setPhone('');
-    setEmail('');
-    setLicenseNumber('');
-    setLicenseExpiry('');
-    setErrorMessage(null);
-    onClose();
+      if (result && typeof result === 'object' && result.success === false) {
+        setErrorMessage(result.error || 'Failed to register employee.');
+        return;
+      }
+
+      // Reset and close
+      setFullName('');
+      setNicNumber('');
+      setPhone('');
+      setEmail('');
+      setLicenseNumber('');
+      setLicenseExpiry('');
+      setErrorMessage(null);
+      onClose();
+    } catch (err: unknown) {
+      console.error('Error submitting employee:', err);
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('Failed to register employee. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -245,7 +265,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
                 <option value="">Central HQ / Unassigned</option>
-                {MOCK_STORES.map((s) => (
+                {stores.map((s) => (
                   <option key={s.store_id} value={String(s.store_id)}>
                     {s.store_name}
                   </option>
@@ -300,9 +320,17 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
-              + Add Employee
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Registering Employee...</span>
+                </>
+              ) : (
+                <span>+ Add Employee</span>
+              )}
             </button>
           </div>
         </form>

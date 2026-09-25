@@ -129,11 +129,11 @@ Conventions used throughout:
     "items": [{ "product_id": number, "quantity": number }]
   }
   ```
-- **Response 201:** `{ "order_id": number, "status": "Pending", "total_value", "total_space_required" }`
+- **Response 201:** `{ "order": { order_id, customer_id, delivery_address, delivery_area, destination_city_id, route_id, order_placed_at, expected_delivery_date, status: "Pending", total_value, total_space_required }, "message": string }` *(corrected 2026-09-23: the order is nested under `order`, as the route and the New Order page have always used; the earlier flat shape was never implemented)*
 - **Response 400:** business-rule violation (7-day rule, no matching route, empty items)
 - **Business logic:**
   1. Acquire Redis lock scoped to the relevant train trip(s) for `destination_city_id` (fail-fast under contention)
-  2. `CALL place_order(customer_id, delivery_address, delivery_area, destination_city_id, expected_delivery_date, items_json, route_id=NULL, NOW(), @out_order_id)`
+  2. Inside an **explicit transaction** (`beginTransaction` before, `commit` after the order row has been read back, `rollback` on any failure): `CALL place_order(customer_id, delivery_address, delivery_area, destination_city_id, expected_delivery_date, items_json, created_by, NOW(), @out_order_id)`. The transaction is required, not optional: under MySQL autocommit each statement would commit separately, so a failure after the order INSERT would leave a committed order with no booking. The commit happens **inside** the Redis lock so the next caller sees this order's `booked_space` (see `03_architecture.md` §19.1)
   3. Procedure internally: validates 7-day lead time, matches `delivery_area`/`destination_city_id` to a covering route (`BR-002`), calculates total space via `calculate_order_space()`, finds the next available trip with `get_next_available_trip()`, books space (with overflow to a later trip if the current one lacks capacity), and writes `order_items`
   4. Triggers auto-maintain `orders.total_value` / `total_space_required` and `train_trips.booked_space`
   5. Release Redis lock; return `@out_order_id`
@@ -182,12 +182,13 @@ Conventions used throughout:
 
 ### `POST /api/stores/:id/receive-goods`
 - **Roles:** store_manager (own store), system_administrator
-- **Request body:** `{ "train_booking_id": number, "items": [{ "product_id": number, "quantity": number }] }`
+- **Request body:** `{ "train_booking_id": number }` — the received quantities are read from `train_booking_items`, not supplied by the caller
 - **Response 200:** `{ "updated_products": number }`
 - **Business logic:**
-  1. `CALL receive_goods_at_store(store_id, train_booking_id, items_json, @current_user_id)`
-  2. Procedure increments `store_inventory.quantity_on_hand` (upsert via `ON DUPLICATE KEY UPDATE`) and inserts an `inventory_transactions` row with `transaction_type = 'receive'` and `train_booking_id` set
-  3. `chk_it_fk_consistency` constraint enforced at DB level (receive rows must carry `train_booking_id`, not `delivery_id`)
+  1. `CALL receive_goods_at_store(train_booking_id, @current_user_id)`
+  2. Procedure derives the destination `store_id` from the booking's trip and the received quantities from `train_booking_items` — neither is passed in. It inserts one `inventory_transactions` row per product with `transaction_type = 'receive'` and `train_booking_id` set; `trg_apply_inventory_transaction` then upserts `store_inventory.quantity_on_hand` (`ON DUPLICATE KEY UPDATE`)
+  3. Rejects the call unless the booking's trip is `Arrived`; once every booking for the order has arrived, it advances `orders.status` to `At Store`
+  4. `chk_it_fk_consistency` constraint enforced at DB level (receive rows must carry `train_booking_id`, not `delivery_id`)
 
 ### `GET /api/inventory/transactions`
 - **Roles:** store_manager (own store), system_administrator, logistics_manager
@@ -214,14 +215,14 @@ Conventions used throughout:
 
 ### `POST /api/truck-schedules`
 - **Roles:** fleet_supervisor, system_administrator
-- **Request body:** `{ truck_id, driver_id, assistant_id, route_id, start_time, end_time }`
-- **Response 201:** created schedule
+- **Request body:** `{ truck_id, driver_id, assistant_id, route_id, start_time }`
+- **Response 201:** created schedule (`end_time` is derived server-side, not supplied by the caller)
 - **Response 400:** roster/overlap violation, with the specific rule named (`BR-004` through `BR-008`)
 - **Business logic:**
   1. Acquire Redis lock on `truck_id` + `driver_id` + `assistant_id` for the duration of the check (fail-fast on contention)
-  2. `CALL schedule_truck_delivery(truck_id, driver_id, assistant_id, route_id, start_time, end_time, @out_schedule_id)`
+  2. `CALL schedule_truck_delivery(truck_id, driver_id, assistant_id, route_id, start_time, @out_schedule_id)`
   3. Procedure checks: no overlapping time slot for truck/driver/assistant (`BR-008`), driver not on 2 consecutive deliveries without a 2-hour break (`BR-004`), assistant not on a 3rd consecutive route (`BR-005`), driver ≤ 40 hrs/week (`BR-006`), assistant ≤ 60 hrs/week (`BR-007`), operating hours 06:00–20:00 same day
-  4. `trg_fn_validate_truck_schedule` is the DB-level backstop even if the app-layer check is somehow bypassed
+  4. `trg_validate_truck_schedule` is the DB-level backstop even if the app-layer check is somehow bypassed
   5. Release Redis lock; return `@out_schedule_id`
 
 ### `GET /api/truck-schedules/:id/conflicts`
@@ -245,9 +246,9 @@ Conventions used throughout:
 - **Request body:** `{ "notes"?: string }`
 - **Response 200:** `{ "delivery_id", "status": "Completed", "order_status": "Delivered" }`
 - **Business logic:**
-  1. `CALL complete_delivery(delivery_id, notes, @current_user_id)`
+  1. `CALL complete_delivery(delivery_id, notes)`
   2. Procedure validates the delivery exists and isn't already completed
-  3. `trg_fn_delivery_complete_order` fires on the status update → sets the linked `orders.status = 'Delivered'` automatically
+  3. `trg_delivery_complete_order` fires on the status update → sets the linked `orders.status = 'Delivered'` automatically
   4. A corresponding `inventory_transactions` row (`transaction_type = 'dispatch'`) is written, linked via `delivery_id`
 
 ---
@@ -308,7 +309,7 @@ All 6 report GET endpoints share the same pattern:
 - **Roles:** system_administrator
 - **Request body (POST):** `{ full_name, nic_number, phone, email?, employee_type, home_store_id? }`
 - **Response 201:** created employee
-- **Business logic:** `employee_type` must be one of the 7 allowed values (`chk_employee_type`); if `employee_type = 'driver'` or `'assistant'`, a matching row must also be created in `drivers`/`assistants` (enforced by `trg_fn_validate_driver_subtype` / `trg_fn_validate_assistant_subtype`) — the API does both inserts in one transaction.
+- **Business logic:** `employee_type` must be one of the 7 allowed values (`chk_employee_type`); if `employee_type = 'driver'` or `'assistant'`, a matching row must also be created in `drivers`/`assistants` (enforced by `trg_validate_driver_subtype` / `trg_validate_assistant_subtype`) — the API does both inserts in one transaction.
 
 ### `GET /api/audit-log`
 - **Roles:** system_administrator only
@@ -335,12 +336,15 @@ For each page: which API routes it calls, and the interaction flow.
 - **Flow:** filters (status, city, date range, search) update query params → refetch. Row click navigates to `/orders/[orderId]`. "New Order" button links to `/orders/new`.
 
 ## `/orders/new` (Place New Order)
-- **Calls:** `GET /api/customers` (search-as-you-type), `GET /api/products` (line-item picker), `GET /api/cities`, `POST /api/orders` (on submit)
+- **Calls:** `GET /api/customers` (search-as-you-type), `POST /api/customers` (inline "Add new customer" popup), `GET /api/products` (line-item picker), `GET /api/cities`, `GET /api/routes?city_id=` (coverage areas), `POST /api/orders` (on submit)
 - **Flow:**
-  1. Customer search dropdown queries `/api/customers?search=...`
-  2. Product line items added from `/api/products` list, quantity entered per line
-  3. Delivery date picker enforces the 7-day minimum **client-side** first (fast feedback), but the real validation is server-side inside `place_order` — client check is UX only, never trusted
-  4. On submit, `POST /api/orders`; on 400 (rule violation), the specific message from the procedure is shown inline; on 201, redirect to `/orders/[orderId]`
+  1. Customer search dropdown queries `/api/customers?search=...` after a 300ms typing pause. Choosing a customer prefills the destination city and delivery address from their record (editable); an inline popup can register a new customer with `POST /api/customers` (including a required registered city, preselected from the chosen destination city) and selects it on success
+  2. The destination city comes from `/api/cities?destination_only=true`. The delivery area is a **dropdown** built from `/api/routes?city_id=` (each route's `coverage_areas`, flattened and de-duplicated), never free text, because `place_order` matches the area against those exact names
+  3. Product line items added from `/api/products`, whole-number quantity per line, no product on more than one line. Totals shown are a preview; the server recalculates
+  4. Delivery date picker enforces the 7-day minimum **client-side** first (fast feedback), but the real validation is server-side inside `place_order` — client check is UX only, never trusted
+  5. Place Order first runs a client pre-flight (customer, delivery details, at least one complete item line); if anything fails, nothing is sent and focus moves to the first problem. Otherwise `POST /api/orders`; on 400 (rule violation), the specific message from the procedure is shown inline and every field is kept; on 409 the "destination busy" message asks for a retry; on 201, redirect to `/orders/[orderId]?placed=1`
+  6. `/orders/[orderId]` reads the `placed=1` flag once, shows the placement toast (plus the "couldn't be fully booked" notice when the order has more than one train booking), then removes the flag from the URL. The POST response carries no booking count, so the detail page's own data is used
+  7. While the form holds unsaved work, the back arrow and Cancel ask for confirmation and closing/reloading the tab triggers the browser prompt. In-app navigation such as sidebar links and the browser Back button is **not** intercepted (the App Router has no hook for it)
 
 ## `/orders/[orderId]` (Order Detail)
 - **Calls:** `GET /api/orders/:id`, `PATCH /api/orders/:id/status` (if role permits)
