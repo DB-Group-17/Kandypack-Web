@@ -226,14 +226,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Validate start_time parses to a real date
-    const startDate = new Date(startTimeStr);
-    if (isNaN(startDate.getTime())) {
+    // Issue 14: Accept only YYYY-MM-DD HH:MM[:SS] to prevent timezone offset bugs
+    const mysqlDatetimeRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/;
+    if (!mysqlDatetimeRegex.test(startTimeStr)) {
       return NextResponse.json(
         {
           error: {
             code: 'BAD_REQUEST',
-            message: 'start_time must be a valid date-time string.',
+            message: 'start_time must be in YYYY-MM-DD HH:MM or YYYY-MM-DD HH:MM:SS format.',
             field: 'start_time',
           },
         },
@@ -266,16 +266,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                     session.user_id,
                     session.role,
                     async (conn) => {
-                      // Format start_time as MySQL DATETIME string
-                      const pad = (n: number) => String(n).padStart(2, '0');
-                      const mysqlDatetime =
-                        `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())} ` +
-                        `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}:${pad(startDate.getSeconds())}`;
-
-                      // Call the procedure; OUT parameter is retrieved via a second SELECT.
+                      // Pass the validated datetime string straight through
                       await conn.execute(
                         'CALL schedule_truck_delivery(?, ?, ?, ?, ?, @out_schedule_id)',
-                        [truckIdN, driverIdN, assistantIdN, routeIdN, mysqlDatetime] as Parameters<typeof conn.execute>[1]
+                        [truckIdN, driverIdN, assistantIdN, routeIdN, startTimeStr] as Parameters<typeof conn.execute>[1]
                       );
 
                       // Retrieve the OUT parameter value from the session variable.
@@ -321,6 +315,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       console.error('[POST /api/truck-schedules] Unexpected DB error:', dbErr);
       return NextResponse.json(
         { error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' } },
+        { status: 500 }
+      );
+    }
+
+    if (!scheduleId || scheduleId === 0) {
+      return NextResponse.json(
+        { error: { code: 'INTERNAL_ERROR', message: 'Failed to generate a valid schedule ID.' } },
         { status: 500 }
       );
     }

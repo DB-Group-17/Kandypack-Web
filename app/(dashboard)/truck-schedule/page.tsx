@@ -104,10 +104,10 @@ export default async function TruckSchedulesPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-[30px] font-bold leading-[38px] tracking-[-0.02em] text-[#121C2C]">
-            Truck Schedules
+            Truck schedules
           </h1>
           <p className="text-sm text-[#474554] mt-1">
-            Manage fleet assignments and daily last-mile routes
+            Last-mile delivery scheduling
           </p>
         </div>
         <Link
@@ -116,7 +116,7 @@ export default async function TruckSchedulesPage({
           className="bg-[#4132C7] hover:bg-[#5A4FE0] text-white px-6 h-12 rounded-full flex items-center gap-2 font-medium transition-colors shadow-sm"
         >
           <Plus className="w-5 h-5" />
-          New Schedule
+          New schedule
         </Link>
       </div>
 
@@ -139,18 +139,18 @@ export default async function TruckSchedulesPage({
       <div className="bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden border border-[#C8C4D7]/40">
         {items.length === 0 && !error ? (
           <div className="py-16 text-center text-[14px] text-[#474554]">
-            No truck schedules found.
+            No truck schedules for this period.
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#F9F9FF] border-b border-[#C8C4D7]">
-                <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Route</th>
                 <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Truck</th>
                 <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Driver</th>
                 <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Assistant</th>
-                <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Date</th>
-                <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Time window</th>
+                <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Route</th>
+                <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Start</th>
+                <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">End</th>
                 <th className="px-6 py-4 text-[11px] font-semibold text-[#474554] uppercase tracking-wider">Status</th>
               </tr>
             </thead>
@@ -166,9 +166,6 @@ export default async function TruckSchedulesPage({
                     key={schedule.schedule_id}
                     className="hover:bg-[#F0F3FF]/50 transition-colors h-[56px]"
                   >
-                    <td className="px-6 py-4 text-[14px] font-medium text-[#121C2C]">
-                      {schedule.route_name}
-                    </td>
                     <td className="px-6 py-4 text-[14px] text-[#121C2C] font-mono">
                       {schedule.truck_plate}
                     </td>
@@ -178,11 +175,14 @@ export default async function TruckSchedulesPage({
                     <td className="px-6 py-4 text-[14px] text-[#121C2C]">
                       {schedule.assistant_name}
                     </td>
-                    <td className="px-6 py-4 text-[13px] text-[#474554]">
-                      {datePart}
+                    <td className="px-6 py-4 text-[14px] font-medium text-[#121C2C]">
+                      {schedule.route_name}
                     </td>
                     <td className="px-6 py-4 text-[13px] text-[#474554]">
-                      {startTime} – {endTime}
+                      {datePart} {startTime}
+                    </td>
+                    <td className="px-6 py-4 text-[13px] text-[#474554]">
+                      {datePart} {endTime}
                     </td>
                     <td className="px-6 py-4">
                       <span

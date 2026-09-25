@@ -466,7 +466,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
           <ArrowLeft className="w-5 h-5 text-[#474554]" />
         </Link>
         <div>
-          <h1 className="text-[24px] font-semibold text-[#121C2C]">Schedule a Truck</h1>
+          <h1 className="text-[24px] font-semibold text-[#121C2C]">New truck schedule</h1>
           <p className="text-sm text-[#474554]">
             Assign truck, driver, and assistant for a daily delivery route
           </p>
@@ -484,7 +484,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
         >
           <AlertTriangle className="w-5 h-5 text-[#FFB800] shrink-0 mt-0.5" aria-hidden="true" />
           <div>
-            <h3 className="text-sm font-semibold text-[#FFB800]">Live Conflict Warning</h3>
+            <h3 className="text-sm font-semibold text-[#FFB800]">Live conflict warning</h3>
             <ul className="mt-1 space-y-0.5">
               {warningReasons.map((reason, i) => (
                 <li key={i} className="text-sm text-[#474554]">
@@ -721,7 +721,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                 </svg>
               )}
-              {isSubmitting ? 'Creating…' : 'Create Schedule'}
+              {isSubmitting ? 'Creating…' : 'Create schedule'}
             </button>
           </div>
         </form>

@@ -5,8 +5,8 @@
  *              get_assistant_weekly_hours(assistant_id, week_start).
  *
  * Owner: Member 3 (Fleet & Deliveries)
- * Auth: Any authenticated role can read assistants (fleet_supervisor and system_administrator
- *       per PERMISSION_MATRIX; all authenticated roles have read).
+ * Auth: system_administrator, logistics_manager, and fleet_supervisor
+ *       can read assistants (per PERMISSION_MATRIX in lib/rbac.ts).
  *
  * Data flow:
  *   1. Extract and verify JWT session from cookie via getSession().

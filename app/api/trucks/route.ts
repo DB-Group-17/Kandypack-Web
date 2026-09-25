@@ -3,9 +3,8 @@
  * @description GET /api/trucks — returns all non-deleted truck records.
  *
  * Owner: Member 3 (Fleet & Deliveries)
- * Auth: Any authenticated role can read trucks (fleet_supervisor and system_administrator
- *       have full read/write; all other authenticated roles have read-only access per the
- *       PERMISSION_MATRIX in lib/rbac.ts).
+ * Auth: system_administrator, logistics_manager, and fleet_supervisor
+ *       can read trucks (per PERMISSION_MATRIX in lib/rbac.ts).
  *
  * Data flow:
  *   1. Extract and verify JWT session from cookie via getSession().

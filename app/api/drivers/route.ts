@@ -5,8 +5,8 @@
  *              get_driver_weekly_hours(driver_id, week_start).
  *
  * Owner: Member 3 (Fleet & Deliveries)
- * Auth: Any authenticated role can read drivers (fleet_supervisor and system_administrator
- *       per PERMISSION_MATRIX; all authenticated roles have read).
+ * Auth: system_administrator, logistics_manager, and fleet_supervisor
+ *       can read drivers (per PERMISSION_MATRIX in lib/rbac.ts).
  *
  * Data flow:
  *   1. Extract and verify JWT session from cookie via getSession().
