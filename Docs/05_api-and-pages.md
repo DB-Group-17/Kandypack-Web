@@ -210,7 +210,7 @@ Conventions used throughout:
 
 ### `GET /api/truck-schedules`
 - **Roles:** fleet_supervisor, system_administrator (read for others)
-- **Query params:** `date_from?`, `date_to?`, `status?` (`Scheduled`, `In Progress`, `Completed`, `Cancelled`), `driver_id?`, `truck_id?`
+- **Query params:** `date_from?`, `date_to?`, `status?` (`Scheduled`, `In Progress`, `Completed`, `Cancelled`), `driver_id?`, `driver_name?` (partial name, LIKE match — ignored when `driver_id` is also present), `truck_id?`
 - **Response 200:** `{ "items": [{ schedule_id, truck_plate, driver_name, assistant_name, route_name, start_time, end_time, status }] }`
 
 ### `POST /api/truck-schedules`
@@ -225,12 +225,18 @@ Conventions used throughout:
   4. `trg_validate_truck_schedule` is the DB-level backstop even if the app-layer check is somehow bypassed
   5. Release Redis lock; return `@out_schedule_id`
 
-### `GET /api/truck-schedules/:id/conflicts`
+### `GET /api/truck-schedules/conflicts`
 - **Roles:** fleet_supervisor, system_administrator
-- *(Actually a pre-check — no `:id` needed if used before creation; accepts the same body as POST)*
-- **Request body:** `{ truck_id, driver_id, assistant_id, start_time, end_time }`
+- **Query params (all required):** `truck_id`, `driver_id`, `assistant_id`, `route_id`, `start_time`
+  - `end_time` is **not** accepted — it is derived server-side from `routes.max_delivery_time_hours` for `route_id`, exactly as the procedure does.
 - **Response 200:** `{ "has_conflict": boolean, "reasons": string[] }`
-- **Business logic:** read-only version of the same checks in `schedule_truck_delivery`, run without locking or writing — purely for live UI warnings before submit.
+- **Business logic:** read-only mirror of all 8 checks in `trg_validate_truck_schedule` and `schedule_truck_delivery()`, run without acquiring a Redis lock or writing any row — purely for live UI warnings before the user submits.
+  - Truck / driver / assistant overlap check (BR-008)
+  - Driver consecutive-delivery chain ≤ 1 with ≥ 2h gap (BR-004)
+  - Assistant max 2 consecutive deliveries (BR-005)
+  - Driver weekly ≤ 40h (BR-006)
+  - Assistant weekly ≤ 60h (BR-007)
+  - Operating hours 06:00–20:00 same calendar day
 
 ---
 
@@ -359,10 +365,10 @@ For each page: which API routes it calls, and the interaction flow.
 - **Flow:** filterable table (date range, status, driver); row click could expand to show conflict/roster status inline (already part of the list response). "New Schedule" links to `/truck-schedule/new`.
 
 ## `/truck-schedule/new`
-- **Calls:** `GET /api/trucks`, `GET /api/drivers`, `GET /api/assistants`, `GET /api/routes`, `GET /api/truck-schedules/:id/conflicts` (live check), `POST /api/truck-schedules` (submit)
+- **Calls:** `GET /api/trucks`, `GET /api/drivers`, `GET /api/assistants`, `GET /api/routes`, `GET /api/truck-schedules/conflicts` (live pre-check), `POST /api/truck-schedules` (submit)
 - **Flow:**
   1. Dropdowns populated from trucks/drivers/assistants/routes lists (driver/assistant dropdowns show `hours_remaining` inline, from the same list response)
-  2. As soon as truck + driver + assistant + time range are all selected, fire the conflicts pre-check (`GET .../conflicts`) — debounced — to show live warnings before submit
+  2. As soon as truck + driver + assistant + route + start time are all selected, fire the conflict pre-check (`GET /api/truck-schedules/conflicts?truck_id=…&driver_id=…&assistant_id=…&route_id=…&start_time=…`) — debounced — to show live warnings before submit. `end_time` is derived server-side; the client only sends `route_id` and `start_time`.
   3. Submit calls `POST /api/truck-schedules`; on 400, show the specific rule violated; on 201, redirect to `/truck-schedule`
 
 ## `/deliveries`
