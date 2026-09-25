@@ -94,6 +94,7 @@ export default function TruckScheduleFilters() {
    * (e.g. user hits Back after clearing filters).
    */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilters({
       date_from:   searchParams.get('date_from')   ?? '',
       date_to:     searchParams.get('date_to')     ?? '',

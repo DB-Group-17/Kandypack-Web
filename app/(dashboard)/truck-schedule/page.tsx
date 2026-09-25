@@ -38,8 +38,8 @@ import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import type { TruckScheduleItem, TruckScheduleStatus } from '@/types/fleet';
-import { headers } from 'next/headers';
 import TruckScheduleFilters from './TruckScheduleFilters';
+import { fetchTruckSchedulesFromDB } from '@/app/api/truck-schedules/service';
 
 /**
  * Returns Tailwind CSS classes for a given TruckScheduleStatus badge.
@@ -69,41 +69,17 @@ async function fetchSchedules(
   searchParams: Record<string, string>
 ): Promise<{ items: TruckScheduleItem[]; error?: string }> {
   try {
-    // Build the API URL with any active filters forwarded from the page URL.
-    // driver_name is forwarded so the API can perform a LIKE match on the
-    // joined driver employee name (requires the API to support this param).
-    const ALLOWED_PARAMS = ['date_from', 'date_to', 'status', 'driver_id', 'truck_id', 'driver_name'];
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(searchParams)) {
-      if (ALLOWED_PARAMS.includes(key) && value) {
-        params.set(key, value);
-      }
-    }
-
-    // Read the host header so we can construct an absolute URL for the internal fetch
-    const headersList = await headers();
-    const host = headersList.get('host') ?? 'localhost:3000';
-    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-    const url = `${protocol}://${host}/api/truck-schedules${params.toString() ? `?${params.toString()}` : ''}`;
-
-    // Forward the cookie header so the API route can authenticate via getSession()
-    const cookie = headersList.get('cookie') ?? '';
-    const response = await fetch(url, {
-      headers: { cookie },
-      // No cache — schedules change frequently; rely on Next.js request deduplication
-      cache: 'no-store',
+    const items = await fetchTruckSchedulesFromDB({
+      dateFrom: searchParams.date_from,
+      dateTo: searchParams.date_to,
+      status: searchParams.status,
+      driverId: searchParams.driver_id,
+      driverName: searchParams.driver_name,
+      truckId: searchParams.truck_id,
     });
-
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      const message = (body as { error?: { message?: string } })?.error?.message ?? 'Failed to load schedules.';
-      return { items: [], error: message };
-    }
-
-    const data = (await response.json()) as { items: TruckScheduleItem[] };
-    return { items: data.items ?? [] };
-  } catch {
-    return { items: [], error: 'Could not reach the schedule service. Check your connection.' };
+    return { items };
+  } catch (_err) {
+    return { items: [], error: 'Could not load schedules from the database.' };
   }
 }
 

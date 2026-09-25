@@ -39,7 +39,15 @@
  *   "No routes available" option and the conflict pre-check simply does not fire.
  * - Styling is preserved exactly from the static shell (same colours, radii, spacing).
  *
- * Conforms to Docs/05_api-and-pages.md §A7, Docs/08_workload-division.md §Member3.
+ * Conforms to Docs/05_api-and-pages.md §A7, Docs/07_content-copy.md §/truck-schedule/new,
+ * Docs/08_workload-division.md §Member3.
+ *
+ * Doc 07 behaviour implemented here:
+ *  - Submit button is disabled while a conflict warning is active (conflict?.has_conflict).
+ *  - On 201 success, redirects to /truck-schedule?placed=1&route_name={name} so the list
+ *    page can show the "Schedule created for {route_name}." toast via PlacedToast.
+ *  - On 400 server rejection, shows the exact doc 07 error wording:
+ *    "This schedule conflicts with an existing booking. Please refresh and try again."
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -88,17 +96,31 @@ function toMysqlDatetime(value: string): string {
 }
 
 /**
- * Returns the ISO string for the current datetime rounded to the next
- * whole hour, formatted for use as the datetime-local input's `min` value.
- * Prevents scheduling in the past.
+ * Returns a 'YYYY-MM-DDTHH:mm' string for the next whole hour in the
+ * browser's LOCAL timezone, for use as the datetime-local input's `min`.
  *
- * @returns 'YYYY-MM-DDTHH:mm' string for today's next full hour
+ * Why not toISOString(): that method always returns UTC. In Sri Lanka
+ * (+5:30) the UTC string is 5 h 30 m behind local time, so the min value
+ * would fall in the past and the browser would accept already-elapsed slots.
+ *
+ * Fix: build the string from local getters (getFullYear, getMonth, getDate,
+ * getHours) so the value reflects wall-clock time in the user's timezone.
+ *
+ * @returns 'YYYY-MM-DDTHH:mm' string for the next full local hour
  */
 function getTodayMinDatetime(): string {
   const now = new Date();
+  // Advance to the next whole hour in local time
   now.setMinutes(0, 0, 0);
   now.setHours(now.getHours() + 1);
-  return now.toISOString().slice(0, 16);
+
+  // Build the string from local getters, not toISOString() (which is UTC)
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth() + 1).padStart(2, '0'); // getMonth() is 0-based
+  const dd   = String(now.getDate()).padStart(2, '0');
+  const hh   = String(now.getHours()).padStart(2, '0');
+
+  return `${yyyy}-${mm}-${dd}T${hh}:00`;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -395,8 +417,14 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
       });
 
       if (res.status === 201) {
-        // Success — redirect to the schedule list
-        router.push('/truck-schedule');
+        // Success — redirect to the schedule list with ?placed=1 so PlacedToast can fire.
+        // Encode the route name for the toast message ("Schedule created for {route_name}.").
+        // The route name comes from the already-loaded routes reference data.
+        const selectedRoute = routes.find((r) => r.route_id === fields.route_id);
+        const routeNameParam = selectedRoute?.route_name
+          ? `&route_name=${encodeURIComponent(selectedRoute.route_name)}`
+          : '';
+        router.push(`/truck-schedule?placed=1${routeNameParam}`);
         return;
       }
 
@@ -408,10 +436,11 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
           'The system is processing another schedule request. Please wait a moment and try again.'
         );
       } else if (res.status === 400) {
-        // Business-rule violation from the DB trigger / procedure
+        // Business-rule violation from the DB trigger / procedure.
+        // Doc 07: show the exact wording for server-side conflict rejection.
         setSubmitError(
           errData.error?.message ??
-            'The schedule conflicts with an existing booking or business rule. Please adjust your selections.'
+          'This schedule conflicts with an existing booking. Please refresh and try again.'
         );
       } else {
         setSubmitError(errData.error?.message ?? 'An unexpected error occurred. Please try again.');
@@ -589,11 +618,10 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
               {/* Inline roster badge for the currently selected driver */}
               {selectedDriver && (
                 <p
-                  className={`text-[11px] font-medium mt-1 ${
-                    selectedDriver.hours_remaining <= 4
+                  className={`text-[11px] font-medium mt-1 ${selectedDriver.hours_remaining <= 4
                       ? 'text-[#FFB800]'
                       : 'text-[#474554]'
-                  }`}
+                    }`}
                 >
                   {selectedDriver.hours_remaining <= 4
                     ? `⚠ ${selectedDriver.hours_remaining}h remaining this week (limit: ${selectedDriver.weekly_limit}h)`
@@ -636,11 +664,10 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
               {/* Inline roster badge for the currently selected assistant */}
               {selectedAssistant && (
                 <p
-                  className={`text-[11px] font-medium mt-1 ${
-                    selectedAssistant.hours_remaining === 0
+                  className={`text-[11px] font-medium mt-1 ${selectedAssistant.hours_remaining === 0
                       ? 'text-[#F93C65]'
                       : 'text-[#474554]'
-                  }`}
+                    }`}
                 >
                   {selectedAssistant.hours_remaining === 0
                     ? `✕ Weekly limit reached (${selectedAssistant.current_week_hours}h / ${selectedAssistant.weekly_limit}h)`
@@ -682,7 +709,10 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
             </Link>
             <button
               type="submit"
-              disabled={!isFormComplete || isSubmitting}
+              id="btn-create-truck-schedule"
+              disabled={!isFormComplete || isSubmitting || (conflict?.has_conflict ?? false)}
+              aria-disabled={!isFormComplete || isSubmitting || (conflict?.has_conflict ?? false)}
+              title={conflict?.has_conflict ? 'Resolve the conflict warnings before submitting.' : undefined}
               className="bg-[#4132C7] hover:bg-[#5A4FE0] disabled:bg-[#C8C4D7] disabled:cursor-not-allowed text-white px-8 h-12 rounded-full font-medium transition-colors shadow-sm flex items-center gap-2"
             >
               {isSubmitting && (
