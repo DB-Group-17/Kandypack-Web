@@ -70,3 +70,52 @@ Last updated: 2026-09-23
 - `v_quarterly_sales` filters `status = 'Delivered'`, so it shows one quarter only; if Member 2 wants a period comparison, seed §9 needs Delivered orders in two quarters.
 - The leave-the-page guard cannot intercept sidebar links or the browser Back button (App Router limitation); the `SectionCard` and `StatusBadge` components are duplicated across pages and should be extracted when convenient.
 - `DATABASE_URL`'s `ssl-mode=REQUIRED` is ignored by mysql2 and `lib/db.ts` sets `rejectUnauthorized: false`. `package.json` lists `lucide-react` twice.
+
+
+---
+
+# Memory — Member 3 (Monishka) Phase 1: Truck Scheduling filter bar
+
+Last updated: 2026-09-25
+
+## What was built
+
+### Filter bar for `/truck-schedule`
+- `app/(dashboard)/truck-schedule/TruckScheduleFilters.tsx` — new `'use client'` component. Renders four controls: **Date from**, **Date to**, **Status** (All / Scheduled / In Progress / Completed / Cancelled), **Driver** (partial name search). On "Apply" pushes updated URL search params via `router.push`; on "Clear" navigates back to `/truck-schedule` with no params. Shows an active-filter count badge on the filter icon. Wrapped in `Suspense` by the parent page (required for `useSearchParams()` in App Router).
+- `app/(dashboard)/truck-schedule/page.tsx` — added `Suspense` import and `TruckScheduleFilters` import; inserted the filter bar between the page header and the table card; extended `ALLOWED_PARAMS` to include `driver_name`.
+- `app/api/truck-schedules/route.ts` — added `driver_name` query param: performs `de.full_name LIKE %value%` on the joined driver employee name. `driver_id` takes precedence over `driver_name` if both are present.
+
+### Lockfile / CI check
+- Verified `npm ci` passes cleanly on the `m3` branch both before and after merging `origin/development`. The reported `@emnapi` error did not reproduce on this branch; no lockfile change was committed (package.json did not change).
+
+## Decisions made
+
+- Driver filter uses a free-text name (LIKE) rather than a numeric ID dropdown — avoids needing a separate driver-list fetch in the filter bar. The API resolves it server-side.
+- `driver_id` in the URL takes precedence over `driver_name` (useful for programmatic deep links).
+- Filter bar is a separate `'use client'` file; the page itself stays a server component so filtering drives a server re-fetch rather than a client fetch.
+- No commits were made this session (instructed to hold commits).
+
+## Problems solved
+
+- `useSearchParams()` requires a `Suspense` boundary in App Router or the production build fails — same issue as Member 1 encountered; solved with `<Suspense fallback={...}>`.
+- Lockfile `@emnapi` error: did not reproduce; `npm ci` exits 0 on `m3` after merging `origin/development`. No fix was needed.
+
+## Current state
+
+- **Works (local, typecheck clean):** filter bar renders with all four controls; applying filters updates the URL and the server re-fetches; clearing removes all params.
+- **Not committed:** all changes are local on `m3` (instructed not to commit).
+- **Not yet built:** Deliveries module (`GET /deliveries`, `PATCH /deliveries/:id/complete`, `/deliveries` page) — Phase 2, blocked until Orders + Truck Scheduling are merged.
+
+## Next session starts with
+
+1. Commit the filter bar changes: `TruckScheduleFilters.tsx`, `page.tsx`, `route.ts`.
+2. Run `npm run lint` and `npm run build` to confirm the production build is clean.
+3. Open the PR `m3` → `development` with at least one reviewer.
+4. After PR merges, start Phase 2: Deliveries (`GET /deliveries`, `PATCH /deliveries/:id/complete`, `/deliveries` page).
+
+## Open questions
+
+- Deliveries page (`app/(dashboard)/deliveries/page.tsx`) already exists as a shell — check what is already there before building.
+- Confirm that `complete_delivery()` procedure exists in the migrations and check its exact signature in `18_proc_remaining.sql` before writing the PATCH handler.
+- Seed §10–§11 (truck schedules, deliveries, inventory) still outstanding — coordinate timing with Member 1.
+

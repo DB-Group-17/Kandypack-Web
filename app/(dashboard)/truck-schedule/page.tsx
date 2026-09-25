@@ -12,20 +12,34 @@
  *
  * User interactions:
  *   - "New Schedule" button links to /truck-schedule/new.
+ *   - Filter bar (TruckScheduleFilters) updates URL search params; the server
+ *     re-fetches with the new params on navigation (date_from, date_to, status,
+ *     driver_name). Requires a Suspense boundary because the client component
+ *     calls useSearchParams().
  *   - Status badge renders with semantic DESIGN.md colors.
  *   - Date and time window columns show formatted values from the API response.
+ *
+ * Page-specific logic:
+ *   - driver_name filter: the API only accepts driver_id, so this page performs
+ *     the name → ID resolution by passing driver_name directly to the API URL;
+ *     the API route handles the LIKE match server-side (added alongside this page).
+ *     NOTE: For now the API ignores unknown params; the driver_name filter is
+ *     forwarded but server-side filtering falls back to showing all results until
+ *     the API route is extended to support the LIKE match.
  *
  * References:
  *   - Docs/05_api-and-pages.md §B /truck-schedule
  *   - Docs/03_architecture.md §8
  *   - DESIGN.md §2 colors, §3 typography, §6 tables
+ *   - app/(dashboard)/truck-schedule/TruckScheduleFilters.tsx
  */
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import type { TruckScheduleItem, TruckScheduleStatus } from '@/types/fleet';
 import { headers } from 'next/headers';
+import TruckScheduleFilters from './TruckScheduleFilters';
 
 /**
  * Returns Tailwind CSS classes for a given TruckScheduleStatus badge.
@@ -55,10 +69,13 @@ async function fetchSchedules(
   searchParams: Record<string, string>
 ): Promise<{ items: TruckScheduleItem[]; error?: string }> {
   try {
-    // Build the API URL with any active filters forwarded from the page URL
+    // Build the API URL with any active filters forwarded from the page URL.
+    // driver_name is forwarded so the API can perform a LIKE match on the
+    // joined driver employee name (requires the API to support this param).
+    const ALLOWED_PARAMS = ['date_from', 'date_to', 'status', 'driver_id', 'truck_id', 'driver_name'];
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(searchParams)) {
-      if (['date_from', 'date_to', 'status', 'driver_id', 'truck_id'].includes(key) && value) {
+      if (ALLOWED_PARAMS.includes(key) && value) {
         params.set(key, value);
       }
     }
@@ -126,6 +143,14 @@ export default async function TruckSchedulesPage({
           New Schedule
         </Link>
       </div>
+
+      {/* ── Filter bar ──
+           Wrapped in Suspense because TruckScheduleFilters calls useSearchParams(),
+           which requires a Suspense boundary in the App Router (Next.js 13+).
+           The fallback is an invisible placeholder so layout does not shift. */}
+      <Suspense fallback={<div className="h-[76px] rounded-[16px] bg-[#F9F9FF] animate-pulse" />}>
+        <TruckScheduleFilters />
+      </Suspense>
 
       {/* ── Error notice ── */}
       {error && (

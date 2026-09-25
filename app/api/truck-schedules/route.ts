@@ -11,11 +11,12 @@
  * Auth: Any authenticated role (fleet_supervisor / system_administrator per matrix;
  *       all other roles are read-visible from the PERMISSION_MATRIX).
  * Query params (all optional):
- *   - date_from  YYYY-MM-DD  — schedules with start_time >= this date
- *   - date_to    YYYY-MM-DD  — schedules with start_time <= this date (end of day)
- *   - status     string      — Scheduled | In Progress | Completed | Cancelled
- *   - driver_id  number
- *   - truck_id   number
+ *   - date_from    YYYY-MM-DD  — schedules with start_time >= this date
+ *   - date_to      YYYY-MM-DD  — schedules with start_time <= this date (end of day)
+ *   - status       string      — Scheduled | In Progress | Completed | Cancelled
+ *   - driver_id    number
+ *   - driver_name  string      — partial name match on the driver's employee.full_name (LIKE %value%)
+ *   - truck_id     number
  * Response 200: { items: TruckScheduleItem[], total: number }
  *
  * ── POST /api/truck-schedules ─────────────────────────────────────────────────
@@ -119,11 +120,12 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     requirePermission(session, 'truck_schedules', 'read');
 
     const { searchParams } = new URL(request.url);
-    const dateFrom = searchParams.get('date_from');   // YYYY-MM-DD
-    const dateTo   = searchParams.get('date_to');     // YYYY-MM-DD
-    const status   = searchParams.get('status');
-    const driverId = searchParams.get('driver_id');
-    const truckId  = searchParams.get('truck_id');
+    const dateFrom   = searchParams.get('date_from');   // YYYY-MM-DD
+    const dateTo     = searchParams.get('date_to');     // YYYY-MM-DD
+    const status     = searchParams.get('status');
+    const driverId   = searchParams.get('driver_id');
+    const driverName = searchParams.get('driver_name'); // partial name LIKE match
+    const truckId    = searchParams.get('truck_id');
 
     // Build WHERE clause dynamically; always exclude nothing (all statuses visible)
     const conditions: string[] = [];
@@ -142,8 +144,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       params.push(status);
     }
     if (driverId) {
+      // Exact match by driver_id takes precedence over name search
       conditions.push('ts.driver_id = ?');
       params.push(Number(driverId));
+    } else if (driverName) {
+      // Partial name match on the joined employee full_name (case-insensitive via MySQL LIKE)
+      conditions.push('de.full_name LIKE ?');
+      params.push(`%${driverName}%`);
     }
     if (truckId) {
       conditions.push('ts.truck_id = ?');
