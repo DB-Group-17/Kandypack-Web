@@ -349,7 +349,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           // (datetime). This satisfies mysql2's ExecuteValues type without using `any`.
           await conn.execute(
             'CALL schedule_truck_delivery(?, ?, ?, ?, ?, @out_schedule_id)',
-            [truckIdN, driverIdN, assistantIdN, routeIdN, mysqlDatetime] as (number | string)[]
+            [truckIdN, driverIdN, assistantIdN, routeIdN, mysqlDatetime] as Parameters<typeof conn.execute>[1]
           );
 
           // Retrieve the OUT parameter value from the session variable.
