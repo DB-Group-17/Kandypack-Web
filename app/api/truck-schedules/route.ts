@@ -85,19 +85,37 @@ function formatDatetime(value: Date | string): string {
 }
 
 /**
- * Extracts the human-readable message from a MySQL SIGNAL SQLSTATE error.
- * mysql2 surfaces the message in err.sqlMessage or err.message.
+ * Returns true when the thrown error is a MySQL SIGNAL raised intentionally by a
+ * stored procedure or trigger (SQLSTATE '45000').
+ * Only these errors carry a user-safe message; all other DB errors should be
+ * treated as unexpected and must not expose raw MySQL internals to the client.
  *
  * @param err - Any thrown error value
- * @returns Human-readable message string from the procedure/trigger
+ * @returns true if the error originated from a SIGNAL SQLSTATE '45000' statement
  */
-function extractSqlMessage(err: unknown): string {
+function isSqlSignal(err: unknown): boolean {
+  if (err && typeof err === 'object') {
+    const e = err as Record<string, unknown>;
+    return e.sqlState === '45000';
+  }
+  return false;
+}
+
+/**
+ * Extracts the user-facing message from a MySQL SIGNAL SQLSTATE '45000' error.
+ * Call this ONLY after confirming isSqlSignal(err) === true.
+ * mysql2 surfaces the message in err.sqlMessage (preferred) or err.message.
+ *
+ * @param err - A confirmed SIGNAL error value
+ * @returns User-safe message string from the procedure or trigger
+ */
+function extractSqlSignalMessage(err: unknown): string {
   if (err && typeof err === 'object') {
     const e = err as Record<string, unknown>;
     if (typeof e.sqlMessage === 'string') return e.sqlMessage;
     if (typeof e.message === 'string') return e.message;
   }
-  return 'An unexpected database error occurred.';
+  return 'A business rule violation occurred.';
 }
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
@@ -358,13 +376,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { ttlSeconds: 15 }
       );
     } catch (dbErr) {
-      // withLock throws a plain Error when a lock cannot be acquired.
-      // Map that to 423 so the client knows to retry; map DB SIGNAL errors to 400.
-      const message = dbErr instanceof Error ? dbErr.message : 'An unexpected error occurred.';
-
-      // Detect lock-contention errors by checking for the message prefix that
-      // withLock emits: "Resource is currently locked by another concurrent process."
-      if (message.startsWith('Resource is currently locked')) {
+      // ── 423: Redis lock contention ─────────────────────────────────────────
+      // withLock throws a plain Error with this prefix when it cannot acquire.
+      const lockMsg = dbErr instanceof Error ? dbErr.message : '';
+      if (lockMsg.startsWith('Resource is currently locked')) {
         return NextResponse.json(
           {
             error: {
@@ -377,10 +392,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         );
       }
 
-      // Otherwise treat as a DB business-rule violation (SIGNAL SQLSTATE '45000')
+      // ── 400: Intentional business-rule violation from the procedure/trigger ─
+      // Only SIGNAL SQLSTATE '45000' errors carry a user-safe message.
+      if (isSqlSignal(dbErr)) {
+        return NextResponse.json(
+          { error: { code: 'BUSINESS_RULE_VIOLATION', message: extractSqlSignalMessage(dbErr) } },
+          { status: 400 }
+        );
+      }
+
+      // ── 500: Unexpected DB error (dropped connection, syntax error, etc.) ───
+      // Log the raw error server-side; never expose MySQL internals to the client.
+      console.error('[POST /api/truck-schedules] Unexpected DB error:', dbErr);
       return NextResponse.json(
-        { error: { code: 'BUSINESS_RULE_VIOLATION', message: extractSqlMessage(dbErr) } },
-        { status: 400 }
+        { error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' } },
+        { status: 500 }
       );
     }
 
