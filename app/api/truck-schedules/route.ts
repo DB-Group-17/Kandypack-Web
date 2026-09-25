@@ -345,11 +345,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}:${pad(startDate.getSeconds())}`;
 
           // Call the procedure; OUT parameter is retrieved via a second SELECT.
-          // Cast params as unknown[] — mysql2's execute() accepts (string, unknown[])
-          // but its type declarations (not installed) require a narrower type here.
+          // Cast to (number | string)[] — all elements are numbers (IDs) or a string
+          // (datetime). This satisfies mysql2's ExecuteValues type without using `any`.
           await conn.execute(
             'CALL schedule_truck_delivery(?, ?, ?, ?, ?, @out_schedule_id)',
-            [truckIdN, driverIdN, assistantIdN, routeIdN, mysqlDatetime] as unknown[]
+            [truckIdN, driverIdN, assistantIdN, routeIdN, mysqlDatetime] as (number | string)[]
           );
 
           // Retrieve the OUT parameter value from the session variable.
