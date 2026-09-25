@@ -46,7 +46,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { requirePermission } from '@/lib/rbac';
 import { query, withUserContext } from '@/lib/db';
-import { acquireLock, releaseLock, REDIS_KEYS } from '@/lib/redis';
+import { withLock, REDIS_KEYS } from '@/lib/redis';
 import type { TruckScheduleItem } from '@/types/fleet';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -308,76 +308,80 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Step 3 — Acquire Redis locks on truck, driver, and assistant.
-    // Lock TTL = 15s; any lock acquisition failure returns 423 immediately.
-    // Belt-and-braces alongside the BEFORE INSERT trigger in the DB (architecture §13).
-    const lockTruckKey     = REDIS_KEYS.LOCK_TRUCK_SCHEDULE(truckIdN);
-    const lockDriverKey    = REDIS_KEYS.LOCK_DRIVER_SCHEDULE(driverIdN);
-    const lockAssistantKey = REDIS_KEYS.LOCK_ASSISTANT_SCHEDULE(assistantIdN);
-
-    const lockTruck     = await acquireLock(lockTruckKey, 15);
-    const lockDriver    = await acquireLock(lockDriverKey, 15);
-    const lockAssistant = await acquireLock(lockAssistantKey, 15);
-
-    // If any lock acquisition failed, release what we hold and reject
-    if (!lockTruck.acquired || !lockDriver.acquired || !lockAssistant.acquired) {
-      if (lockTruck.acquired)     await releaseLock(lockTruckKey, lockTruck.lockToken);
-      if (lockDriver.acquired)    await releaseLock(lockDriverKey, lockDriver.lockToken);
-      if (lockAssistant.acquired) await releaseLock(lockAssistantKey, lockAssistant.lockToken);
-
-      return NextResponse.json(
-        {
-          error: {
-            code: 'LOCK_CONTENTION',
-            message:
-              'Another schedule creation is in progress for the same truck, driver, or assistant. Please try again shortly.',
-          },
-        },
-        { status: 423 }
-      );
-    }
-
-    // Step 4 — Call schedule_truck_delivery() inside a user-context connection.
-    // @current_app_role is required by the procedure's role guard and the audit trigger.
+    // Step 3 — Acquire Redis locks on truck, driver, and assistant via withLock.
+    // Nested withLock calls guarantee that every lock is released in its own
+    // finally block, so a Redis throw or a DB error mid-way can never leak a lock.
+    // Lock TTL = 15s (enough for the procedure plus round trips).
+    // Architecture §13: belt-and-braces alongside the BEFORE INSERT trigger.
+    //
+    // Nesting order: truck → driver → assistant (consistent order prevents
+    // deadlocks if two concurrent requests happen to target the same resources).
     let scheduleId: number;
     try {
-      scheduleId = await withUserContext(
-        session.user_id,
-        session.role,
-        async (conn) => {
-          // Format start_time as MySQL DATETIME string
-          const pad = (n: number) => String(n).padStart(2, '0');
-          const mysqlDatetime =
-            `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())} ` +
-            `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}:${pad(startDate.getSeconds())}`;
+      scheduleId = await withLock(
+        REDIS_KEYS.LOCK_TRUCK_SCHEDULE(truckIdN),
+        () =>
+          withLock(
+            REDIS_KEYS.LOCK_DRIVER_SCHEDULE(driverIdN),
+            () =>
+              withLock(
+                REDIS_KEYS.LOCK_ASSISTANT_SCHEDULE(assistantIdN),
+                async () => {
+                  // Step 4 — Call schedule_truck_delivery() inside a user-context connection.
+                  // @current_app_role is required by the procedure's role guard and audit trigger.
+                  return withUserContext(
+                    session.user_id,
+                    session.role,
+                    async (conn) => {
+                      // Format start_time as MySQL DATETIME string
+                      const pad = (n: number) => String(n).padStart(2, '0');
+                      const mysqlDatetime =
+                        `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())} ` +
+                        `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}:${pad(startDate.getSeconds())}`;
 
-          // Call the procedure; OUT parameter is retrieved via a second SELECT.
-          // Cast to (number | string)[] — all elements are numbers (IDs) or a string
-          // (datetime). This satisfies mysql2's ExecuteValues type without using `any`.
-          await conn.execute(
-            'CALL schedule_truck_delivery(?, ?, ?, ?, ?, @out_schedule_id)',
-            [truckIdN, driverIdN, assistantIdN, routeIdN, mysqlDatetime] as Parameters<typeof conn.execute>[1]
-          );
+                      // Call the procedure; OUT parameter is retrieved via a second SELECT.
+                      await conn.execute(
+                        'CALL schedule_truck_delivery(?, ?, ?, ?, ?, @out_schedule_id)',
+                        [truckIdN, driverIdN, assistantIdN, routeIdN, mysqlDatetime] as Parameters<typeof conn.execute>[1]
+                      );
 
-          // Retrieve the OUT parameter value from the session variable.
-          // Cast via unknown to avoid the no-explicit-any rule while still
-          // extracting the scalar OUT param (mysql2 types not installed).
-          const [resultRows] = await conn.execute('SELECT @out_schedule_id AS schedule_id') as unknown as [Array<{ schedule_id: number | string | null }>];
-          return Number(resultRows[0]?.schedule_id ?? 0);
-        }
+                      // Retrieve the OUT parameter value from the session variable.
+                      const [resultRows] = await conn.execute('SELECT @out_schedule_id AS schedule_id') as unknown as [Array<{ schedule_id: number | string | null }>];
+                      return Number(resultRows[0]?.schedule_id ?? 0);
+                    }
+                  );
+                },
+                { ttlSeconds: 15 }
+              ),
+            { ttlSeconds: 15 }
+          ),
+        { ttlSeconds: 15 }
       );
     } catch (dbErr) {
-      // Map SIGNAL SQLSTATE '45000' to a 400 with the procedure/trigger message
-      const sqlMessage = extractSqlMessage(dbErr);
+      // withLock throws a plain Error when a lock cannot be acquired.
+      // Map that to 423 so the client knows to retry; map DB SIGNAL errors to 400.
+      const message = dbErr instanceof Error ? dbErr.message : 'An unexpected error occurred.';
+
+      // Detect lock-contention errors by checking for the message prefix that
+      // withLock emits: "Resource is currently locked by another concurrent process."
+      if (message.startsWith('Resource is currently locked')) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'LOCK_CONTENTION',
+              message:
+                'Another schedule creation is in progress for the same truck, driver, or assistant. Please try again shortly.',
+            },
+          },
+          { status: 423 }
+        );
+      }
+
+      // Otherwise treat as a DB business-rule violation (SIGNAL SQLSTATE '45000')
       return NextResponse.json(
-        { error: { code: 'BUSINESS_RULE_VIOLATION', message: sqlMessage } },
+        { error: { code: 'BUSINESS_RULE_VIOLATION', message: extractSqlMessage(dbErr) } },
         { status: 400 }
       );
-    } finally {
-      // Step 5 — Always release Redis locks regardless of outcome
-      await releaseLock(lockTruckKey, lockTruck.lockToken);
-      await releaseLock(lockDriverKey, lockDriver.lockToken);
-      await releaseLock(lockAssistantKey, lockAssistant.lockToken);
     }
 
     return NextResponse.json({ schedule_id: scheduleId }, { status: 201 });
