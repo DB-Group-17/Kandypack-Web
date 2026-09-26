@@ -123,3 +123,26 @@ export interface DeliveryItem {
   notes?: string;
   delivery_address?: string;
 }
+
+/**
+ * Represents a single coverage sub-area under a route.
+ * Nested inside RouteItem; aligns with route_coverage_areas table.
+ */
+export interface RouteCoverageArea {
+  coverage_id: number;
+  city_id: number;
+  area_name: string;
+}
+
+/**
+ * Represents a delivery route record with its coverage areas.
+ * Aligns with GET /api/routes response DTO.
+ */
+export interface RouteItem {
+  route_id: number;
+  store_id: number;
+  route_name: string;
+  coverage_description: string | null;
+  max_delivery_time_hours: number;
+  coverage_areas: RouteCoverageArea[];
+}

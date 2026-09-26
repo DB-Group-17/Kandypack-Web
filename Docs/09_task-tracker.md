@@ -64,10 +64,11 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] Open PR → review → merge
 
 ### Member 3 — Truck Scheduling (independent of Orders)
-- [ ] `GET /trucks`, `GET /drivers`, `GET /assistants`
-- [ ] `GET /truck-schedules`, `POST /truck-schedules` → `schedule_truck_delivery()`, `GET /truck-schedules/:id/conflicts`
-- [ ] `/truck-schedule` and `/truck-schedule/new` pages wired to real data
+- ⏳ `GET /trucks`, `GET /drivers`, `GET /assistants`
+- ⏳ `GET /truck-schedules`, `POST /truck-schedules` → `schedule_truck_delivery()`, `GET /truck-schedules/:id/conflicts`
+- ⏳ `/truck-schedule` and `/truck-schedule/new` pages wired to real data (list + live form with conflict debouncing)
 - [ ] Open PR → review → merge
+
 
 ### Member 4 — Master Data (zero dependencies — start here first if blocked on anything else)
 - [x] `GET/POST /customers`, `GET/POST/PATCH /products`, `GET /cities`, `GET/POST /routes`

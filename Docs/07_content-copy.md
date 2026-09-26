@@ -242,7 +242,7 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 **Button (top-right):** + New Schedule
 
 **Filter bar:**
-- `Date range` · `Status` (All / Scheduled / In Progress / Completed) · `Driver` (dropdown)
+- `Date range` (Date from · Date to) · `Status` (All statuses / Scheduled / In Progress / Completed / Cancelled) · `Driver` (name search — partial match, placeholder `Search by driver name…`)
 
 **Table columns:** Truck · Driver · Assistant · Route · Start · End · Status
 
