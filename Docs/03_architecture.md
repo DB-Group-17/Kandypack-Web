@@ -302,6 +302,7 @@ All routes under `/api/`. Auth required on all except `/auth/login`.
 ### Key procedures/functions
 - `place_order()`, `schedule_truck_delivery()`, `complete_delivery()`, `receive_goods_at_store()`
   - `place_order()` was corrected on 2026-09-18 by migrations `21` and `22`; see §19.1 for what was wrong and what changed. Procedure signatures in `05_api-and-pages.md` were corrected the same day to match the migrations.
+  - `schedule_truck_delivery()` and every stock decrease (so `complete_delivery()`) were corrected on 2026-09-26 by migrations `23` and `24`; see §19.2.
 - `calculate_order_space()`, `get_available_capacity()`, `get_driver_weekly_hours()`, `get_assistant_weekly_hours()`, `get_next_available_trip()`
 
 ### Reporting views
@@ -452,6 +453,8 @@ Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`
 | `place_order` correctness fixes | Migrations `21` and `22` replace the procedure; `17` is left as historical record | Three defects made the procedure fail for every caller on MySQL 8.4 / Aiven; an applied migration cannot be edited, so corrections ship as new files | `03_architecture.md`, `05_api-and-pages.md`, `10_local-setup.md` | 2026-09-18 |
 | Seeded order history | Seeded orders are inserted `Pending` and walked to their target status | Produces `order_status_history` through the real trigger rather than hand-written rows, so seeded history cannot diverge from production behaviour | `06_seed-data-spec.md` §9 | 2026-09-18 |
 | Historical seed orders carry no train bookings | Previous-quarter orders are closed sales records only | §8's trip window spans ±3 weeks, so no trip exists in the previous quarter; every report needing historical depth reads only `orders` and `order_items` | `06_seed-data-spec.md` §9 | 2026-09-18 |
+| Truck-schedule and stock-decrease fixes | Migration `23` moves the schedule lock from the trigger into `schedule_truck_delivery`; migration `24` rewrites `trg_apply_inventory_transaction` as update-else-insert. `13`, `14` and `18` stay as historical record | Both defects made the feature fail for every caller; an applied migration cannot be edited | `03_architecture.md`, `10_local-setup.md` | 2026-09-26 |
+| Logistics seed scope | Seed §10–§11 covers only the 10 current-quarter orders at a store; stores start from an opening-balance `adjustment` | Historical orders have no bookings, so no receipt to dispatch against; receipts from 10 orders alone cannot stock most products | `06_seed-data-spec.md` §9–§11 | 2026-09-26 |
 
 ### 19.1 `place_order` defects corrected on 2026-09-18
 
@@ -466,6 +469,16 @@ Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`
 **Caller requirement.** Atomicity is restored, but MySQL autocommit still commits each statement individually. `place_order` is only atomic if its caller opens an explicit transaction around the `CALL`. Route handlers invoking it must do so, or a failed order will still leave an orphan row. **Open item:** `POST /api/orders` has not yet been audited for this.
 
 **Verified 2026-09-18** against the shared dev database: a successful call rolled back cleanly leaving no rows, and a call failing mid-procedure did the same.
+
+### 19.2 Truck-schedule and stock-decrease defects corrected on 2026-09-26
+
+Both were found by the seed §10–§11 dry run, the first time either path ran against the shared database. Like §19.1, each failed for **every** caller from Phase 0 onwards; neither was caught earlier because no truck schedule or stock decrease had ever been attempted.
+
+1. **`schedule_truck_delivery` could never insert (fixed in migration `23`).** `trg_validate_truck_schedule` (migration `13`) opened with `SELECT … FROM truck_schedules … FOR UPDATE`. A trigger may read the table its statement is inserting into, but not take write locks on it, so every insert failed with `ER_CANT_UPDATE_USED_TABLE_IN_SF_OR_TRG` (1442). The same statement would also have failed with "Result consisted of more than one row" once two matching schedules existed. `POST /api/truck-schedules` and `/truck-schedule/new` were therefore non-functional. The trigger is recreated without that statement (every rule check carried forward verbatim), and `schedule_truck_delivery` now locks the truck, driver and assistant rows — in that fixed order — before its `INSERT`, so concurrent schedules for the same resources still serialise at database level.
+
+2. **Every stock decrease was rejected (fixed in migration `24`).** `trg_apply_inventory_transaction` (migration `14`) used `INSERT … ON DUPLICATE KEY UPDATE`. MySQL evaluates `CHECK` constraints against the `VALUES` row before switching to the update branch, so for a negative `change_qty` the candidate row violated `chk_si_qty` even when stock was ample (verified: −10 against a row holding 100 fails). Every `dispatch` — and therefore every `complete_delivery` call — and every negative `adjustment` failed. The trigger now updates the existing row when there is one and inserts only for a store's first movement of a product. `trg_check_inventory_before_dispatch` still rejects any dispatch that would drive stock negative.
+
+**Verified 2026-09-26** against the shared dev database: the seed created 10 schedules through `schedule_truck_delivery` with every roster rule enforced, and completed 3 deliveries through `complete_delivery`, dispatching 317 units against received stock.
 
 ## 20. Application Layer Boundaries
 
