@@ -85,7 +85,7 @@ export function validateLeadTime(
   return {
     valid,
     daysDifference,
-    ...(valid ? {} : { message: 'Delivery date must be at least 7 days from today.' }),
+    ...(valid ? {} : { message: `Delivery date must be at least ${minLeadDays} days from today.` }),
   };
 }
 

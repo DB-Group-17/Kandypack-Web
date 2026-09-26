@@ -94,5 +94,8 @@ jobs:
       - name: Seed Baseline Master Data
         run: npm run db:seed
 
-      - name: Run Integration & API Test Suites
-        run: npm test
+      - name: Run Integration Tests (Stored Procedures & DB Triggers)
+        run: npm run test:integration
+
+      - name: Run API Route Tests
+        run: npm run test:api

@@ -166,7 +166,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
-    // 3. Parse and validate request JSON body
+    // 4. Parse and validate request JSON body
     let body: CreateOrderRequest;
     try {
       body = await req.json();

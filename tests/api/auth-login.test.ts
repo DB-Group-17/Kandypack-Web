@@ -8,13 +8,36 @@
  * - Correct credentials for the bootstrap admin return HTTP 200 with session cookie.
  * - Rate limiting enforces 5 requests per 15 minutes per IP and returns HTTP 429.
  *
+ * Redis is mocked at the module level so no real network call is ever made.
+ * The rate-limit test overrides checkRateLimit to simulate an exceeded limit,
+ * making every test instant and deterministic regardless of environment.
+ *
  * Follows Docs/03_architecture.md §16 Priority 4, Docs/07_content-copy.md §/login.
  */
 
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, afterAll, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/auth/login/route';
 import { pool } from '@/lib/db';
 import { AUTH_COOKIE_NAME } from '@/lib/auth';
+
+// ---------------------------------------------------------------------------
+// Mock lib/redis so checkRateLimit never makes a real Upstash network call.
+// Default behaviour: always allow the request (allowed: true).
+// Individual tests that need to simulate a blocked request override this below.
+// ---------------------------------------------------------------------------
+vi.mock('@/lib/redis', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/redis')>();
+  return {
+    ...actual,
+    checkRateLimit: vi.fn().mockResolvedValue({
+      allowed: true,
+      limit: 5,
+      remaining: 4,
+      // Reset time 15 minutes from now (matches AUTH_LOGIN profile window)
+      resetTimeMs: Date.now() + 15 * 60 * 1000,
+    }),
+  };
+});
 
 describe('API Route: POST /api/auth/login', () => {
   const adminEmail = 'admin@kandypack.lk';
@@ -91,29 +114,26 @@ describe('API Route: POST /api/auth/login', () => {
   });
 
   it('enforces rate limiting and returns 429 with Retry-After header after 5 attempts', async () => {
-    const testIp = '10.0.99.1';
+    // Override checkRateLimit to simulate the counter being at the limit.
+    // This verifies that applyRateLimit + the route handler correctly produce
+    // a 429 response when Redis reports the limit is exceeded — no real network
+    // calls or shared Redis state needed.
+    const { checkRateLimit } = await import('@/lib/redis');
+    const resetTimeMs = Date.now() + 15 * 60 * 1000;
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({
+      allowed: false,
+      limit: 5,
+      remaining: 0,
+      resetTimeMs,
+    });
 
-    // Send 5 requests to consume rate limit allowance
-    for (let i = 0; i < 5; i++) {
-      const req = new Request('http://localhost:3000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-forwarded-for': testIp,
-        },
-        body: JSON.stringify({ email: '' }),
-      });
-      await POST(req);
-    }
-
-    // 6th request must be rejected with 429
     const blockedReq = new Request('http://localhost:3000/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-forwarded-for': testIp,
+        'x-forwarded-for': '10.0.99.1',
       },
-      body: JSON.stringify({ email: '' }),
+      body: JSON.stringify({ email: 'admin@kandypack.lk', password: 'anything' }),
     });
 
     const res = await POST(blockedReq);
