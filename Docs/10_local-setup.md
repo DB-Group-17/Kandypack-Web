@@ -64,7 +64,10 @@ JWT_SECRET=<ask a teammate for the shared dev secret — must match across the t
 UPSTASH_REDIS_REST_URL=<from Upstash>
 UPSTASH_REDIS_REST_TOKEN=<from Upstash>
 NODE_ENV=development
+SEED_TEST_PASSWORD=<optional — only needed if you run the seed and want the test role accounts>
 ```
+
+`SEED_TEST_PASSWORD` has no default. If it is empty, `npm run db:seed` skips the four test role accounts (`06_seed-data-spec.md` §12) with a warning.
 
 **Never commit `.env.local`.** It's already in `.gitignore` — double check before your first commit anyway.
 
@@ -74,19 +77,37 @@ NODE_ENV=development
 
 ⚠️ **Do this against the shared dev database only if you're told to** — running migrations resets/alters shared state everyone else depends on. During Phase 0, only **Member 1** runs migrations. After that, coordinate in the team channel before running new migrations against the shared dev DB.
 
-> **Note:** For Phase 0, migrations and the initial bootstrap seed have already been executed against the shared Aiven database. You do not need to run them again on a fresh clone.
+> **Note:** Migrations `01` through `24` and the full baseline seed (`06_seed-data-spec.md` §1–§12) have already been executed against the shared Aiven database. You do not need to run either on a fresh clone — the shared database is a single instance, so a stored procedure or seeded row added by one member is immediately live for everyone.
+>
+> **Shared dev state as of 2026-09-26:**
+> - **Migrations applied through `24_fix_inventory_apply_trigger.sql`.** Note that `20_delivery_status_cancelled.sql` (which adds `Cancelled` to the `deliveries` status CHECK) had never actually been applied despite earlier notes saying migrations ran to `20` — it went in alongside 21 and 22.
+> - **`place_order` was broken for every caller until 2026-09-18** and is now fixed by migrations 21 and 22 (see `03_architecture.md`). If you previously saw order creation fail for no obvious reason, that was why.
+> - **Creating a truck schedule and completing a delivery were broken for every caller until 2026-09-26** and are fixed by migrations 23 and 24 (see `03_architecture.md` §19.2).
+> - **46 baseline orders are seeded** (1–45 plus #46, the capacity-overflow test case); #47 was placed by a teammate.
+> - **Logistics (§10–§11) is seeded:** 10 truck schedules and deliveries (3 `Completed`, 2 `In Progress`, 5 `Scheduled`), 117 inventory transactions and 72 `store_inventory` rows. Trips 4, 10, 16, 22, 28 and 34 are `Arrived`; the 7 `In Transit` orders on them are deliberately **not received yet**, for testing the receive-goods flow.
+> - Re-running `npm run db:seed` is safe: every stage inserts only missing rows and reports `0 inserted, N already present`.
 
 ```bash
 npm run db:migrate
 ```
 
-This runs `db/migrations/01_*.sql` through `20_*.sql` in sequential order against whatever `DATABASE_URL` points to.
+This runs every `db/migrations/*.sql` file not yet recorded in `_schema_migrations`, in filename order, against whatever `DATABASE_URL` points to. Applied files are never re-run, so **an already-applied migration cannot be fixed by editing it** — corrections need a new numbered file.
 
 To load the baseline seed data (per `06_seed-data-spec.md`) via `scripts/seed.ts` — again, coordinate before running against shared dev:
 
 ```bash
 npm run db:seed
 ```
+
+Rehearse first with a dry run, which executes every insert and then rolls back (requires the bootstrap admin to exist):
+
+```bash
+npx tsx scripts/seed.ts --dry-run
+```
+
+Seed behaviour to know:
+- Re-running is safe: only rows whose ID is missing are inserted; existing rows are never changed.
+- Train trip dates are relative to the **first** run. Later runs do not move them forward, so once the seeded future trips have departed, `place_order` will report "no trip with capacity" until newer trips are added.
 
 ---
 
@@ -143,5 +164,5 @@ This is **not** the primary dev path for the team (per `03_architecture.md` §12
 ## 11. Daily Workflow Reminder
 
 - `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `lib/redis.ts`) change under you if you don't.
-- Never run `npm run db:migrate` or `npm run db:seed` against the shared dev DB without checking in the team channel first — it affects everyone at once.
+- Never run `npm run db:migrate` or `npm run db:seed` against the shared dev DB without checking in the team channel first — it affects everyone at once. Migrations are the sharper edge: a stored-procedure change is live for every member the moment it lands, with no action on their part.
 - If `.env.example` gets a new variable added, you'll need to manually add it to your own `.env.local` — it isn't automatic.

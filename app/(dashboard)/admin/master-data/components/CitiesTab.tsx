@@ -39,7 +39,23 @@ export const CitiesTab: React.FC<CitiesTabProps> = ({ items }) => {
         </div>
       </div>
 
-      {/* Main Cities Table */}
+      {/* Empty State or Main Cities Table */}
+      {items.length === 0 ? (
+        <div className="py-16 px-6 text-center">
+          <div className="w-14 h-14 rounded-full bg-[#EBE9FE] text-[#4132C7] mx-auto flex items-center justify-center mb-4">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+            No records yet.
+          </h3>
+          <p className="text-[13px] text-[#474554] max-w-sm mx-auto">
+            No cities match your search filters or have been registered in the system reference database.
+          </p>
+        </div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -126,6 +142,7 @@ export const CitiesTab: React.FC<CitiesTabProps> = ({ items }) => {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 };

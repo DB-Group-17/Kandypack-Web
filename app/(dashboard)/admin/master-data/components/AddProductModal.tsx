@@ -18,7 +18,7 @@ interface AddProductModalProps {
   /** Callback when the modal is dismissed */
   onClose: () => void;
   /** Callback when valid product payload is submitted */
-  onSubmit: (payload: NewProductPayload) => void;
+  onSubmit: (payload: NewProductPayload) => Promise<{ success: boolean; error?: string } | void> | void;
 }
 
 const CATEGORY_OPTIONS = [
@@ -50,6 +50,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [unitPrice, setUnitPrice] = useState('');
   const [spaceRate, setSpaceRate] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
@@ -58,7 +59,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
    *
    * @param e Form submit event
    */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -92,22 +93,39 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       return;
     }
 
-    onSubmit({
-      sku: trimmedSku,
-      product_name: trimmedName,
-      category,
-      unit_of_measure: unitOfMeasure,
-      unit_price: parsedPrice,
-      space_rate: parsedSpace,
-    });
+    try {
+      setIsSubmitting(true);
+      const result = await onSubmit({
+        sku: trimmedSku,
+        product_name: trimmedName,
+        category,
+        unit_of_measure: unitOfMeasure,
+        unit_price: parsedPrice,
+        space_rate: parsedSpace,
+      });
 
-    // Reset and close
-    setSku('');
-    setProductName('');
-    setUnitPrice('');
-    setSpaceRate('');
-    setErrorMessage(null);
-    onClose();
+      if (result && typeof result === 'object' && result.success === false) {
+        setErrorMessage(result.error || 'Failed to create product.');
+        return;
+      }
+
+      // Reset and close on success
+      setSku('');
+      setProductName('');
+      setUnitPrice('');
+      setSpaceRate('');
+      setErrorMessage(null);
+      onClose();
+    } catch (err: unknown) {
+      console.error('Error submitting product:', err);
+      if (err instanceof Error) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage('Failed to save product. Please try again.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -278,9 +296,17 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
-              + Add Product
+              {isSubmitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Saving Product...</span>
+                </>
+              ) : (
+                <span>+ Add Product</span>
+              )}
             </button>
           </div>
         </form>

@@ -3,7 +3,7 @@
 > Status: Active
 > Authority: Supporting implementation tracker
 > Primary source: `Docs/03_architecture.md`
-> Last reviewed: 2026-08-25
+> Last reviewed: 2026-09-26
 
 Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
@@ -52,36 +52,37 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 **Pacing item:** Member 1's Orders module. Others do not need to wait for it to fully finish, but nobody merges anything that touches `orders`/`order_items` until it's on `main`.
 
 ### Member 1 — Orders
-- [ ] `POST /orders` → `place_order()` integration (using Member 5's Redis lock helper)
-- [ ] `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
-- [ ] `/orders` (list), `/orders/new`, `/orders/[orderId]` pages wired to real data
-- [ ] `useAuth()` hook / auth context finalized for others to import
-- [ ] Open PR → review → merge
+- [x] `POST /orders` → `place_order()` integration (using Member 5's Redis lock helper)
+- [x] `GET /orders`, `GET /orders/:id`, `PATCH /orders/:id/status`
+- [x] `/orders` (list), `/orders/new`, `/orders/[orderId]` pages wired to real data — `/orders` and `/orders/[orderId]` verified against seeded data (2026-09-18). `/orders/new` built and verified in a browser 2026-09-23: customer search and inline add-customer popup, city → area dropdowns, 7-day date rule, item lines with live totals, submit with pre-flight validation, leave-the-page guard. Verified by placing real orders through the form: a rule-violating order left no rows behind, a normal order and a split-across-trips order both redirected with the placement toast and the split notice. Production `next build` passed on `development` (2026-09-26). Not yet verified: saving a new customer through the popup
+- [x] `useAuth()` hook / auth context finalized for others to import
+- [x] Open PR → review → merge — PR #10 merged to `development`
 
 ### Member 2 — Train Trips (independent of Orders)
-- [ ] `GET /train-trips`, `POST /train-trips`, `GET /train-trips/:id/capacity`
-- [ ] `/train-schedule` page wired to real data
-- [ ] Open PR → review → merge
+- [x] `GET /train-trips`, `POST /train-trips`, `GET /train-trips/:id/capacity`
+- [x] `/train-schedule` page wired to real data
+- [x] Open PR → review → merge — PR #8 merged to `development`
 
 ### Member 3 — Truck Scheduling (independent of Orders)
-- [ ] `GET /trucks`, `GET /drivers`, `GET /assistants`
-- [ ] `GET /truck-schedules`, `POST /truck-schedules` → `schedule_truck_delivery()`, `GET /truck-schedules/:id/conflicts`
-- [ ] `/truck-schedule` and `/truck-schedule/new` pages wired to real data
-- [ ] Open PR → review → merge
+- [x] `GET /trucks`, `GET /drivers`, `GET /assistants`
+- [x] `GET /truck-schedules`, `POST /truck-schedules` → `schedule_truck_delivery()`, `GET /truck-schedules/conflicts` (query-param pre-check; `end_time` is derived server-side — see `05_api-and-pages.md` §A7)
+- [x] `/truck-schedule` and `/truck-schedule/new` pages wired to real data (list with filter bar, live form with debounced conflict check, creation toast)
+- [x] Open PR → review → merge — PR #12 merged to `development`. Not yet verified in a browser: creating a schedule end to end
 
 ### Member 4 — Master Data (zero dependencies — start here first if blocked on anything else)
-- [ ] `GET/POST /customers`, `GET/POST/PATCH /products`, `GET /cities`, `GET/POST /routes`
-- [ ] `GET/POST /employees`
-- [ ] `/admin/master-data` page wired to real data
-- [ ] Open PR → review → merge
+- [x] `GET/POST /customers`, `GET/POST/PATCH /products`, `GET /cities`, `GET/POST /routes`
+- [x] `GET/POST /employees`
+- [x] `/admin/master-data` page wired to real data
+- [x] Open PR → review → merge — PR #9 merged to `development`
 
 ---
 
 ### 🔒 PHASE 1 GATE — do not proceed to Phase 2 until ALL of these are true:
-- [ ] Orders module merged to `main` (Member 1)
-- [ ] `place_order()` verified working against the small-capacity overflow test case from `seed_data_spec.md` §8
-- [ ] Master Data merged (Member 4) — needed because Orders/Truck Scheduling both reference products/routes/customers
-- [ ] Full baseline seed data (`seed_data_spec.md`, all sections) loaded into the shared dev DB — Member 1 runs this once everyone's underlying tables exist
+- [x] Orders module merged to `main` (Member 1) — merged to `development` (PR #10), then to `main` with the Phase 1 `development` → `main` PR (2026-09-26). Production build, lint and typecheck pass on `development`
+- [x] `place_order()` verified working against the small-capacity overflow test case from `seed_data_spec.md` §8 — **passed 2026-09-18.** Order #46 booked across Trip #5 (the 50-unit Colombo trip, 49.50 units) and Trip #6 (70.50 units), with no trip exceeding capacity and the split conserving both space and quantity. Verified in the database and rendered on `/orders/46`, split-trip banner included. Required three fixes to `place_order` first — see `03_architecture.md`.
+- [x] Master Data merged (Member 4) — PR #9 merged to `development` (reaches `main` with the same `development` → `main` PR)
+- [x] Full baseline seed data (`seed_data_spec.md`, all sections) loaded into the shared dev DB — **done 2026-09-26.** §1–§9 and §12 were loaded earlier; §10–§11 were seeded by Stage 4 (`scripts/seed/logistics.ts`) using option 1 from `06_seed-data-spec.md` §9: 10 truck schedules and deliveries, 117 inventory transactions, 72 stock rows. Required migrations `23` and `24` first — `schedule_truck_delivery` and every stock decrease had been broken for every caller (see `03_architecture.md` §19.2).
+- **Status:** **PASSED / LOCKED (2026-09-26)** — All Phase 1 work merged to `main`. All team members pull `main` (or `development`) before branching for Phase 2.
 
 ---
 

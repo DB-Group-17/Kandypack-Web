@@ -26,6 +26,7 @@ If a requested change conflicts with `DESIGN.md` or a documented rule, identify 
 ## Implementation and commenting rules
 
 - Reuse existing components, styles, tokens, layouts, and patterns before creating parallel implementations.
+- Always use shared infrastructure helpers and centralized constants (e.g. `withLock` and `REDIS_KEYS` from `@/lib/redis`, `withUserContext` and query helpers from `@/lib/db`) rather than implementing ad-hoc lock acquisition/release cycles or hardcoding cache/lock key strings.
 - Keep changes scoped to the requested pages/components and preserve unrelated work.
 - Every page must include clear comments describing its main structure, data flow, user interactions, and page-specific logic.
 - Add inline comments beside non-obvious conditions, transformations, state transitions, event handlers, accessibility workarounds, and integration logic.
