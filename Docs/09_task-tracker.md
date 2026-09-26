@@ -78,10 +78,11 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 ---
 
 ### 🔒 PHASE 1 GATE — do not proceed to Phase 2 until ALL of these are true:
-- [ ] Orders module merged to `main` (Member 1) — ⏳ merged to `development` (PR #10) and the production build passes; only the `development` → `main` PR remains
+- [x] Orders module merged to `main` (Member 1) — merged to `development` (PR #10), then to `main` with the Phase 1 `development` → `main` PR (2026-09-26). Production build, lint and typecheck pass on `development`
 - [x] `place_order()` verified working against the small-capacity overflow test case from `seed_data_spec.md` §8 — **passed 2026-09-18.** Order #46 booked across Trip #5 (the 50-unit Colombo trip, 49.50 units) and Trip #6 (70.50 units), with no trip exceeding capacity and the split conserving both space and quantity. Verified in the database and rendered on `/orders/46`, split-trip banner included. Required three fixes to `place_order` first — see `03_architecture.md`.
 - [x] Master Data merged (Member 4) — PR #9 merged to `development` (reaches `main` with the same `development` → `main` PR)
 - [x] Full baseline seed data (`seed_data_spec.md`, all sections) loaded into the shared dev DB — **done 2026-09-26.** §1–§9 and §12 were loaded earlier; §10–§11 were seeded by Stage 4 (`scripts/seed/logistics.ts`) using option 1 from `06_seed-data-spec.md` §9: 10 truck schedules and deliveries, 117 inventory transactions, 72 stock rows. Required migrations `23` and `24` first — `schedule_truck_delivery` and every stock decrease had been broken for every caller (see `03_architecture.md` §19.2).
+- **Status:** **PASSED / LOCKED (2026-09-26)** — All Phase 1 work merged to `main`. All team members pull `main` (or `development`) before branching for Phase 2.
 
 ---
 
