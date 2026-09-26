@@ -8,10 +8,16 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:api": "vitest run tests/api",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@upstash/redis": "^1.38.3",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.10",
     "jsonwebtoken": "^9.0.3",
@@ -20,6 +26,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.37.0",
+    "mysql2": "^3.24.2",
     "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -37,6 +44,7 @@
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^3.2.7"
   }
 }
