@@ -77,12 +77,14 @@ SEED_TEST_PASSWORD=<optional — only needed if you run the seed and want the te
 
 ⚠️ **Do this against the shared dev database only if you're told to** — running migrations resets/alters shared state everyone else depends on. During Phase 0, only **Member 1** runs migrations. After that, coordinate in the team channel before running new migrations against the shared dev DB.
 
-> **Note:** Migrations `01` through `22` and the baseline seed (`06_seed-data-spec.md` §1–§9 and §12) have already been executed against the shared Aiven database. You do not need to run either on a fresh clone — the shared database is a single instance, so a stored procedure or seeded row added by one member is immediately live for everyone.
+> **Note:** Migrations `01` through `24` and the full baseline seed (`06_seed-data-spec.md` §1–§12) have already been executed against the shared Aiven database. You do not need to run either on a fresh clone — the shared database is a single instance, so a stored procedure or seeded row added by one member is immediately live for everyone.
 >
-> **Shared dev state as of 2026-09-18:**
-> - **Migrations applied through `22_fix_place_order_temp_tables.sql`.** Note that `20_delivery_status_cancelled.sql` (which adds `Cancelled` to the `deliveries` status CHECK) had never actually been applied despite earlier notes saying migrations ran to `20` — it went in alongside 21 and 22.
+> **Shared dev state as of 2026-09-26:**
+> - **Migrations applied through `24_fix_inventory_apply_trigger.sql`.** Note that `20_delivery_status_cancelled.sql` (which adds `Cancelled` to the `deliveries` status CHECK) had never actually been applied despite earlier notes saying migrations ran to `20` — it went in alongside 21 and 22.
 > - **`place_order` was broken for every caller until 2026-09-18** and is now fixed by migrations 21 and 22 (see `03_architecture.md`). If you previously saw order creation fail for no obvious reason, that was why.
-> - **46 orders are seeded** (1–45 baseline plus #46, the capacity-overflow test case). Sections §10–§11 — truck schedules, deliveries and inventory transactions — are **not** seeded yet, so those tables are still empty.
+> - **Creating a truck schedule and completing a delivery were broken for every caller until 2026-09-26** and are fixed by migrations 23 and 24 (see `03_architecture.md` §19.2).
+> - **46 baseline orders are seeded** (1–45 plus #46, the capacity-overflow test case); #47 was placed by a teammate.
+> - **Logistics (§10–§11) is seeded:** 10 truck schedules and deliveries (3 `Completed`, 2 `In Progress`, 5 `Scheduled`), 117 inventory transactions and 72 `store_inventory` rows. Trips 4, 10, 16, 22, 28 and 34 are `Arrived`; the 7 `In Transit` orders on them are deliberately **not received yet**, for testing the receive-goods flow.
 > - Re-running `npm run db:seed` is safe: every stage inserts only missing rows and reports `0 inserted, N already present`.
 
 ```bash

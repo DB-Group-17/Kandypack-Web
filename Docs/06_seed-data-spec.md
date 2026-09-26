@@ -185,7 +185,7 @@ Every seeded order is therefore inserted as `Pending` and then `UPDATE`d through
 - `order_status_history.changed_at` defaults to `NOW()`, so a historical order's transitions would all timestamp at seed time. The 25 previous-quarter orders get their `changed_at` values backdated by an explicit `UPDATE` after the walk, spread between `order_placed_at` and `expected_delivery_date`; current-quarter orders keep the natural timestamps.
 - `Cancelled` orders walk only `Pending → Cancelled`.
 
-### Open consequence for §10–§11 — dispatch has nothing to draw down *(raised 2026-09-18, unresolved)*
+### Open consequence for §10–§11 — dispatch has nothing to draw down *(raised 2026-09-18, resolved 2026-09-26: option 1 — see §10)*
 
 Decision A leaves the 20 `Delivered` orders without `train_bookings`, and §11 derives `receive` transactions only from bookings on `Arrived` trips. But §11 also wants a `dispatch` transaction per completed delivery, and `trg_check_inventory_before_dispatch` (migration 14) rejects any dispatch that would drive `store_inventory.quantity_on_hand` negative — so a historical delivery has no stock to dispatch against.
 
@@ -196,17 +196,37 @@ Decision A stands: it is correct for §9 and every report reads cleanly. This is
 
 Option 1 keeps the whole historical set uniformly logistics-free and is the assumption §9's inserter is written against.
 
-## 10. Truck Schedules & Deliveries
+**Resolution (2026-09-26):** option 1, implemented in `scripts/seed/logistics.ts` (Stage 4). Building it surfaced a second inconsistency: §9 walked orders to `At Store` / `Out for Delivery` while their `+1` week trips were still `Scheduled`, so the stage first marks those six trips `Arrived` (their arrival time had passed). Completing three deliveries changes §9's live status counts: `Out for Delivery` 5 → 2, and `Delivered` 20 → 23 (3 of them in the current quarter).
 
-- ~20 truck schedules, only for orders in `At Store`, `Out for Delivery`, or `Delivered` status (orders still `Pending`/`In Transit` haven't reached truck scheduling yet).
-- Roster rules respected in the baseline data: no driver/assistant double-booked, no one over their weekly hour cap. **This baseline must pass validation cleanly** — if you need a rule-violation scenario for testing, construct it in a disposable test, not in the shared seed.
-- One `deliveries` row per truck schedule tied to a `Delivered`/`Out for Delivery` order; `Delivered` orders' deliveries are `status: Completed` with a `delivered_at` timestamp before "now".
+## 10. Truck Schedules & Deliveries — 10 rows each (`delivery_id` 1–10)
 
-## 11. Store Inventory & Transactions
+Scoped to the 10 current-quarter orders that have reached a store (option 1, §9): `At Store` #25, 29, 33, 37, 41 and `Out for Delivery` #26, 30, 34, 38, 42. Historical `Delivered` orders carry no bookings, so they get no schedule or delivery either. *(Was "~20 schedules"; only 10 orders qualify, and padding with delivery-less schedules would be fake workload.)*
 
-- Derived, not hand-entered: for every `train_bookings` row tied to a trip with `status = Arrived`, generate a matching `inventory_transactions` row (`transaction_type = receive`) and roll it into `store_inventory.quantity_on_hand`.
-- For every completed delivery, generate a matching `dispatch` transaction reducing `quantity_on_hand`.
-- End state: every store should have a **non-trivial, non-zero** stock level across most products — this is what Member 4 tests the Inventory page against, and what the Dashboard's low-stock alert logic needs at least one deliberately-low row to display (seed one product per store at quantity ≤ 5 to guarantee the low-stock alert has something to show).
+| Outcome | Orders | Schedule | Delivery | Order ends as |
+|---|---|---|---|---|
+| Completed | #26, 30, 34 | The last three working days, `Completed` | `Completed` via `complete_delivery`, `delivered_at` = schedule end | `Delivered` |
+| On the road | #38, 42 | Today, `In Progress` | `In Progress` | `Out for Delivery` |
+| Upcoming | #25, 29, 33, 37, 41 | Next 1–3 working days, `Scheduled` | `Scheduled` | `At Store` |
+
+- Every schedule is created through `schedule_truck_delivery`, so `trg_validate_truck_schedule` enforces every roster rule. **This baseline must pass validation cleanly** — if you need a rule-violation scenario for testing, construct it in a disposable test, not in the shared seed.
+- Each store (1–5) uses its own truck and its first driver and assistant (IDs 1–5); a store's two schedules fall on different days. Store 6 has no eligible order.
+- Dates are working-day offsets (Monday–Saturday) from the database's `CURDATE()` at seed time, all starting 08:00.
+- For completed deliveries, the dispatch rows' `created_at` and the order's `Delivered` history row are backdated to the schedule's end time (as §9 Decision B does for history).
+
+## 11. Store Inventory & Transactions — 117 transactions, 72 `store_inventory` rows
+
+`store_inventory` is never written directly: every movement is an `inventory_transactions` row and `trg_apply_inventory_transaction` maintains the balance.
+
+- **Opening balance (Decision C):** 72 `adjustment` rows, one per store × product 1–12, dated to the start of the current quarter. Quantities are fixed per product (60–200). One product per store — chosen from products none of that store's orders use — opens at **3**, so the low-stock alert always has a row: store 1 → product 6, 2 → 8, 3 → 11, 4 → 1, 5 → 9, 6 → 2.
+- **Receipts:** 32 `receive` rows, one per booked line of the 10 orders in §10, dated to the trip's arrival. Inserted with `receive_goods_at_store`'s own `INSERT … SELECT` rather than by calling it, because the procedure also sets the order to `At Store` and would move the `Out for Delivery` orders backwards (writing a false status-history row).
+- **Dispatches:** 13 `dispatch` rows written by `complete_delivery` for the three completed deliveries.
+- The 7 `In Transit` orders on the newly arrived trips are deliberately **not received**, so the receive-goods flow has real bookings to act on.
+
+### Decision C — stores start from an opening-balance adjustment *(resolved 2026-09-26)*
+
+This relaxes "derived, not hand-entered" for the opening balance only. With option 1, receipts come from just 10 orders — a few products per store — and completing deliveries dispatches exactly those quantities back out, so derived-only stock would leave most products at 0 and could not guarantee a low-stock row. `adjustment` is a schema-supported transaction type with no booking or delivery link, and every movement after it is real.
+
+*Rejected:* strictly derived stock (the Inventory page and the low-stock alert would have almost nothing to show).
 
 ## 12. Test Role Accounts — 4 rows (development only)
 
