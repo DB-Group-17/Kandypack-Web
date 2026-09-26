@@ -4,28 +4,29 @@
  * Owner: Member 3 (Fleet & Deliveries).
  *
  * Data flow:
- *   - Server component: fetches real schedule data from GET /api/truck-schedules
- *     on every request (no stale mock data).
- *   - Passes query params from the URL search string directly to the API so the
- *     client-side filter bar can drive server-side filtering without client fetches.
- *   - Falls back to an empty list with an error notice if the API is unavailable.
+ *   - Server component: reads schedules straight from MySQL through
+ *     fetchTruckSchedulesFromDB() (shared with GET /api/truck-schedules) on every
+ *     request. Access is enforced by proxy.ts, which only lets system_administrator
+ *     and fleet_supervisor reach /truck-schedule.
+ *   - URL search params (date_from, date_to, status, driver_id, driver_name, truck_id)
+ *     are passed through as filters, so the client filter bar drives server-side
+ *     filtering without client fetches.
+ *   - If the query fails, the error is logged server-side and the page renders an
+ *     empty list with an error notice.
  *
  * User interactions:
- *   - "New Schedule" button links to /truck-schedule/new.
+ *   - "New schedule" button links to /truck-schedule/new.
  *   - Filter bar (TruckScheduleFilters) updates URL search params; the server
- *     re-fetches with the new params on navigation (date_from, date_to, status,
- *     driver_name). Requires a Suspense boundary because the client component
- *     calls useSearchParams().
+ *     re-renders with the new params on navigation. Requires a Suspense boundary
+ *     because the client component calls useSearchParams().
+ *   - After a schedule is created, /truck-schedule/new redirects here with
+ *     ?placed=1&route_name=…; ScheduleCreatedToast shows the doc 07 success toast
+ *     once and strips those params from the URL.
  *   - Status badge renders with semantic DESIGN.md colors.
- *   - Date and time window columns show formatted values from the API response.
  *
  * Page-specific logic:
- *   - driver_name filter: the API only accepts driver_id, so this page performs
- *     the name → ID resolution by passing driver_name directly to the API URL;
- *     the API route handles the LIKE match server-side (added alongside this page).
- *     NOTE: For now the API ignores unknown params; the driver_name filter is
- *     forwarded but server-side filtering falls back to showing all results until
- *     the API route is extended to support the LIKE match.
+ *   - driver_name is a partial (LIKE) match resolved in fetchTruckSchedulesFromDB;
+ *     driver_id takes precedence when both are present.
  *
  * References:
  *   - Docs/05_api-and-pages.md §B /truck-schedule
@@ -39,6 +40,7 @@ import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import type { TruckScheduleItem, TruckScheduleStatus } from '@/types/fleet';
 import TruckScheduleFilters from './TruckScheduleFilters';
+import ScheduleCreatedToast from './ScheduleCreatedToast';
 import { fetchTruckSchedulesFromDB } from '@/app/api/truck-schedules/service';
 
 /**
@@ -59,8 +61,10 @@ function getStatusBadgeClass(status: TruckScheduleStatus): string {
 }
 
 /**
- * Fetches truck schedules from the internal API route.
- * Called on the server so the JWT auth cookie is forwarded automatically.
+ * Loads truck schedules for the list, applying any filters from the URL.
+ * Runs on the server and queries the database directly (no HTTP round trip).
+ * Errors are logged and converted into a user-facing notice instead of throwing,
+ * so the page still renders its header and filter bar.
  *
  * @param searchParams - URL search params passed from the page (for filters)
  * @returns Array of TruckScheduleItem records and an optional error message
@@ -78,7 +82,9 @@ async function fetchSchedules(
       truckId: searchParams.truck_id,
     });
     return { items };
-  } catch (_err) {
+  } catch (err) {
+    // Log the real cause server-side; the user only sees a generic notice.
+    console.error('[truck-schedule page] Failed to load schedules:', err);
     return { items: [], error: 'Could not load schedules from the database.' };
   }
 }
@@ -126,6 +132,12 @@ export default async function TruckSchedulesPage({
            The fallback is an invisible placeholder so layout does not shift. */}
       <Suspense fallback={<div className="h-[76px] rounded-[16px] bg-[#F9F9FF] animate-pulse" />}>
         <TruckScheduleFilters />
+      </Suspense>
+
+      {/* ── Success toast after creating a schedule (reads ?placed=1 once) ──
+           Own Suspense boundary (useSearchParams); renders nothing when absent. */}
+      <Suspense fallback={null}>
+        <ScheduleCreatedToast />
       </Suspense>
 
       {/* ── Error notice ── */}

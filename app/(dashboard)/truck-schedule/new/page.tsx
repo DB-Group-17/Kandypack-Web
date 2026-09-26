@@ -45,7 +45,7 @@
  * Doc 07 behaviour implemented here:
  *  - Submit button is disabled while a conflict warning is active (conflict?.has_conflict).
  *  - On 201 success, redirects to /truck-schedule?placed=1&route_name={name} so the list
- *    page can show the "Schedule created for {route_name}." toast via PlacedToast.
+ *    page can show the "Schedule created for {route_name}." toast via ScheduleCreatedToast.
  *  - On 400 server rejection, shows the exact doc 07 error wording:
  *    "This schedule conflicts with an existing booking. Please refresh and try again."
  */
@@ -417,7 +417,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
       });
 
       if (res.status === 201) {
-        // Success — redirect to the schedule list with ?placed=1 so PlacedToast can fire.
+        // Success — redirect to the schedule list with ?placed=1 so ScheduleCreatedToast can fire.
         // Encode the route name for the toast message ("Schedule created for {route_name}.").
         // The route name comes from the already-loaded routes reference data.
         const selectedRoute = routes.find((r) => r.route_id === fields.route_id);

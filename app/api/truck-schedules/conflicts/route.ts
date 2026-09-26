@@ -152,6 +152,24 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Accept only a naive 'YYYY-MM-DD HH:MM[:SS]' wall-clock time, matching POST.
+    // An ISO string with an offset would be shifted to the server's timezone by
+    // new Date(), making the overlap and operating-hours checks disagree with the
+    // procedure, which stores the value exactly as sent.
+    const mysqlDatetimeRegex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/;
+    if (!mysqlDatetimeRegex.test(startTimeParam)) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'BAD_REQUEST',
+            message: 'start_time must be in YYYY-MM-DD HH:MM or YYYY-MM-DD HH:MM:SS format.',
+            field: 'start_time',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const truckId     = Number(truckIdParam);
     const driverId    = Number(driverIdParam);
     const assistantId = Number(assistantIdParam);
