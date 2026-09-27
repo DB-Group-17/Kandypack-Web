@@ -17,6 +17,7 @@
 
 import { NextResponse } from 'next/server';
 import { queryOne } from '@/lib/db';
+import { applyRateLimit, RATE_LIMIT_PROFILES } from '@/lib/rate-limit';
 import {
   verifyPassword,
   signToken,
@@ -55,7 +56,9 @@ interface ProfileRow {
  */
 export async function POST(req: Request): Promise<NextResponse> {
   try {
-    // TODO (Member 5): Apply Upstash Redis rate limiting from lib/redis.ts on login attempts per IP / email
+    // Rate-limit login attempts: 5 per 15 minutes per client IP to prevent brute-force attacks
+    const rateLimited = await applyRateLimit(req, RATE_LIMIT_PROFILES.AUTH_LOGIN);
+    if (rateLimited) return rateLimited;
 
     const body = await req.json();
     const { email, password } = body;
