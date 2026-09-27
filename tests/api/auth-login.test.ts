@@ -15,7 +15,7 @@
  * Follows Docs/03_architecture.md §16 Priority 4, Docs/07_content-copy.md §/login.
  */
 
-import { describe, it, expect, afterAll, vi, beforeEach } from 'vitest';
+import { describe, it, expect, afterAll, vi } from 'vitest';
 import { POST } from '@/app/api/auth/login/route';
 import { pool } from '@/lib/db';
 import { AUTH_COOKIE_NAME } from '@/lib/auth';
