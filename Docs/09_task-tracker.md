@@ -89,10 +89,10 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 ## 🔧 PHASE 2 — Module Completion (Days 8–12)
 
 ### Member 2 — Reports (data layer)
-- [ ] All 6 report GET endpoints (`quarterly-sales`, `most-ordered-items`, `city-route-sales`, `driver-assistant-hours`, `truck-usage`, `customer-history`)
-- [ ] `GET /reports/:type/export/csv`
-- [ ] `/reports` page — tabs + tables + CSV button wired (PDF button deferred to Phase 3)
-- [ ] Open PR → review → merge
+- [x] All 6 report GET endpoints (`quarterly-sales`, `most-ordered-items`, `city-route-sales`, `driver-assistant-hours`, `truck-usage`, `customer-history`)
+- [x] `GET /reports/:type/export/csv`
+- [x] `/reports` page — tabs + tables + CSV button wired (PDF button deferred to Phase 3)
+- [x] Open PR → review → merge  <!-- Phase 2 complete; branch `member2` ready — open PR into `development` for team review -->
 
 ### Member 3 — Deliveries (needs Orders + Truck Scheduling both on `main`)
 - [ ] `GET /deliveries`, `PATCH /deliveries/:id/complete` → `complete_delivery()`

@@ -1,6 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import type {
+  QuarterlySalesRow,
+  MostOrderedItemRow,
+  CityRouteSalesRow,
+  DriverAssistantHoursRow,
+  TruckUsageMonthlyRow,
+  CustomerOrderHistoryRow,
+} from "@/lib/reports";
 
 /**
  * ReportTab identifies the 6 management reports defined in SRS & Docs/05_api-and-pages.md.
@@ -56,67 +64,297 @@ const TABS: TabMeta[] = [
 ];
 
 /**
- * ReportsPage provides the operational management analytics interface.
+ * Interface representing a customer option for the customer history filter dropdown.
+ */
+interface CustomerOption {
+  customer_id: number;
+  customer_name: string;
+  customer_type: string;
+  registered_city_name?: string;
+  phone?: string;
+}
+
+/**
+ * ReportsPage provides the operational management analytics interface for Kandypack.
  *
  * Page Architecture & Data Flow:
- * - Implements 6 distinct report tabs matching SRS §Expected Management Reports and Docs/05_api-and-pages.md §A9.
- * - Dynamic parameter filter bar adapts according to the active report tab (year, quarter, date range, customer).
- * - Generates live data previews, KPI summary counters, formatted data tables, and table footer totals.
- * - Simulates synchronous CSV export download and PDF generation states with toast feedback.
+ * - Wires all 6 report tabs to live backend REST endpoints under `/api/reports/*`.
+ * - Populates dynamic customer directory from `/api/customers`.
+ * - Implements live parameter filters (year, quarter, month, date range, week start, customer).
+ * - Displays loading skeletons, error alerts, and approved empty state copy from Docs/07_content-copy.md.
+ * - Computes KPI cards and table footer totals dynamically.
+ * - Triggers CSV exports directly via browser download from `/api/reports/:type/export/csv`.
  *
- * @returns {JSX.Element} The rendered Reports static page shell.
+ * @returns {JSX.Element} The rendered Reports page component.
  */
 export default function ReportsPage() {
-  // --- Active Tab & Filter State ---
+  // --- Active Tab State ---
   const [activeTab, setActiveTab] = useState<ReportTab>("quarterly-sales");
+
+  // --- Dynamic Filter Parameters ---
   const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [selectedQuarter, setSelectedQuarter] = useState<number>(3);
   const [selectedMonth, setSelectedMonth] = useState<number>(9);
   const [dateFrom, setDateFrom] = useState<string>("2026-08-01");
-  const [dateTo, setDateTo] = useState<string>("2026-09-01");
+  const [dateTo, setDateTo] = useState<string>("2026-09-30");
   const [selectedCustomerId, setSelectedCustomerId] = useState<number>(1);
   const [weekStart, setWeekStart] = useState<string>("2026-08-31");
 
-  // Export and Notification Feedback States
+  // --- Customers Directory State ---
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [isLoadingCustomers, setIsLoadingCustomers] = useState<boolean>(false);
+
+  // --- Report Data States ---
+  const [quarterlySales, setQuarterlySales] = useState<QuarterlySalesRow[]>([]);
+  const [mostOrderedItems, setMostOrderedItems] = useState<MostOrderedItemRow[]>([]);
+  const [cityRouteSales, setCityRouteSales] = useState<CityRouteSalesRow[]>([]);
+  const [driverAssistantHours, setDriverAssistantHours] = useState<DriverAssistantHoursRow[]>([]);
+  const [truckUsage, setTruckUsage] = useState<TruckUsageMonthlyRow[]>([]);
+  const [customerHistory, setCustomerHistory] = useState<CustomerOrderHistoryRow[]>([]);
+
+  // --- Request Lifecycle & Feedback States ---
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [isExportingCsv, setIsExportingCsv] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   /**
-   * Simulates immediate synchronous CSV export download.
+   * Formats numeric currency values into standardized Sri Lankan Rupees (LKR).
+   *
+   * @param {number | string} amount - Numeric value to format.
+   * @returns {string} Formatted currency string (e.g. LKR 1,845,000.00).
    */
-  const handleExportCsv = (): void => {
-    setIsExportingCsv(true);
-    setTimeout(() => {
-      setIsExportingCsv(false);
-      setToastMessage(`CSV export for ${TABS.find((t) => t.id === activeTab)?.label} started.`);
-      setTimeout(() => setToastMessage(null), 4000);
-    }, 600);
+  const formatCurrency = (amount: number | string): string => {
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (Number.isNaN(num)) return "LKR 0.00";
+    return `LKR ${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   /**
-   * Simulates synchronous direct PDF generation with intermediate progress states.
+   * Fetches customer accounts directory on initial mount to populate Customer History selector.
+   */
+  useEffect(() => {
+    async function loadCustomers() {
+      setIsLoadingCustomers(true);
+      try {
+        const res = await fetch("/api/customers");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.items) && data.items.length > 0) {
+            setCustomers(data.items);
+            // Default to the first customer if current selectedCustomerId is not in the list
+            if (!data.items.some((c: CustomerOption) => c.customer_id === selectedCustomerId)) {
+              setSelectedCustomerId(data.items[0].customer_id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load customer list for reports:", err);
+      } finally {
+        setIsLoadingCustomers(false);
+      }
+    }
+
+    loadCustomers();
+  }, [selectedCustomerId]);
+
+  /**
+   * Fetches the report dataset corresponding to the specified tab with current filter parameters.
+   *
+   * @param {ReportTab} tab - The report tab to fetch.
+   */
+  const fetchReportData = useCallback(async (tab: ReportTab) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      let endpoint = "";
+
+      switch (tab) {
+        case "quarterly-sales":
+          endpoint = `/api/reports/quarterly-sales?year=${selectedYear}&quarter=${selectedQuarter}`;
+          break;
+        case "most-ordered-items":
+          endpoint = `/api/reports/most-ordered-items?year=${selectedYear}&quarter=${selectedQuarter}`;
+          break;
+        case "city-route-sales": {
+          const params = new URLSearchParams();
+          if (dateFrom) params.append("date_from", dateFrom);
+          if (dateTo) params.append("date_to", dateTo);
+          endpoint = `/api/reports/city-route-sales?${params.toString()}`;
+          break;
+        }
+        case "driver-assistant-hours":
+          endpoint = `/api/reports/driver-assistant-hours?week_start=${weekStart}`;
+          break;
+        case "truck-usage":
+          endpoint = `/api/reports/truck-usage?year=${selectedYear}&month=${selectedMonth}`;
+          break;
+        case "customer-history":
+          if (!selectedCustomerId) {
+            setCustomerHistory([]);
+            setIsLoading(false);
+            return;
+          }
+          endpoint = `/api/reports/customer-history?customer_id=${selectedCustomerId}`;
+          break;
+      }
+
+      const res = await fetch(endpoint);
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json.error?.message || "Failed to load report data.");
+      }
+
+      const items = json.items || [];
+
+      switch (tab) {
+        case "quarterly-sales":
+          setQuarterlySales(items);
+          break;
+        case "most-ordered-items":
+          setMostOrderedItems(items);
+          break;
+        case "city-route-sales":
+          setCityRouteSales(items);
+          break;
+        case "driver-assistant-hours":
+          setDriverAssistantHours(items);
+          break;
+        case "truck-usage":
+          setTruckUsage(items);
+          break;
+        case "customer-history":
+          setCustomerHistory(items);
+          break;
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedYear, selectedQuarter, selectedMonth, dateFrom, dateTo, weekStart, selectedCustomerId]);
+
+  /**
+   * Refetches report data whenever active tab changes.
+   * Uses a microtask deferral to prevent synchronous cascading re-renders.
+   */
+  useEffect(() => {
+    let ignore = false;
+    const timer = setTimeout(() => {
+      if (!ignore) {
+        fetchReportData(activeTab);
+      }
+    }, 0);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [activeTab, fetchReportData]);
+
+  /**
+   * Handles immediate synchronous CSV export download from the server.
+   */
+  const handleExportCsv = (): void => {
+    setIsExportingCsv(true);
+
+    const params = new URLSearchParams();
+    switch (activeTab) {
+      case "quarterly-sales":
+        params.append("year", String(selectedYear));
+        params.append("quarter", String(selectedQuarter));
+        break;
+      case "most-ordered-items":
+        params.append("year", String(selectedYear));
+        params.append("quarter", String(selectedQuarter));
+        break;
+      case "city-route-sales":
+        if (dateFrom) params.append("date_from", dateFrom);
+        if (dateTo) params.append("date_to", dateTo);
+        break;
+      case "driver-assistant-hours":
+        params.append("week_start", weekStart);
+        break;
+      case "truck-usage":
+        params.append("year", String(selectedYear));
+        params.append("month", String(selectedMonth));
+        break;
+      case "customer-history":
+        params.append("customer_id", String(selectedCustomerId));
+        break;
+    }
+
+    const downloadUrl = `/api/reports/${activeTab}/export/csv?${params.toString()}`;
+
+    // Trigger browser file download without mutating window.location
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    link.setAttribute("download", "");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => {
+      setIsExportingCsv(false);
+      setToastMessage(`CSV export for ${TABS.find((t) => t.id === activeTab)?.label} initiated.`);
+      setTimeout(() => setToastMessage(null), 4000);
+    }, 800);
+  };
+
+
+  /**
+   * Shows informational feedback regarding direct PDF report generation.
    * Aligned with Docs/03_architecture.md §11 and Docs/07_content-copy.md §/reports.
    */
   const handleExportPdf = (): void => {
     setIsExportingPdf(true);
     setTimeout(() => {
       setIsExportingPdf(false);
-      setToastMessage("Your PDF report is ready.");
+      setToastMessage("Direct PDF export will be enabled in Phase 3.");
       setTimeout(() => setToastMessage(null), 4000);
-    }, 1400);
+    }, 1000);
   };
 
-  /**
-   * Formats numeric currency values with commas and two decimal places.
-   *
-   * @param {number | string} amount - Value to format.
-   * @returns {string} Formatted currency string.
-   */
-  const formatCurrency = (amount: number | string): string => {
-    const num = typeof amount === "string" ? parseFloat(amount) : amount;
-    return `LKR ${num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  // --- Computed Totals & Metrics for Tabs ---
+
+  const quarterlyTotals = useMemo(() => {
+    const orders = quarterlySales.reduce((acc, row) => acc + row.num_orders, 0);
+    const volume = quarterlySales.reduce((acc, row) => acc + row.total_volume, 0);
+    const value = quarterlySales.reduce((acc, row) => acc + row.total_value, 0);
+    return { orders, volume, value };
+  }, [quarterlySales]);
+
+  const mostOrderedTotals = useMemo(() => {
+    const qty = mostOrderedItems.reduce((acc, row) => acc + row.total_quantity, 0);
+    const val = mostOrderedItems.reduce((acc, row) => acc + row.total_value, 0);
+    return { qty, val };
+  }, [mostOrderedItems]);
+
+  const cityRouteTotals = useMemo(() => {
+    const orders = cityRouteSales.reduce((acc, row) => acc + row.num_orders, 0);
+    const volume = cityRouteSales.reduce((acc, row) => acc + row.total_volume, 0);
+    const value = cityRouteSales.reduce((acc, row) => acc + row.total_value, 0);
+    return { orders, volume, value };
+  }, [cityRouteSales]);
+
+  const driversList = useMemo(
+    () => driverAssistantHours.filter((row) => row.person_role === "driver"),
+    [driverAssistantHours]
+  );
+
+  const assistantsList = useMemo(
+    () => driverAssistantHours.filter((row) => row.person_role === "assistant"),
+    [driverAssistantHours]
+  );
+
+  const activeCustomer = useMemo(
+    () => customers.find((c) => c.customer_id === selectedCustomerId),
+    [customers, selectedCustomerId]
+  );
 
   return (
     <div className="space-y-6">
@@ -157,8 +395,8 @@ export default function ReportsPage() {
           <button
             type="button"
             onClick={handleExportCsv}
-            disabled={isExportingCsv}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#C8C4D7] text-xs font-semibold text-[#121C2C] hover:bg-[#F0F3FF] transition-all shadow-xs disabled:opacity-50"
+            disabled={isExportingCsv || isLoading}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#C8C4D7] text-xs font-semibold text-[#121C2C] hover:bg-[#F0F3FF] transition-all shadow-xs disabled:opacity-50 cursor-pointer"
           >
             <svg className="w-4 h-4 text-[#474554]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -170,8 +408,8 @@ export default function ReportsPage() {
           <button
             type="button"
             onClick={handleExportPdf}
-            disabled={isExportingPdf}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#4132C7] text-white text-xs font-semibold hover:bg-[#3427A8] transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            disabled={isExportingPdf || isLoading}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#4132C7] text-white text-xs font-semibold hover:bg-[#3427A8] transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -191,7 +429,7 @@ export default function ReportsPage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-1 sm:flex-initial text-center ${
+                className={`px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-1 sm:flex-initial text-center cursor-pointer ${
                   active
                     ? "bg-[#5A4FE0] text-white font-semibold shadow-xs"
                     : "text-[#474554] hover:bg-[#F0F3FF] hover:text-[#121C2C]"
@@ -262,9 +500,18 @@ export default function ReportsPage() {
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                   className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-1.5 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
                 >
+                  <option value={1}>January</option>
+                  <option value={2}>February</option>
+                  <option value={3}>March</option>
+                  <option value={4}>April</option>
+                  <option value={5}>May</option>
+                  <option value={6}>June</option>
                   <option value={7}>July</option>
                   <option value={8}>August</option>
                   <option value={9}>September</option>
+                  <option value={10}>October</option>
+                  <option value={11}>November</option>
+                  <option value={12}>December</option>
                 </select>
               </div>
             )}
@@ -309,13 +556,14 @@ export default function ReportsPage() {
                 <select
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(Number(e.target.value))}
-                  className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-1.5 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
+                  disabled={isLoadingCustomers}
+                  className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-1.5 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7] max-w-[220px] truncate"
                 >
-                  <option value={1}>Colombo Retail Mart (Retail)</option>
-                  <option value={3}>Colombo Wholesale Distributors (Wholesale)</option>
-                  <option value={5}>Negombo Retail Mart (Retail)</option>
-                  <option value={9}>Galle Trading Co. (Wholesale)</option>
-                  <option value={13}>Jaffna Family Store (Retail)</option>
+                  {customers.map((c) => (
+                    <option key={c.customer_id} value={c.customer_id}>
+                      {c.customer_name} ({c.customer_type})
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
@@ -323,15 +571,32 @@ export default function ReportsPage() {
             {/* Run Report CTA */}
             <button
               type="button"
-              className="px-4 py-1.5 rounded-lg bg-[#5A4FE0] text-white text-xs font-semibold hover:bg-[#483CC4] transition-all shadow-xs"
+              onClick={() => fetchReportData(activeTab)}
+              disabled={isLoading}
+              className="px-4 py-1.5 rounded-lg bg-[#5A4FE0] text-white text-xs font-semibold hover:bg-[#483CC4] transition-all shadow-xs cursor-pointer disabled:opacity-50"
             >
-              Run Report
+              {isLoading ? "Running…" : "Run Report"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tab Specific Content Renderers */}
+      {/* Error Alert Display */}
+      {errorMessage && (
+        <div className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#F93C65] p-4 rounded-xl text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-bold">Error:</span>
+            <span>{errorMessage}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            className="text-[#F93C65] hover:underline font-semibold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* --- TAB 1: Quarterly Sales Report --- */}
       {activeTab === "quarterly-sales" && (
@@ -342,15 +607,17 @@ export default function ReportsPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-[#474554]">
                 Total Orders Placed
               </p>
-              <p className="text-2xl font-bold text-[#121C2C] mt-2">45</p>
-              <p className="text-xs text-[#00B69B] mt-1 font-medium">Across all 6 destination cities</p>
+              <p className="text-2xl font-bold text-[#121C2C] mt-2">
+                {isLoading ? "…" : quarterlyTotals.orders}
+              </p>
+              <p className="text-xs text-[#00B69B] mt-1 font-medium">Delivered orders only</p>
             </div>
             <div className="bg-white p-5 rounded-2xl border border-[#C8C4D7]/50 shadow-xs">
               <p className="text-xs font-semibold uppercase tracking-wider text-[#474554]">
                 Total Sales Revenue
               </p>
               <p className="text-2xl font-bold text-[#4132C7] mt-2">
-                {formatCurrency(1845000)}
+                {isLoading ? "…" : formatCurrency(quarterlyTotals.value)}
               </p>
               <p className="text-xs text-[#474554] mt-1">Retail & wholesale distribution</p>
             </div>
@@ -358,7 +625,9 @@ export default function ReportsPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-[#474554]">
                 Total Cargo Volume
               </p>
-              <p className="text-2xl font-bold text-[#121C2C] mt-2">2,450.00 units</p>
+              <p className="text-2xl font-bold text-[#121C2C] mt-2">
+                {isLoading ? "…" : `${quarterlyTotals.volume.toFixed(2)} units`}
+              </p>
               <p className="text-xs text-[#474554] mt-1">Rail transport capacity utilized</p>
             </div>
           </div>
@@ -377,36 +646,45 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F0F3FF] text-xs">
-                  <tr className="hover:bg-[#F9F9FF] transition-colors">
-                    <td className="px-6 py-4 font-semibold text-[#121C2C]">2026</td>
-                    <td className="px-6 py-4 font-medium text-[#4132C7]">Q3 (Current)</td>
-                    <td className="px-6 py-4 text-center font-mono">20</td>
-                    <td className="px-6 py-4 text-right font-mono">1,120.00 units</td>
-                    <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
-                      {formatCurrency(870000)}
-                    </td>
-                  </tr>
-                  <tr className="hover:bg-[#F9F9FF] transition-colors">
-                    <td className="px-6 py-4 font-semibold text-[#121C2C]">2026</td>
-                    <td className="px-6 py-4 font-medium text-[#474554]">Q2 (Completed)</td>
-                    <td className="px-6 py-4 text-center font-mono">25</td>
-                    <td className="px-6 py-4 text-right font-mono">1,330.00 units</td>
-                    <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
-                      {formatCurrency(975000)}
-                    </td>
-                  </tr>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-[#474554]">
+                        Loading quarterly sales data…
+                      </td>
+                    </tr>
+                  ) : quarterlySales.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-[#474554] italic">
+                        No sales recorded for this period.
+                      </td>
+                    </tr>
+                  ) : (
+                    quarterlySales.map((row) => (
+                      <tr key={`${row.sales_year}-Q${row.sales_quarter}`} className="hover:bg-[#F9F9FF] transition-colors">
+                        <td className="px-6 py-4 font-semibold text-[#121C2C]">{row.sales_year}</td>
+                        <td className="px-6 py-4 font-medium text-[#4132C7]">Q{row.sales_quarter}</td>
+                        <td className="px-6 py-4 text-center font-mono">{row.num_orders}</td>
+                        <td className="px-6 py-4 text-right font-mono">{row.total_volume.toFixed(2)} units</td>
+                        <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                          {formatCurrency(row.total_value)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
-                <tfoot>
-                  <tr className="bg-[#F9F9FF] border-t border-[#C8C4D7] font-semibold text-xs text-[#121C2C]">
-                    <td colSpan={3} className="px-6 py-3.5">
-                      Totals: {formatCurrency(1845000)} · 2,450.00 units
-                    </td>
-                    <td className="px-6 py-3.5 text-right font-mono">2,450.00 units</td>
-                    <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
-                      {formatCurrency(1845000)}
-                    </td>
-                  </tr>
-                </tfoot>
+                {!isLoading && quarterlySales.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-[#F9F9FF] border-t border-[#C8C4D7] font-semibold text-xs text-[#121C2C]">
+                      <td colSpan={3} className="px-6 py-3.5">
+                        Totals: {formatCurrency(quarterlyTotals.value)} · {quarterlyTotals.volume.toFixed(2)} units
+                      </td>
+                      <td className="px-6 py-3.5 text-right font-mono">{quarterlyTotals.volume.toFixed(2)} units</td>
+                      <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
+                        {formatCurrency(quarterlyTotals.value)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
@@ -422,49 +700,52 @@ export default function ReportsPage() {
                 <thead>
                   <tr className="bg-[#F9F9FF] border-b border-[#C8C4D7]/50 text-[11px] font-semibold uppercase tracking-wider text-[#474554]">
                     <th className="px-6 py-3.5">Rank</th>
-                    <th className="px-6 py-3.5">SKU</th>
+                    <th className="px-6 py-3.5">Product ID</th>
                     <th className="px-6 py-3.5">Product Name</th>
-                    <th className="px-6 py-3.5">Category</th>
                     <th className="px-6 py-3.5 text-right">Quantity Ordered</th>
                     <th className="px-6 py-3.5 text-right">Total Order Value</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F0F3FF] text-xs">
-                  {[
-                    { rank: 1, sku: "DET-1KG", name: "Detergent Powder 1kg", cat: "Household", qty: 850, val: 382500 },
-                    { rank: 2, sku: "RICE-5KG", name: "Rice 5kg Bag", cat: "Food", qty: 420, val: 378000 },
-                    { rank: 3, sku: "NOOD-24", name: "Instant Noodles Box (24)", cat: "Food", qty: 310, val: 372000 },
-                    { rank: 4, sku: "COCO-1L", name: "Coconut Oil 1L", cat: "Food", qty: 340, val: 221000 },
-                    { rank: 5, sku: "BISC-FAM", name: "Biscuits Family Pack", cat: "Food", qty: 650, val: 143000 },
-                    { rank: 6, sku: "TEA-400G", name: "Tea Powder 400g", cat: "Food", qty: 380, val: 133000 },
-                  ].map((item) => (
-                    <tr key={item.sku} className="hover:bg-[#F9F9FF] transition-colors">
-                      <td className="px-6 py-4 font-bold text-[#4132C7]">#{item.rank}</td>
-                      <td className="px-6 py-4 font-mono text-[#474554]">{item.sku}</td>
-                      <td className="px-6 py-4 font-semibold text-[#121C2C]">{item.name}</td>
-                      <td className="px-6 py-4">
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#F0F3FF] text-[#5A4FE0]">
-                          {item.cat}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-right font-mono font-medium">{item.qty.toLocaleString()}</td>
-                      <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
-                        {formatCurrency(item.val)}
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-[#474554]">
+                        Loading most ordered items…
                       </td>
                     </tr>
-                  ))}
+                  ) : mostOrderedItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-[#474554] italic">
+                        No orders found for this quarter.
+                      </td>
+                    </tr>
+                  ) : (
+                    mostOrderedItems.map((item) => (
+                      <tr key={item.product_id} className="hover:bg-[#F9F9FF] transition-colors">
+                        <td className="px-6 py-4 font-bold text-[#4132C7]">#{item.quantity_rank}</td>
+                        <td className="px-6 py-4 font-mono text-[#474554]">{item.product_id}</td>
+                        <td className="px-6 py-4 font-semibold text-[#121C2C]">{item.product_name}</td>
+                        <td className="px-6 py-4 text-right font-mono font-medium">{item.total_quantity.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                          {formatCurrency(item.total_value)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
-                <tfoot>
-                  <tr className="bg-[#F9F9FF] border-t border-[#C8C4D7] font-semibold text-xs text-[#121C2C]">
-                    <td colSpan={4} className="px-6 py-3.5">
-                      Totals: {formatCurrency(1629500)} · 2,950 units
-                    </td>
-                    <td className="px-6 py-3.5 text-right font-mono">2,950</td>
-                    <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
-                      {formatCurrency(1629500)}
-                    </td>
-                  </tr>
-                </tfoot>
+                {!isLoading && mostOrderedItems.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-[#F9F9FF] border-t border-[#C8C4D7] font-semibold text-xs text-[#121C2C]">
+                      <td colSpan={3} className="px-6 py-3.5">
+                        Totals: {formatCurrency(mostOrderedTotals.val)} · {mostOrderedTotals.qty.toLocaleString()} units
+                      </td>
+                      <td className="px-6 py-3.5 text-right font-mono">{mostOrderedTotals.qty.toLocaleString()}</td>
+                      <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
+                        {formatCurrency(mostOrderedTotals.val)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
@@ -482,41 +763,50 @@ export default function ReportsPage() {
                     <th className="px-6 py-3.5">Destination City</th>
                     <th className="px-6 py-3.5">Route Name</th>
                     <th className="px-6 py-3.5 text-center">Orders Count</th>
-                    <th className="px-6 py-3.5 text-right">Space Utilized</th>
+                    <th className="px-6 py-3.5 text-right">Volume (Units)</th>
                     <th className="px-6 py-3.5 text-right">Total Revenue</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F0F3FF] text-xs">
-                  {[
-                    { city: "Colombo", route: "Colombo North Route", orders: 14, space: "460.00", rev: 490000 },
-                    { city: "Colombo", route: "Colombo South Route", orders: 12, space: "410.00", rev: 415000 },
-                    { city: "Negombo", route: "Negombo Central Route", orders: 8, space: "280.00", rev: 295000 },
-                    { city: "Galle", route: "Galle Coastal Route", orders: 5, space: "190.00", rev: 210000 },
-                    { city: "Matara", route: "Matara Town Route", orders: 4, space: "150.00", rev: 185000 },
-                    { city: "Jaffna", route: "Jaffna Peninsula Route", orders: 6, space: "240.00", rev: 250000 },
-                  ].map((row, idx) => (
-                    <tr key={idx} className="hover:bg-[#F9F9FF] transition-colors">
-                      <td className="px-6 py-4 font-semibold text-[#121C2C]">{row.city}</td>
-                      <td className="px-6 py-4 text-[#474554]">{row.route}</td>
-                      <td className="px-6 py-4 text-center font-mono">{row.orders}</td>
-                      <td className="px-6 py-4 text-right font-mono">{row.space} units</td>
-                      <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
-                        {formatCurrency(row.rev)}
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-[#474554]">
+                        Loading city & route sales data…
                       </td>
                     </tr>
-                  ))}
+                  ) : cityRouteSales.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-[#474554] italic">
+                        No sales data for the selected range.
+                      </td>
+                    </tr>
+                  ) : (
+                    cityRouteSales.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-[#F9F9FF] transition-colors">
+                        <td className="px-6 py-4 font-semibold text-[#121C2C]">{row.city_name}</td>
+                        <td className="px-6 py-4 text-[#474554]">{row.route_name || "Direct / Unassigned"}</td>
+                        <td className="px-6 py-4 text-center font-mono">{row.num_orders}</td>
+                        <td className="px-6 py-4 text-right font-mono">{row.total_volume.toFixed(2)} units</td>
+                        <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                          {formatCurrency(row.total_value)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
-                <tfoot>
-                  <tr className="bg-[#F9F9FF] border-t border-[#C8C4D7] font-semibold text-xs text-[#121C2C]">
-                    <td colSpan={3} className="px-6 py-3.5">
-                      Totals: {formatCurrency(1845000)} · 1,730.00 units
-                    </td>
-                    <td className="px-6 py-3.5 text-right font-mono">1,730.00 units</td>
-                    <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
-                      {formatCurrency(1845000)}
-                    </td>
-                  </tr>
-                </tfoot>
+                {!isLoading && cityRouteSales.length > 0 && (
+                  <tfoot>
+                    <tr className="bg-[#F9F9FF] border-t border-[#C8C4D7] font-semibold text-xs text-[#121C2C]">
+                      <td colSpan={3} className="px-6 py-3.5">
+                        Totals: {formatCurrency(cityRouteTotals.value)} · {cityRouteTotals.volume.toFixed(2)} units
+                      </td>
+                      <td className="px-6 py-3.5 text-right font-mono">{cityRouteTotals.volume.toFixed(2)} units</td>
+                      <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
+                        {formatCurrency(cityRouteTotals.value)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
@@ -541,7 +831,7 @@ export default function ReportsPage() {
             <div className="bg-white rounded-2xl border border-[#C8C4D7]/50 shadow-xs overflow-hidden">
               <div className="px-6 py-4 border-b border-[#F0F3FF] flex items-center justify-between">
                 <h3 className="text-sm font-bold text-[#121C2C]">Drivers (Weekly Limit: 40h)</h3>
-                <span className="text-xs text-[#474554]">8 Active Drivers</span>
+                <span className="text-xs text-[#474554]">{driversList.length} Scheduled</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -554,29 +844,41 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F0F3FF] text-xs">
-                    {[
-                      { name: "Sunil Perera", hours: 32.5, rem: 7.5, alert: false },
-                      { name: "Anura Kumara", hours: 38.0, rem: 2.0, alert: true },
-                      { name: "Nimal Fernando", hours: 24.0, rem: 16.0, alert: false },
-                      { name: "Bandula Silva", hours: 28.0, rem: 12.0, alert: false },
-                    ].map((d) => (
-                      <tr key={d.name} className="hover:bg-[#F9F9FF]">
-                        <td className="px-5 py-3.5 font-semibold text-[#121C2C]">{d.name}</td>
-                        <td className="px-5 py-3.5 text-right font-mono">{d.hours.toFixed(1)}h</td>
-                        <td className="px-5 py-3.5 text-right font-mono font-medium">{d.rem.toFixed(1)}h</td>
-                        <td className="px-5 py-3.5 text-center">
-                          {d.alert ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
-                              Near Cap
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
-                              Healthy
-                            </span>
-                          )}
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-8 text-center text-[#474554]">
+                          Loading drivers…
                         </td>
                       </tr>
-                    ))}
+                    ) : driversList.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-8 text-center text-[#474554] italic">
+                          No scheduled hours for this week.
+                        </td>
+                      </tr>
+                    ) : (
+                      driversList.map((d) => {
+                        const nearCap = d.remaining_hours <= 5.0;
+                        return (
+                          <tr key={d.person_id} className="hover:bg-[#F9F9FF]">
+                            <td className="px-5 py-3.5 font-semibold text-[#121C2C]">{d.full_name}</td>
+                            <td className="px-5 py-3.5 text-right font-mono">{d.total_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-right font-mono font-medium">{d.remaining_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-center">
+                              {nearCap ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
+                                  Near Cap
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
+                                  Healthy
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -586,7 +888,7 @@ export default function ReportsPage() {
             <div className="bg-white rounded-2xl border border-[#C8C4D7]/50 shadow-xs overflow-hidden">
               <div className="px-6 py-4 border-b border-[#F0F3FF] flex items-center justify-between">
                 <h3 className="text-sm font-bold text-[#121C2C]">Assistants (Weekly Limit: 60h)</h3>
-                <span className="text-xs text-[#474554]">8 Active Assistants</span>
+                <span className="text-xs text-[#474554]">{assistantsList.length} Scheduled</span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -599,29 +901,41 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F0F3FF] text-xs">
-                    {[
-                      { name: "Kamal Silva", hours: 48.0, rem: 12.0, alert: false },
-                      { name: "Ruwan Senarath", hours: 56.5, rem: 3.5, alert: true },
-                      { name: "Janaka Jayasuriya", hours: 38.0, rem: 22.0, alert: false },
-                      { name: "Suresh Perera", hours: 42.0, rem: 18.0, alert: false },
-                    ].map((a) => (
-                      <tr key={a.name} className="hover:bg-[#F9F9FF]">
-                        <td className="px-5 py-3.5 font-semibold text-[#121C2C]">{a.name}</td>
-                        <td className="px-5 py-3.5 text-right font-mono">{a.hours.toFixed(1)}h</td>
-                        <td className="px-5 py-3.5 text-right font-mono font-medium">{a.rem.toFixed(1)}h</td>
-                        <td className="px-5 py-3.5 text-center">
-                          {a.alert ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
-                              Near Cap
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
-                              Healthy
-                            </span>
-                          )}
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-8 text-center text-[#474554]">
+                          Loading assistants…
                         </td>
                       </tr>
-                    ))}
+                    ) : assistantsList.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="px-5 py-8 text-center text-[#474554] italic">
+                          No scheduled hours for this week.
+                        </td>
+                      </tr>
+                    ) : (
+                      assistantsList.map((a) => {
+                        const nearCap = a.remaining_hours <= 5.0;
+                        return (
+                          <tr key={a.person_id} className="hover:bg-[#F9F9FF]">
+                            <td className="px-5 py-3.5 font-semibold text-[#121C2C]">{a.full_name}</td>
+                            <td className="px-5 py-3.5 text-right font-mono">{a.total_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-right font-mono font-medium">{a.remaining_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-center">
+                              {nearCap ? (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
+                                  Near Cap
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
+                                  Healthy
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -638,36 +952,43 @@ export default function ReportsPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#F9F9FF] border-b border-[#C8C4D7]/50 text-[11px] font-semibold uppercase tracking-wider text-[#474554]">
-                    <th className="px-6 py-3.5">Truck Plate</th>
-                    <th className="px-6 py-3.5">Home Store Location</th>
-                    <th className="px-6 py-3.5 text-center">Total Trips</th>
-                    <th className="px-6 py-3.5 text-center">Active Days</th>
-                    <th className="px-6 py-3.5 text-right">Operating Hours</th>
-                    <th className="px-6 py-3.5 text-right">Utilization</th>
+                    <th className="px-6 py-3.5">Truck ID</th>
+                    <th className="px-6 py-3.5">Plate Number</th>
+                    <th className="px-6 py-3.5">Usage Month</th>
+                    <th className="px-6 py-3.5 text-center">Delivery Schedules</th>
+                    <th className="px-6 py-3.5 text-right">In-Service Hours</th>
+                    <th className="px-6 py-3.5 text-center">Routes Covered</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F0F3FF] text-xs">
-                  {[
-                    { plate: "NB-1001", store: "Colombo Station Store", trips: 22, days: 19, hours: 88.0, util: "82%" },
-                    { plate: "NB-1002", store: "Negombo Station Store", trips: 18, days: 16, hours: 72.0, util: "74%" },
-                    { plate: "NB-1003", store: "Galle Station Store", trips: 14, days: 13, hours: 56.0, util: "65%" },
-                    { plate: "NB-1004", store: "Matara Station Store", trips: 12, days: 11, hours: 48.0, util: "58%" },
-                    { plate: "NB-1005", store: "Jaffna Station Store", trips: 16, days: 14, hours: 64.0, util: "68%" },
-                    { plate: "NB-1006", store: "Trincomalee Station Store", trips: 10, days: 9, hours: 40.0, util: "50%" },
-                  ].map((t) => (
-                    <tr key={t.plate} className="hover:bg-[#F9F9FF] transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-[#4132C7]">{t.plate}</td>
-                      <td className="px-6 py-4 font-semibold text-[#121C2C]">{t.store}</td>
-                      <td className="px-6 py-4 text-center font-mono">{t.trips}</td>
-                      <td className="px-6 py-4 text-center font-mono">{t.days} / 26</td>
-                      <td className="px-6 py-4 text-right font-mono">{t.hours.toFixed(1)} hrs</td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E0F2FF] text-[#0047CC]">
-                          {t.util}
-                        </span>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-[#474554]">
+                        Loading truck usage statistics…
                       </td>
                     </tr>
-                  ))}
+                  ) : truckUsage.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-12 text-center text-[#474554] italic">
+                        No truck activity this month.
+                      </td>
+                    </tr>
+                  ) : (
+                    truckUsage.map((t) => (
+                      <tr key={t.truck_id} className="hover:bg-[#F9F9FF] transition-colors">
+                        <td className="px-6 py-4 font-mono text-[#474554]">#{t.truck_id}</td>
+                        <td className="px-6 py-4 font-mono font-bold text-[#4132C7]">{t.plate_number}</td>
+                        <td className="px-6 py-4 text-[#121C2C]">{t.usage_month}</td>
+                        <td className="px-6 py-4 text-center font-mono font-semibold">{t.num_schedules}</td>
+                        <td className="px-6 py-4 text-right font-mono font-medium">{t.total_hours.toFixed(1)} hrs</td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E0F2FF] text-[#0047CC]">
+                            {t.distinct_routes_covered} routes
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -679,21 +1000,27 @@ export default function ReportsPage() {
       {activeTab === "customer-history" && (
         <div className="space-y-5">
           {/* Customer Overview Header */}
-          <div className="bg-white p-5 rounded-2xl border border-[#C8C4D7]/50 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-[#4132C7]">
-                Customer Account #1
-              </span>
-              <h3 className="text-lg font-bold text-[#121C2C]">Colombo Retail Mart</h3>
-              <p className="text-xs text-[#474554] mt-0.5">
-                Type: <span className="font-semibold capitalize text-[#121C2C]">Retail</span> · Phone: 0771234567 · City: Colombo
-              </p>
+          {activeCustomer && (
+            <div className="bg-white p-5 rounded-2xl border border-[#C8C4D7]/50 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#4132C7]">
+                  Customer Account #{activeCustomer.customer_id}
+                </span>
+                <h3 className="text-lg font-bold text-[#121C2C]">{activeCustomer.customer_name}</h3>
+                <p className="text-xs text-[#474554] mt-0.5">
+                  Type: <span className="font-semibold capitalize text-[#121C2C]">{activeCustomer.customer_type}</span>
+                  {activeCustomer.phone && ` · Phone: ${activeCustomer.phone}`}
+                  {activeCustomer.registered_city_name && ` · City: ${activeCustomer.registered_city_name}`}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-[#474554]">Total Recorded Orders</p>
+                <p className="text-xl font-bold text-[#4132C7]">
+                  {isLoading ? "…" : `${customerHistory.length} Orders`}
+                </p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs text-[#474554]">Total Lifetime Orders</p>
-              <p className="text-xl font-bold text-[#4132C7]">8 Orders</p>
-            </div>
-          </div>
+          )}
 
           {/* Orders History Table */}
           <div className="bg-white rounded-2xl border border-[#C8C4D7]/50 shadow-xs overflow-hidden">
@@ -711,33 +1038,57 @@ export default function ReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F0F3FF] text-xs">
-                  {[
-                    { id: 101, placed: "2026-08-15", exp: "2026-08-23", del: "2026-08-23 14:15", truck: "NB-1001", driver: "Sunil P.", val: 45000, status: "Delivered" },
-                    { id: 112, placed: "2026-08-20", exp: "2026-08-28", del: "2026-08-28 11:30", truck: "NB-1001", driver: "Sunil P.", val: 62000, status: "Delivered" },
-                    { id: 125, placed: "2026-08-26", exp: "2026-09-04", del: "-", truck: "NB-1001", driver: "Anura K.", val: 38000, status: "In Transit" },
-                  ].map((ord) => (
-                    <tr key={ord.id} className="hover:bg-[#F9F9FF] transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-[#4132C7]">#{ord.id}</td>
-                      <td className="px-6 py-4 text-[#474554]">{ord.placed}</td>
-                      <td className="px-6 py-4 text-[#474554]">{ord.exp}</td>
-                      <td className="px-6 py-4 text-[#474554]">{ord.del}</td>
-                      <td className="px-6 py-4 text-[#121C2C] font-medium">{ord.truck} ({ord.driver})</td>
-                      <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
-                        {formatCurrency(ord.val)}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            ord.status === "Delivered"
-                              ? "bg-[#E6F6F4] text-[#00B69B]"
-                              : "bg-[#FFF9E6] text-[#FFB800]"
-                          }`}
-                        >
-                          {ord.status}
-                        </span>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-[#474554]">
+                        Loading customer order history…
                       </td>
                     </tr>
-                  ))}
+                  ) : customerHistory.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-[#474554] italic">
+                        Select a customer to view their order history.
+                      </td>
+                    </tr>
+                  ) : (
+                    customerHistory.map((ord) => {
+                      const isDelivered = ord.status === "Delivered";
+                      const isCancelled = ord.status === "Cancelled";
+                      return (
+                        <tr key={ord.order_id} className="hover:bg-[#F9F9FF] transition-colors">
+                          <td className="px-6 py-4 font-mono font-bold text-[#4132C7]">#{ord.order_id}</td>
+                          <td className="px-6 py-4 text-[#474554]">
+                            {typeof ord.order_placed_at === "string" ? ord.order_placed_at.split("T")[0] : ord.order_placed_at}
+                          </td>
+                          <td className="px-6 py-4 text-[#474554]">
+                            {typeof ord.expected_delivery_date === "string" ? ord.expected_delivery_date.split("T")[0] : ord.expected_delivery_date}
+                          </td>
+                          <td className="px-6 py-4 text-[#474554]">
+                            {ord.delivered_at ? (typeof ord.delivered_at === "string" ? ord.delivered_at.replace("T", " ").substring(0, 16) : ord.delivered_at) : "—"}
+                          </td>
+                          <td className="px-6 py-4 text-[#121C2C] font-medium">
+                            {ord.truck_plate ? `${ord.truck_plate} (${ord.driver_name || "Assigned"})` : "Not scheduled"}
+                          </td>
+                          <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                            {formatCurrency(ord.total_value)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                isDelivered
+                                  ? "bg-[#E6F6F4] text-[#00B69B]"
+                                  : isCancelled
+                                  ? "bg-[#FFF0F0] text-[#F93C65]"
+                                  : "bg-[#FFF9E6] text-[#FFB800]"
+                              }`}
+                            >
+                              {ord.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
