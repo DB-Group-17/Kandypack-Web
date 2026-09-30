@@ -399,3 +399,262 @@ export async function getCachedCityRouteSales(
     return fetchCityRouteSales(filters);
   });
 }
+
+/* =========================================================================
+   DATA ACCESS FUNCTIONS (REPORTS 4, 5, 6)
+   ========================================================================= */
+
+/**
+ * Filters for Driver and Assistant Working Hours report.
+ */
+export interface DriverAssistantHoursFilters {
+  week_start?: string;
+  role?: 'driver' | 'assistant';
+}
+
+/**
+ * Fetches weekly working hours for drivers and assistants against statutory limits.
+ * 
+ * @param filters - Optional week_start (YYYY-MM-DD) and role filters
+ * @returns Array of driver and assistant working hour records
+ */
+export async function fetchDriverAssistantHours(
+  filters: DriverAssistantHoursFilters = {}
+): Promise<DriverAssistantHoursRow[]> {
+  const { week_start, role } = filters;
+  const conditions: string[] = [];
+  const params: QueryParam[] = [];
+
+  if (week_start) {
+    conditions.push('DATE(week_start) = ?');
+    params.push(week_start);
+  }
+
+  if (role) {
+    conditions.push('person_role = ?');
+    params.push(role);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const sql = `
+    SELECT 
+      person_role,
+      CAST(person_id AS SIGNED) AS person_id,
+      full_name,
+      DATE_FORMAT(week_start, '%Y-%m-%d') AS week_start,
+      CAST(total_hours AS DOUBLE) AS total_hours,
+      CAST(weekly_limit_hours AS DOUBLE) AS weekly_limit_hours,
+      CAST(remaining_hours AS DOUBLE) AS remaining_hours
+    FROM v_driver_assistant_hours
+    ${whereClause}
+    ORDER BY person_role ASC, full_name ASC
+  `;
+
+  const rows = await query<DriverAssistantHoursRow[]>(sql, params);
+  return rows.map((r) => ({
+    person_role: r.person_role,
+    person_id: Number(r.person_id),
+    full_name: String(r.full_name),
+    week_start: String(r.week_start),
+    total_hours: Number(r.total_hours || 0),
+    weekly_limit_hours: Number(r.weekly_limit_hours || 0),
+    remaining_hours: Number(r.remaining_hours || 0),
+  }));
+}
+
+/**
+ * Fetches driver and assistant hours with Redis cache layer.
+ * 
+ * @param filters - Week start and role filters
+ * @returns Cached or freshly queried driver and assistant hours rows
+ */
+export async function getCachedDriverAssistantHours(
+  filters: DriverAssistantHoursFilters = {}
+): Promise<DriverAssistantHoursRow[]> {
+  const hash = generateFilterHash(filters as Record<string, unknown>);
+  const cacheKey = REDIS_KEYS.CACHE_REPORT('driver-assistant-hours', hash);
+
+  return getOrSetCache(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+    return fetchDriverAssistantHours(filters);
+  });
+}
+
+/**
+ * Filters for Monthly Truck Usage report.
+ */
+export interface TruckUsageFilters {
+  year?: number;
+  month?: number;
+}
+
+/**
+ * Fetches monthly vehicle utilization statistics from v_truck_usage_monthly.
+ * 
+ * @param filters - Optional calendar year and month filters
+ * @returns Array of truck usage records
+ */
+export async function fetchTruckUsageMonthly(
+  filters: TruckUsageFilters = {}
+): Promise<TruckUsageMonthlyRow[]> {
+  const { year, month } = filters;
+  const conditions: string[] = [];
+  const params: QueryParam[] = [];
+
+  if (year !== undefined && !Number.isNaN(year)) {
+    conditions.push('YEAR(usage_month) = ?');
+    params.push(year);
+  }
+
+  if (month !== undefined && !Number.isNaN(month)) {
+    conditions.push('MONTH(usage_month) = ?');
+    params.push(month);
+  }
+
+  const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const sql = `
+    SELECT 
+      CAST(truck_id AS SIGNED) AS truck_id,
+      plate_number,
+      DATE_FORMAT(usage_month, '%Y-%m-%d') AS usage_month,
+      CAST(num_schedules AS SIGNED) AS num_schedules,
+      CAST(total_hours AS DOUBLE) AS total_hours,
+      CAST(distinct_routes_covered AS SIGNED) AS distinct_routes_covered
+    FROM v_truck_usage_monthly
+    ${whereClause}
+    ORDER BY usage_month DESC, plate_number ASC
+  `;
+
+  const rows = await query<TruckUsageMonthlyRow[]>(sql, params);
+  return rows.map((r) => ({
+    truck_id: Number(r.truck_id),
+    plate_number: String(r.plate_number),
+    usage_month: String(r.usage_month),
+    num_schedules: Number(r.num_schedules),
+    total_hours: Number(r.total_hours || 0),
+    distinct_routes_covered: Number(r.distinct_routes_covered),
+  }));
+}
+
+/**
+ * Fetches monthly truck usage with Redis cache layer.
+ * 
+ * @param filters - Year and month filters
+ * @returns Cached or freshly queried truck usage rows
+ */
+export async function getCachedTruckUsageMonthly(
+  filters: TruckUsageFilters = {}
+): Promise<TruckUsageMonthlyRow[]> {
+  const hash = generateFilterHash(filters as Record<string, unknown>);
+  const cacheKey = REDIS_KEYS.CACHE_REPORT('truck-usage', hash);
+
+  return getOrSetCache(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+    return fetchTruckUsageMonthly(filters);
+  });
+}
+
+/**
+ * Filters for Customer Order History report.
+ */
+export interface CustomerOrderHistoryFilters {
+  status?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+/**
+ * Fetches order progression, logistics path, and delivery status for a specific customer.
+ * 
+ * @param customerId - Customer identifier (mandatory)
+ * @param filters - Optional status and date range filters
+ * @returns Array of customer order history records
+ */
+export async function fetchCustomerOrderHistory(
+  customerId: number,
+  filters: CustomerOrderHistoryFilters = {}
+): Promise<CustomerOrderHistoryRow[]> {
+  const { status, date_from, date_to } = filters;
+  const conditions: string[] = ['customer_id = ?'];
+  const params: QueryParam[] = [customerId];
+
+  if (status) {
+    conditions.push('status = ?');
+    params.push(status);
+  }
+
+  if (date_from) {
+    conditions.push('DATE(order_placed_at) >= ?');
+    params.push(date_from);
+  }
+
+  if (date_to) {
+    conditions.push('DATE(order_placed_at) <= ?');
+    params.push(date_to);
+  }
+
+  const sql = `
+    SELECT 
+      CAST(order_id AS SIGNED) AS order_id,
+      CAST(customer_id AS SIGNED) AS customer_id,
+      customer_name,
+      order_placed_at,
+      expected_delivery_date,
+      status,
+      delivery_address,
+      delivery_area,
+      destination_city,
+      route_name,
+      CAST(total_value AS DOUBLE) AS total_value,
+      CAST(total_space_required AS DOUBLE) AS total_space_required,
+      CAST(delivery_id AS SIGNED) AS delivery_id,
+      delivery_status,
+      delivered_at,
+      driver_name,
+      assistant_name,
+      truck_plate
+    FROM v_customer_order_history
+    WHERE ${conditions.join(' AND ')}
+    ORDER BY order_placed_at DESC
+  `;
+
+  const rows = await query<CustomerOrderHistoryRow[]>(sql, params);
+  return rows.map((r) => ({
+    order_id: Number(r.order_id),
+    customer_id: Number(r.customer_id),
+    customer_name: String(r.customer_name),
+    order_placed_at: String(r.order_placed_at),
+    expected_delivery_date: String(r.expected_delivery_date),
+    status: String(r.status),
+    delivery_address: String(r.delivery_address),
+    delivery_area: String(r.delivery_area),
+    destination_city: String(r.destination_city),
+    route_name: r.route_name !== null ? String(r.route_name) : null,
+    total_value: Number(r.total_value || 0),
+    total_space_required: Number(r.total_space_required || 0),
+    delivery_id: r.delivery_id !== null ? Number(r.delivery_id) : null,
+    delivery_status: r.delivery_status !== null ? String(r.delivery_status) : null,
+    delivered_at: r.delivered_at !== null ? String(r.delivered_at) : null,
+    driver_name: r.driver_name !== null ? String(r.driver_name) : null,
+    assistant_name: r.assistant_name !== null ? String(r.assistant_name) : null,
+    truck_plate: r.truck_plate !== null ? String(r.truck_plate) : null,
+  }));
+}
+
+/**
+ * Fetches customer order history with Redis cache layer.
+ * 
+ * @param customerId - Customer identifier (mandatory)
+ * @param filters - Optional status and date range filters
+ * @returns Cached or freshly queried customer order history rows
+ */
+export async function getCachedCustomerOrderHistory(
+  customerId: number,
+  filters: CustomerOrderHistoryFilters = {}
+): Promise<CustomerOrderHistoryRow[]> {
+  const hash = generateFilterHash({ customerId, ...filters });
+  const cacheKey = REDIS_KEYS.CACHE_REPORT('customer-history', hash);
+
+  return getOrSetCache(cacheKey, REPORT_CACHE_TTL_SECONDS, async () => {
+    return fetchCustomerOrderHistory(customerId, filters);
+  });
+}
+
