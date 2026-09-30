@@ -148,6 +148,40 @@ export function generateFilterHash(params: Record<string, unknown>): string {
   return pairs.length > 0 ? pairs.join('&') : 'all';
 }
 
+/**
+ * Escapes and quotes a single CSV field value according to RFC 4180 rules.
+ * 
+ * @param value - Cell value to format
+ * @returns Escaped CSV field string
+ */
+export function escapeCsvField(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  const str = String(value);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Builds a valid RFC 4180 CSV string from headers and data rows.
+ * 
+ * @param headers - Column title headers
+ * @param rows - 2D matrix of cell values
+ * @returns Serialized CSV string with CRLF line endings
+ */
+export function generateCsv(
+  headers: string[],
+  rows: (string | number | null | undefined)[][]
+): string {
+  const headerLine = headers.map(escapeCsvField).join(',');
+  const rowLines = rows.map((r) => r.map(escapeCsvField).join(','));
+  return [headerLine, ...rowLines].join('\r\n') + '\r\n';
+}
+
+
 /* =========================================================================
    DATA ACCESS FUNCTIONS (REPORTS 1, 2, 3)
    ========================================================================= */
