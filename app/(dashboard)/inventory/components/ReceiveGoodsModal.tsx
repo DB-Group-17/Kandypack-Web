@@ -2,149 +2,120 @@
 
 /**
  * @file ReceiveGoodsModal.tsx
- * @description Accessible dialog for receiving train booking cargo at a destination store.
- * Allows the store manager or administrator to select an arrived booking, review product
- * manifests, adjust received quantities against expected amounts, and confirm receipt.
- * Strictly adheres to Docs/07_content-copy.md §288 and DESIGN.md modal specifications.
+ * @description Accessible dialog for receiving train booking cargo at a physical destination store.
+ * Submits the Train Booking ID to POST /api/stores/:id/receive-goods, where the backend stored
+ * procedure derives manifest items, verifies 'Arrived' status, checks store matching,
+ * updates inventory stock on hand via database triggers, and advances order statuses.
+ * 
+ * Adheres to:
+ * - Docs/05_api-and-pages.md §A6 & §B
+ * - Docs/07_content-copy.md §/inventory
+ * - DESIGN.md modal, surface, and semantic color rules
  */
 
 import React, { useState } from 'react';
 import { Store, ArrivedTrainBooking, ReceiveGoodsItemInput } from '../types';
 
+/**
+ * Props accepted by the ReceiveGoodsModal component.
+ */
 interface ReceiveGoodsModalProps {
-  /** Whether the modal dialog is currently visible */
+  /** Whether the modal dialog is currently visible in the DOM */
   isOpen: boolean;
   /** Active physical store receiving the goods */
   activeStore: Store;
-  /** List of arrived train bookings available for receipt at this store */
-  availableBookings: ArrivedTrainBooking[];
-  /** Callback fired when modal is cancelled or closed */
+  /** Optional legacy mock bookings passed during transition */
+  availableBookings?: ArrivedTrainBooking[];
+  /** Callback fired when the dialog is dismissed or cancelled */
   onClose: () => void;
-  /** Callback fired when goods receipt is confirmed */
-  onConfirmReceipt: (bookingId: number, items: ReceiveGoodsItemInput[]) => void;
+  /**
+   * Action handler called when the user submits a Train Booking ID.
+   * Communicates with POST /api/stores/:id/receive-goods and returns outcome.
+   *
+   * @param bookingId - Positive integer train booking identifier
+   * @param items - Optional line items for backward compatibility
+   * @returns Promise resolving to an object with success status and optional error message
+   */
+  onConfirmReceipt: (
+    bookingId: number,
+    items?: ReceiveGoodsItemInput[]
+  ) => Promise<{ success: boolean; error?: string; updated_products?: number }> | void;
 }
 
 /**
  * ReceiveGoodsModal Component
+ *
+ * Renders an accessible modal dialog to receive arrived train cargo at the active store.
+ * 
+ * @param props - Component properties conforming to ReceiveGoodsModalProps
+ * @returns JSX element or null when hidden
  */
 export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
   isOpen,
   activeStore,
-  availableBookings,
   onClose,
   onConfirmReceipt,
 }) => {
+  // Local state for the entered Train Booking ID input
+  const [bookingIdInput, setBookingIdInput] = useState<string>('');
+
+  // Loading state while the POST mutation is in flight to prevent duplicate submissions
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Error message received from backend business rule violations or validation failures
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
-  return (
-    <ReceiveGoodsModalContent
-      activeStore={activeStore}
-      availableBookings={availableBookings}
-      onClose={onClose}
-      onConfirmReceipt={onConfirmReceipt}
-    />
-  );
-};
-
-interface ReceiveGoodsModalContentProps {
-  activeStore: Store;
-  availableBookings: ArrivedTrainBooking[];
-  onClose: () => void;
-  onConfirmReceipt: (bookingId: number, items: ReceiveGoodsItemInput[]) => void;
-}
-
-/**
- * Inner modal content component with local form state initialized upon mount.
- */
-const ReceiveGoodsModalContent: React.FC<ReceiveGoodsModalContentProps> = ({
-  activeStore,
-  availableBookings,
-  onClose,
-  onConfirmReceipt,
-}) => {
-  // Initialize selected booking to first available booking
-  const initialBooking = availableBookings[0];
-  const [selectedBookingId, setSelectedBookingId] = useState<number>(
-    initialBooking?.train_booking_id || 0
-  );
-
-  // Initialize editable item inputs from the initial booking
-  const [items, setItems] = useState<ReceiveGoodsItemInput[]>(() => {
-    if (!initialBooking) return [];
-    return initialBooking.items.map((item) => ({
-      product_id: item.product_id,
-      product_name: item.product_name,
-      sku: item.sku,
-      expected_quantity: item.expected_quantity,
-      received_quantity: item.expected_quantity,
-    }));
-  });
-
-  // Submitting state for confirmation feedback
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   /**
-   * Handles user switching train bookings, refreshing item manifest.
-   */
-  const handleBookingChange = (newBookingId: number) => {
-    setSelectedBookingId(newBookingId);
-    const booking = availableBookings.find((b) => b.train_booking_id === newBookingId);
-    if (booking) {
-      setItems(
-        booking.items.map((item) => ({
-          product_id: item.product_id,
-          product_name: item.product_name,
-          sku: item.sku,
-          expected_quantity: item.expected_quantity,
-          received_quantity: item.expected_quantity,
-        }))
-      );
-    } else {
-      setItems([]);
-    }
-  };
-
-  /**
-   * Handles user edit of received quantity for a specific product.
+   * Handles form submission, validating input and executing the receipt mutation.
    *
-   * @param productId The product being adjusted
-   * @param newQty The updated quantity
+   * @param e - React form submission event
    */
-  const handleQuantityChange = (productId: number, newQty: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.product_id === productId
-          ? { ...item, received_quantity: Math.max(0, newQty) }
-          : item
-      )
-    );
-  };
-
-  /**
-   * Quick action to reset all received quantities to equal expected quantities.
-   */
-  const handleMatchAll = () => {
-    setItems((prev) =>
-      prev.map((item) => ({
-        ...item,
-        received_quantity: item.expected_quantity,
-      }))
-    );
-  };
-
-  /**
-   * Handles receipt confirmation submission.
-   */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedBookingId || items.length === 0) return;
+    if (isSubmitting) return;
 
+    const trimmed = bookingIdInput.trim();
+
+    // Client-side pre-flight validation
+    if (!trimmed || !/^\d+$/.test(trimmed)) {
+      setErrorMessage('Please enter a valid positive numeric Train Booking ID.');
+      return;
+    }
+
+    const bookingId = parseInt(trimmed, 10);
+    if (isNaN(bookingId) || bookingId <= 0) {
+      setErrorMessage('Train Booking ID must be a positive integer greater than zero.');
+      return;
+    }
+
+    setErrorMessage(null);
     setIsSubmitting(true);
-    setTimeout(() => {
-      onConfirmReceipt(selectedBookingId, items);
+
+    try {
+      const result = await onConfirmReceipt(bookingId);
+
+      // If handler returns an object with success/error flags
+      if (result && typeof result === 'object') {
+        if (result.success) {
+          onClose();
+        } else {
+          setErrorMessage(
+            result.error || 'Failed to receive goods. Please verify the booking ID and try again.'
+          );
+        }
+      } else {
+        // Fallback for void handlers
+        onClose();
+      }
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'An unexpected error occurred while processing receipt.';
+      setErrorMessage(msg);
+    } finally {
       setIsSubmitting(false);
-      onClose();
-    }, 300);
+    }
   };
 
   return (
@@ -154,15 +125,17 @@ const ReceiveGoodsModalContent: React.FC<ReceiveGoodsModalContentProps> = ({
       aria-modal="true"
       aria-labelledby="receive-goods-title"
     >
-      {/* Dimmed backdrop */}
+      {/* Dimmed backdrop with smooth blur */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-        onClick={onClose}
+        onClick={() => {
+          if (!isSubmitting) onClose();
+        }}
         aria-hidden="true"
       />
 
-      {/* Modal Card Surface */}
-      <div className="relative bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#C8C4D7]/40 w-full max-w-2xl overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
+      {/* Modal Surface Card */}
+      <div className="relative bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#C8C4D7]/40 w-full max-w-lg overflow-hidden z-10 animate-in fade-in zoom-in-95 duration-150">
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-[#E7EEFF] flex items-center justify-between bg-[#F9F9FF]/80">
           <div>
@@ -170,12 +143,15 @@ const ReceiveGoodsModalContent: React.FC<ReceiveGoodsModalContentProps> = ({
               Receive Goods
             </h2>
             <p className="text-[13px] text-[#474554] mt-0.5">
-              Receiving cargo at <strong className="text-[#4132C7] font-semibold">{activeStore.store_name}</strong>
+              Receiving cargo at{' '}
+              <strong className="text-[#4132C7] font-semibold">{activeStore.store_name}</strong>
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full text-[#777586] hover:text-[#121C2C] hover:bg-white transition-colors"
+            disabled={isSubmitting}
+            className="p-1.5 rounded-full text-[#777586] hover:text-[#121C2C] hover:bg-white disabled:opacity-50 transition-colors cursor-pointer"
             aria-label="Close dialog"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,137 +160,83 @@ const ReceiveGoodsModalContent: React.FC<ReceiveGoodsModalContentProps> = ({
           </button>
         </div>
 
-        {/* Modal Form Content */}
+        {/* Modal Form */}
         <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-5 max-h-[calc(80vh-140px)] overflow-y-auto custom-scrollbar">
-            {availableBookings.length > 0 ? (
-              <>
-                {/* Train Booking Selector */}
-                <div>
-                  <label
-                    htmlFor="train-booking-select"
-                    className="block text-[12px] font-bold uppercase tracking-wider text-[#474554] mb-1.5"
-                  >
-                    Train Booking
-                  </label>
-                  <div className="relative">
-                    <select
-                      id="train-booking-select"
-                      value={selectedBookingId}
-                      onChange={(e) => handleBookingChange(Number(e.target.value))}
-                      className="w-full appearance-none bg-[#F9F9FF] border border-[#C8C4D7]/80 rounded-lg px-4 py-2.5 text-[14px] text-[#121C2C] font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7] transition-all pr-10 cursor-pointer"
-                    >
-                      {availableBookings.map((booking) => (
-                        <option key={booking.train_booking_id} value={booking.train_booking_id}>
-                          {booking.trip_code} — {booking.origin_city} to {booking.destination_city} (Arrived: {booking.arrival_datetime})
-                        </option>
-                      ))}
-                    </select>
-                    <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-[#777586]">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </span>
-                  </div>
-                </div>
-
-                {/* Items Manifest & Quantity Inputs */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[12px] font-bold uppercase tracking-wider text-[#474554]">
-                      Cargo Manifest Line Items
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleMatchAll}
-                      className="text-[12px] font-semibold text-[#4132C7] hover:underline"
-                    >
-                      Match All Expected
-                    </button>
-                  </div>
-
-                  <div className="border border-[#E7EEFF] rounded-xl overflow-hidden shadow-2xs">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-[#F0F3FF]/60 border-b border-[#E7EEFF]">
-                          <th className="py-2.5 px-4 text-[11px] font-bold text-[#474554] uppercase tracking-wider">
-                            Product
-                          </th>
-                          <th className="py-2.5 px-4 text-[11px] font-bold text-[#474554] uppercase tracking-wider text-right">
-                            Expected
-                          </th>
-                          <th className="py-2.5 px-4 text-[11px] font-bold text-[#474554] uppercase tracking-wider text-right w-36">
-                            Received Qty
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#E7EEFF]">
-                        {items.map((item) => {
-                          const hasDiscrepancy = item.received_quantity !== item.expected_quantity;
-                          return (
-                            <tr key={item.product_id} className="hover:bg-[#F9F9FF]">
-                              <td className="py-3 px-4">
-                                <div className="font-medium text-[13px] text-[#121C2C]">
-                                  {item.product_name}
-                                </div>
-                                <div className="font-mono text-[11px] text-[#777586]">
-                                  {item.sku}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-right font-medium text-[13px] text-[#474554]">
-                                {item.expected_quantity.toLocaleString()}
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <div className="flex flex-col items-end">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={item.received_quantity}
-                                    onChange={(e) =>
-                                      handleQuantityChange(
-                                        item.product_id,
-                                        parseInt(e.target.value, 10) || 0
-                                      )
-                                    }
-                                    className={`w-28 text-right px-3 py-1.5 rounded-lg border text-[13px] font-semibold focus:outline-none focus:ring-2 focus:ring-[#4132C7] transition-all ${
-                                      hasDiscrepancy
-                                        ? 'border-[#FFB800] bg-[#FFF9E6] text-[#B87C00]'
-                                        : 'border-[#C8C4D7]/80 bg-white text-[#121C2C]'
-                                    }`}
-                                  />
-                                  {hasDiscrepancy && (
-                                    <span className="text-[10px] font-medium text-[#B87C00] mt-0.5">
-                                      {item.received_quantity > item.expected_quantity
-                                        ? `+${item.received_quantity - item.expected_quantity} surplus`
-                                        : `${item.received_quantity - item.expected_quantity} short`}
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </>
-            ) : (
-              /* No arrived bookings state */
-              <div className="py-8 text-center">
-                <div className="w-10 h-10 rounded-full bg-[#FFF9E6] text-[#FFB800] flex items-center justify-center mx-auto mb-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <p className="text-[14px] font-semibold text-[#121C2C]">
-                  No arrived train bookings pending receipt
-                </p>
-                <p className="text-[12px] text-[#474554] mt-1">
-                  All cargo dispatched to {activeStore.store_name} has already been received.
-                </p>
+          <div className="p-6 space-y-5">
+            {/* Inline Error Message Banner */}
+            {errorMessage && (
+              <div
+                className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#93000A] p-3.5 rounded-xl flex items-start gap-3 animate-in fade-in duration-200"
+                role="alert"
+              >
+                <svg
+                  className="w-5 h-5 text-[#F93C65] shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div className="text-[13px] font-medium leading-relaxed">{errorMessage}</div>
               </div>
             )}
+
+            {/* Train Booking ID Input Field */}
+            <div>
+              <label
+                htmlFor="train-booking-id"
+                className="block text-[12px] font-bold uppercase tracking-wider text-[#474554] mb-1.5"
+              >
+                Train Booking ID <span className="text-[#F93C65]">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="train-booking-id"
+                  type="number"
+                  min="1"
+                  step="1"
+                  autoFocus
+                  disabled={isSubmitting}
+                  placeholder="Enter arrived booking ID (e.g. 101)"
+                  value={bookingIdInput}
+                  onChange={(e) => {
+                    setBookingIdInput(e.target.value);
+                    if (errorMessage) setErrorMessage(null);
+                  }}
+                  className="w-full bg-[#F9F9FF] border border-[#C8C4D7]/80 rounded-lg px-4 py-2.5 text-[14px] text-[#121C2C] font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7] focus:border-[#4132C7] transition-all disabled:opacity-60 shadow-2xs"
+                />
+              </div>
+              <p className="text-[12px] text-[#777586] mt-1.5">
+                Enter the Booking ID from the arrived train cargo manifest.
+              </p>
+            </div>
+
+            {/* Explanatory Info Card */}
+            <div className="bg-[#F0F3FF] border border-[#DEE8FF] rounded-xl p-4 flex items-start gap-3 text-[#121C2C]">
+              <div className="w-8 h-8 rounded-lg bg-[#4132C7]/10 flex items-center justify-center text-[#4132C7] shrink-0 mt-0.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
+                  />
+                </svg>
+              </div>
+              <div className="text-[12px] leading-relaxed text-[#474554]">
+                <strong className="text-[#121C2C] font-semibold block mb-0.5">
+                  Automated Manifest Verification
+                </strong>
+                The backend procedure confirms the train trip has arrived, validates destination store
+                matching, credits store inventory, and automatically advances the associated order status to{' '}
+                <span className="font-semibold text-[#4132C7]">At Store</span>.
+              </div>
+            </div>
           </div>
 
           {/* Modal Footer Actions */}
@@ -322,20 +244,25 @@ const ReceiveGoodsModalContent: React.FC<ReceiveGoodsModalContentProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[13px] font-semibold text-[#474554] hover:bg-white hover:text-[#121C2C] transition-colors"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[13px] font-semibold text-[#474554] hover:bg-white hover:text-[#121C2C] disabled:opacity-50 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={availableBookings.length === 0 || isSubmitting}
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#5A4FE0] shadow-sm disabled:opacity-50 transition-all flex items-center gap-2"
+              disabled={!bookingIdInput.trim() || isSubmitting}
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#5A4FE0] active:scale-98 shadow-sm disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <>
                   <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
                   </svg>
                   <span>Receiving…</span>
                 </>
@@ -349,3 +276,4 @@ const ReceiveGoodsModalContent: React.FC<ReceiveGoodsModalContentProps> = ({
     </div>
   );
 };
+
