@@ -8,6 +8,7 @@
  * - Hover elevation, action triggers for status toggle and edit details
  * - Responsive stacked card view on mobile screens
  * - Empty state with clear/reset triggers
+ * - Shimmering loading skeleton state while fetching from GET /api/users
  */
 
 import React from 'react';
@@ -17,6 +18,8 @@ import { getRoleDisplayLabel, getRoleBadgeStyles } from '../mockData';
 interface UsersTableProps {
   /** Array of user items to display on the current page */
   users: UserAccountItem[];
+  /** Loading state indicator while fetching live data */
+  isLoading?: boolean;
   /** Callback to trigger the Activate / Deactivate status toggle dialog */
   onToggleStatus: (user: UserAccountItem) => void;
   /** Callback to trigger the Edit/Details dialog */
@@ -30,7 +33,7 @@ interface UsersTableProps {
 /**
  * Helper to extract initials from a user's display name.
  *
- * @param name Full display name
+ * @param name - Full display name
  * @returns 2-character uppercase initials
  */
 function getInitials(name: string): string {
@@ -44,7 +47,7 @@ function getInitials(name: string): string {
 /**
  * Helper to format an ISO date string into a user-friendly format (e.g. "Feb 01, 2026").
  *
- * @param isoString Date string in ISO format
+ * @param isoString - Date string in ISO format
  * @returns Formatted date string
  */
 function formatDate(isoString: string): string {
@@ -63,18 +66,86 @@ function formatDate(isoString: string): string {
 /**
  * UsersTable Component
  *
- * Renders the table of user accounts with actions and responsive mobile card transformations.
+ * Renders the table of user accounts with actions, loading skeletons, and responsive mobile card transformations.
  *
- * @param props Component properties containing user records and action handlers
- * @returns Table element
+ * @param props - Component properties containing user records and action handlers
+ * @returns JSX.Element
  */
 export const UsersTable: React.FC<UsersTableProps> = ({
   users,
+  isLoading = false,
   onToggleStatus,
   onEditUser,
   onResetFilters,
   onOpenAddModal,
 }) => {
+  // Render loading skeleton rows while query is in-flight
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-2xl border border-[#C8C4D7]/40 shadow-xs overflow-hidden">
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-[#C8C4D7]/40 bg-[#F5F5FA]/75 text-[11px] font-bold text-[#474554] uppercase tracking-wider">
+                <th className="py-3.5 px-6">User</th>
+                <th className="py-3.5 px-6">Email</th>
+                <th className="py-3.5 px-6">Role</th>
+                <th className="py-3.5 px-6">Status</th>
+                <th className="py-3.5 px-6">Joined</th>
+                <th className="py-3.5 px-6 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#C8C4D7]/30">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <tr key={index} className="animate-pulse">
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#EDE9FE]/70" />
+                      <div className="space-y-1.5">
+                        <div className="w-28 h-4 bg-[#EDE9FE]/70 rounded-md" />
+                        <div className="w-36 h-3 bg-[#F1F1F5] rounded-md" />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="w-36 h-4 bg-[#F1F1F5] rounded-md" />
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="w-24 h-6 bg-[#F1F1F5] rounded-full" />
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="w-16 h-6 bg-[#F1F1F5] rounded-full" />
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="w-20 h-4 bg-[#F1F1F5] rounded-md" />
+                  </td>
+                  <td className="py-4 px-6 text-right">
+                    <div className="inline-block w-16 h-8 bg-[#F1F1F5] rounded-full" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile Skeleton */}
+        <div className="md:hidden divide-y divide-[#C8C4D7]/30 p-4 space-y-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <div key={index} className="p-4 bg-[#F9F9FF] rounded-xl space-y-3 animate-pulse">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#EDE9FE]" />
+                <div className="space-y-1 flex-1">
+                  <div className="w-28 h-4 bg-[#EDE9FE] rounded" />
+                  <div className="w-40 h-3 bg-[#F1F1F5] rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   // Render empty state if no users match active criteria
   if (users.length === 0) {
     return (
@@ -158,13 +229,16 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                           className={`font-semibold text-[14px] leading-tight ${
                             user.is_active
                               ? 'text-[#121C2C] group-hover:text-[#4132C7]'
-                              : 'text-[#777586]'
-                          } transition-colors`}
+                              : 'text-[#777586] line-through decoration-[#777586]/60'
+                          }`}
                         >
                           {user.display_name}
                         </p>
                         <p className="text-[12px] text-[#474554] mt-0.5">
                           {user.department_or_title}
+                          {user.home_store_name && (
+                            <span className="text-[#777586]"> • {user.home_store_name}</span>
+                          )}
                         </p>
                       </div>
                     </div>
@@ -172,96 +246,75 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
                   {/* Email */}
                   <td className="py-4 px-6">
-                    <span
-                      className={`text-[13px] ${
-                        user.is_active ? 'text-[#121C2C]' : 'text-[#777586]'
-                      }`}
-                    >
+                    <span className="text-[13px] font-mono text-[#121C2C]">
                       {user.email}
                     </span>
                   </td>
 
-                  {/* Role */}
+                  {/* Role Pill Badge */}
                   <td className="py-4 px-6">
                     <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[12px] font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
                     >
                       {getRoleDisplayLabel(user.app_role)}
                     </span>
                   </td>
 
-                  {/* Status Badge */}
+                  {/* Status Indicator */}
                   <td className="py-4 px-6">
                     {user.is_active ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#E6F6F4] text-[#00B69B] border border-[#00B69B]/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#00B69B]" />
                         Active
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#F1F1F5] text-[#474554] border border-[#C8C4D7]/40">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#777586]" />
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#FFF0F0] text-[#F93C65]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#F93C65]" />
                         Deactivated
                       </span>
                     )}
                   </td>
 
-                  {/* Joined Date */}
-                  <td className="py-4 px-6">
-                    <span className="text-[13px] text-[#474554]">
-                      {formatDate(user.created_at)}
-                    </span>
+                  {/* Created At Date */}
+                  <td className="py-4 px-6 text-[13px] text-[#474554]">
+                    {formatDate(user.created_at)}
                   </td>
 
-                  {/* Row Actions */}
+                  {/* Action Buttons */}
                   <td className="py-4 px-6 text-right">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {/* Edit / View Details */}
+                    <div className="flex items-center justify-end gap-2">
+                      {/* Edit Details */}
                       <button
                         onClick={() => onEditUser(user)}
-                        className="p-1.5 text-[#474554] hover:text-[#4132C7] hover:bg-[#EDE9FE] rounded-lg transition-colors"
-                        title="View & Edit Details"
+                        className="px-3 py-1.5 text-[12px] font-semibold text-[#474554] hover:text-[#4132C7] hover:bg-[#EDE9FE] rounded-lg transition-colors flex items-center gap-1"
                         aria-label={`Edit ${user.display_name}`}
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth="2"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
                           />
                         </svg>
+                        <span>Edit</span>
                       </button>
 
-                      {/* Activate / Deactivate Toggle */}
+                      {/* Activate / Deactivate Toggle Button */}
                       <button
                         onClick={() => onToggleStatus(user)}
-                        className={`p-1.5 rounded-lg transition-colors ${
+                        className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors ${
                           user.is_active
-                            ? 'text-[#474554] hover:text-[#F93C65] hover:bg-[#FFF0F0]'
-                            : 'text-[#474554] hover:text-[#00B69B] hover:bg-[#E6F6F4]'
+                            ? 'text-[#F93C65] hover:bg-[#FFF0F0]'
+                            : 'text-[#00B69B] hover:bg-[#E6F6F4]'
                         }`}
-                        title={user.is_active ? 'Deactivate Account' : 'Activate Account'}
-                        aria-label={user.is_active ? `Deactivate ${user.email}` : `Activate ${user.email}`}
+                        aria-label={
+                          user.is_active
+                            ? `Deactivate ${user.display_name}`
+                            : `Activate ${user.display_name}`
+                        }
                       >
-                        {user.is_active ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                            />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        )}
+                        {user.is_active ? 'Deactivate' : 'Activate'}
                       </button>
                     </div>
                   </td>
@@ -279,67 +332,92 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           const initials = getInitials(user.display_name);
 
           return (
-            <div key={user.user_id} className="p-4 space-y-3">
+            <div
+              key={user.user_id}
+              className={`p-4 space-y-3 ${!user.is_active ? 'bg-[#FAFAFC]/60' : ''}`}
+            >
+              {/* Header row: User avatar + info + status */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${
-                      user.is_active ? 'bg-[#EDE9FE] text-[#4132C7]' : 'bg-[#F1F1F5] text-[#777586]'
+                      user.is_active
+                        ? 'bg-[#EDE9FE] text-[#4132C7]'
+                        : 'bg-[#F1F1F5] text-[#777586]'
                     }`}
                   >
                     {initials}
                   </div>
                   <div>
-                    <p className="font-semibold text-[15px] text-[#121C2C] leading-tight">
+                    <p
+                      className={`font-semibold text-[14px] ${
+                        user.is_active ? 'text-[#121C2C]' : 'text-[#777586] line-through'
+                      }`}
+                    >
                       {user.display_name}
                     </p>
-                    <p className="text-[12px] text-[#474554] mt-0.5">{user.email}</p>
+                    <p className="text-[12px] text-[#474554]">{user.department_or_title}</p>
                   </div>
                 </div>
 
-                {/* Status Badge */}
+                {/* Status pill */}
                 {user.is_active ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#00B69B]" />
                     Active
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#F1F1F5] text-[#474554]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#777586]" />
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF0F0] text-[#F93C65]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#F93C65]" />
                     Deactivated
                   </span>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
-                >
-                  {getRoleDisplayLabel(user.app_role)}
-                </span>
-                <span className="text-[12px] text-[#474554]">{user.department_or_title}</span>
+              {/* Email and Meta */}
+              <div className="text-[12px] space-y-1 pt-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[#474554]">Email:</span>
+                  <span className="font-mono text-[#121C2C]">{user.email}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[#474554]">Role:</span>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
+                  >
+                    {getRoleDisplayLabel(user.app_role)}
+                  </span>
+                </div>
+                {user.home_store_name && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#474554]">Store:</span>
+                    <span className="text-[#121C2C]">{user.home_store_name}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-[#474554]">Joined:</span>
+                  <span className="text-[#474554]">{formatDate(user.created_at)}</span>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-[#C8C4D7]/20 text-[12px]">
-                <span className="text-[#777586]">Joined {formatDate(user.created_at)}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => onEditUser(user)}
-                    className="px-3 py-1 bg-[#F5F5FA] hover:bg-[#EDE9FE] text-[#4132C7] font-semibold rounded-lg transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => onToggleStatus(user)}
-                    className={`px-3 py-1 font-semibold rounded-lg transition-colors ${
-                      user.is_active
-                        ? 'bg-[#FFF0F0] hover:bg-[#FEE2E2] text-[#F93C65]'
-                        : 'bg-[#E6F6F4] hover:bg-[#D1FAE5] text-[#00B69B]'
-                    }`}
-                  >
-                    {user.is_active ? 'Deactivate' : 'Activate'}
-                  </button>
-                </div>
+              {/* Action Buttons Row */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#C8C4D7]/20">
+                <button
+                  onClick={() => onEditUser(user)}
+                  className="px-3 py-1.5 text-[12px] font-semibold text-[#474554] bg-[#F5F5FA] rounded-lg"
+                >
+                  Edit Details
+                </button>
+                <button
+                  onClick={() => onToggleStatus(user)}
+                  className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg ${
+                    user.is_active
+                      ? 'text-[#F93C65] bg-[#FFF0F0]'
+                      : 'text-[#00B69B] bg-[#E6F6F4]'
+                  }`}
+                >
+                  {user.is_active ? 'Deactivate' : 'Activate'}
+                </button>
               </div>
             </div>
           );
