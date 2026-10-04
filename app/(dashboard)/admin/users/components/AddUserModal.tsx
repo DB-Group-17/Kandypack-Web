@@ -12,6 +12,7 @@
 
 import React, { useState } from 'react';
 import { AppRole, EmployeeOption, NewUserPayload } from '../types';
+import { generateSecureTemporaryPassword } from '@/lib/password';
 
 interface AddUserModalProps {
   /** Controls modal visibility */
@@ -27,32 +28,13 @@ interface AddUserModalProps {
 }
 
 /**
- * Generates a random alphanumeric temporary password.
+ * Generates a cryptographically secure random temporary password.
+ * Delegates to the centralized Web Crypto / Fisher–Yates implementation in `@/lib/password`.
  *
  * @returns 12-character secure temporary password string
  */
 function generateRandomPassword(): string {
-  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lower = 'abcdefghijkmnopqrstuvwxyz';
-  const digits = '23456789';
-  const special = '!@#$%&*';
-
-  let pwd = '';
-  pwd += upper.charAt(Math.floor(Math.random() * upper.length));
-  pwd += lower.charAt(Math.floor(Math.random() * lower.length));
-  pwd += digits.charAt(Math.floor(Math.random() * digits.length));
-  pwd += special.charAt(Math.floor(Math.random() * special.length));
-
-  const allChars = upper + lower + digits + special;
-  for (let i = 4; i < 12; i++) {
-    pwd += allChars.charAt(Math.floor(Math.random() * allChars.length));
-  }
-
-  // Shuffle characters
-  return pwd
-    .split('')
-    .sort(() => 0.5 - Math.random())
-    .join('');
+  return generateSecureTemporaryPassword();
 }
 
 /**
