@@ -66,6 +66,23 @@ interface ProductCountRow extends RowDataPacket {
 }
 
 /**
+ * Result shape returned by the transactional execution block.
+ */
+type ReceiveTransactionResult =
+  | {
+      success: true;
+      updated_products: number;
+    }
+  | {
+      success: false;
+      error: {
+        status: number;
+        code: string;
+        message: string;
+      };
+    };
+
+/**
  * Type guard to safely identify custom MySQL SIGNAL errors (SQLSTATE '45000').
  *
  * @param error - The error caught in the execution block
@@ -94,10 +111,11 @@ function isSqlSignalError(
  * 5. Apply multi-tenant store isolation: store_manager may only operate on their assigned home store.
  * 6. Verify target store exists and is not soft-deleted.
  * 7. Verify train booking exists, belongs to target store, and belongs to an 'Arrived' train trip.
- * 8. Prevent duplicate receipts for bookings that have already been recorded.
- * 9. Within a transactional database connection under user session context, execute
- *    stored procedure `receive_goods_at_store(bookingId, userId)` and query the number
- *    of distinct products received.
+ * 8. Perform fast pre-check to reject previously received bookings before acquiring a transaction.
+ * 9. Within a user-context database transaction, acquire an exclusive row lock on `train_bookings`
+ *    via SELECT ... FOR UPDATE, re-verify `inventory_transactions` for an existing receive entry under
+ *    the lock to eliminate race conditions, invoke stored procedure `receive_goods_at_store(bookingId, userId)`,
+ *    and query the number of distinct products received before committing.
  * 10. Return standard success payload `{ "updated_products": number }` with HTTP 200.
  * 
  * @param req - Incoming HTTP request
@@ -306,7 +324,7 @@ export async function POST(
       );
     }
 
-    // 8. Prevent duplicate receipts: check if booking has already been recorded in inventory_transactions
+    // 8. Fast pre-check: reject booking if already recorded in inventory_transactions before acquiring connection/transaction
     const existingReceipt = await queryOne<DuplicateReceiptRow>(
       `SELECT transaction_id 
        FROM inventory_transactions 
@@ -327,20 +345,61 @@ export async function POST(
       );
     }
 
-    // 9. Execute stored procedure receive_goods_at_store inside a user-context transaction
-    const updatedProductsCount = await withUserContext(
+    // 9. Execute stored procedure receive_goods_at_store inside a user-context transaction with row-level locking
+    const receiveResult = await withUserContext<ReceiveTransactionResult>(
       session.user_id,
       session.role,
       async (connection) => {
         await connection.beginTransaction();
         try {
-          // Execute procedure to record inventory transactions, trigger stock updates, and update order status
+          // 9a. Inside the database transaction, lock the target train_bookings row using SELECT ... FOR UPDATE.
+          // This serializes concurrent receive submissions targeting the exact same booking.
+          const [bookingLockRows] = await connection.execute<RowDataPacket[]>(
+            'SELECT booking_id FROM train_bookings WHERE booking_id = ? FOR UPDATE',
+            [bookingId]
+          );
+
+          if (!bookingLockRows || bookingLockRows.length === 0) {
+            await connection.rollback();
+            return {
+              success: false,
+              error: {
+                status: 404,
+                code: 'NOT_FOUND',
+                message: `Train booking #${bookingId} was not found.`
+              }
+            };
+          }
+
+          // 9b. After obtaining the lock, check inventory_transactions for an existing receive transaction.
+          // Using a locking read (FOR UPDATE) guarantees reading the most recently committed state under any isolation level.
+          const [receiptRows] = await connection.execute<DuplicateReceiptRow[]>(
+            `SELECT transaction_id 
+             FROM inventory_transactions 
+             WHERE train_booking_id = ? AND transaction_type = 'receive'
+             LIMIT 1 FOR UPDATE`,
+            [bookingId]
+          );
+
+          if (receiptRows && receiptRows.length > 0) {
+            await connection.rollback();
+            return {
+              success: false,
+              error: {
+                status: 400,
+                code: 'BUSINESS_RULE_VIOLATION',
+                message: `Train booking #${bookingId} has already been received.`
+              }
+            };
+          }
+
+          // 9c. Only if none exists should receive_goods_at_store(...) execute
           await connection.execute('CALL receive_goods_at_store(?, ?)', [
             bookingId,
             session.user_id
           ]);
 
-          // Query distinct products impacted by this train booking
+          // 9d. Query distinct products impacted by this train booking
           const [productRows] = await connection.execute<ProductCountRow[]>(
             `SELECT COUNT(DISTINCT oi.product_id) AS updated_count
              FROM train_booking_items bi
@@ -352,7 +411,10 @@ export async function POST(
           const count = Number(productRows[0]?.updated_count ?? 0);
 
           await connection.commit();
-          return count;
+          return {
+            success: true,
+            updated_products: count
+          };
         } catch (procError) {
           await connection.rollback();
           throw procError;
@@ -360,9 +422,21 @@ export async function POST(
       }
     );
 
+    if (!receiveResult.success) {
+      return NextResponse.json(
+        {
+          error: {
+            code: receiveResult.error.code,
+            message: receiveResult.error.message
+          }
+        },
+        { status: receiveResult.error.status }
+      );
+    }
+
     // 10. Return exact documented response shape: { "updated_products": number }
     return NextResponse.json(
-      { updated_products: updatedProductsCount },
+      { updated_products: receiveResult.updated_products },
       { status: 200 }
     );
   } catch (error: unknown) {
