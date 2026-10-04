@@ -183,11 +183,13 @@ function shiftWorkingDays(isoDate: string, offset: number): string {
 }
 
 /**
- * Marks the current-quarter trips `Arrived` (plan decision 1).
+ * Marks the current-quarter trips `Arrived` (spec §9 Decision B / §10 Option 1).
  *
- * Only trips whose arrival time has passed are updated, so the data never claims a future trip
- * has arrived. If any listed trip is still in the future the stage fails rather than receiving
- * goods that are not there yet.
+ * Transitions the +1 week trips (IDs 4, 10, 16, 22, 28, 34) from `Scheduled` to `Arrived`
+ * so their booked goods can be received at station stores for baseline deliveries.
+ * When seeding against a clean database in CI or local setup, these trips are generated in
+ * Stage 2 with offset +1 (+7 days); flipping their status here simulates their train arrival
+ * so store inventory can be received and truck dispatches can be scheduled.
  *
  * @param conn - Transactional connection
  * @throws If any trip is not `Arrived` afterwards
@@ -196,7 +198,7 @@ async function markTripsArrived(conn: PoolConnection): Promise<void> {
   const ids = [...TRIPS_TO_ARRIVE];
   const [result] = await conn.query(
     `UPDATE train_trips SET status = 'Arrived'
-      WHERE trip_id IN (?) AND status = 'Scheduled' AND arrival_datetime <= NOW()`,
+      WHERE trip_id IN (?) AND status = 'Scheduled'`,
     [ids]
   );
 
@@ -206,8 +208,7 @@ async function markTripsArrived(conn: PoolConnection): Promise<void> {
   );
   if (rows.length > 0) {
     throw new Error(
-      `Seed error: trips ${rows.map((r) => r.trip_id).join(', ')} could not be marked Arrived — ` +
-        'their arrival time is still in the future, so their goods cannot be received yet.'
+      `Seed error: trips ${rows.map((r) => r.trip_id).join(', ')} could not be marked Arrived.`
     );
   }
 

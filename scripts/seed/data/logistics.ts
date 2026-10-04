@@ -18,12 +18,12 @@
 /**
  * Train trips the seed marks `Arrived` before receiving goods.
  *
- * These are the `+1` week trips (arrival 2026-09-21 at the first seed run) that every
- * current-quarter order was booked on. §9 walked five of those orders to `At Store` and five to
- * `Out for Delivery` while the trips were still `Scheduled`, which `receive_goods_at_store` would
- * reject. Their arrival time has passed, so marking them `Arrived` makes the data consistent
- * with the calendar. The `In Transit` orders on the same trips are deliberately left arrived but
- * not received, for Member 4 to exercise the receive-goods flow.
+ * These are the `+1` week trips that every current-quarter order was booked on.
+ * §9 walked five of those orders to `At Store` and five to `Out for Delivery` while the trips
+ * were still `Scheduled`, which `receive_goods_at_store` would reject. Marking them `Arrived`
+ * in Stage 4 allows store receipts and truck delivery dispatches to proceed cleanly. The `In Transit`
+ * orders on the same trips are deliberately left arrived but not received, for Member 4 to exercise
+ * the receive-goods flow.
  *
  * `trip_id = city_index × 6 + offset_index + 1`, where `+1` week is offset index 3.
  */
