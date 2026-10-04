@@ -14,6 +14,8 @@ import { UserAccountItem } from '../types';
 interface StatusToggleModalProps {
   /** The target user to activate or deactivate */
   user: UserAccountItem | null;
+  /** Current signed-in user ID for self-action protection */
+  currentUserId?: string;
   /** Controls modal visibility */
   isOpen: boolean;
   /** Callback to close the dialog */
@@ -33,6 +35,7 @@ interface StatusToggleModalProps {
  */
 export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
   user,
+  currentUserId,
   isOpen,
   onClose,
   onConfirm,
@@ -43,6 +46,8 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
   if (!isOpen || !user) return null;
 
   const isDeactivating = user.is_active;
+  const isSelf = Boolean(currentUserId && user.user_id === currentUserId);
+  const cannotDeactivate = isSelf && isDeactivating;
 
   /**
    * Handles confirming the status toggle mutation.
@@ -140,6 +145,16 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
           </div>
         )}
 
+        {/* Self Deactivation Warning */}
+        {cannotDeactivate && (
+          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-[12px] text-[#F93C65] flex items-start gap-2">
+            <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="leading-snug">Administrators cannot deactivate their own account.</span>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-[#C8C4D7]/30">
           <button
@@ -153,8 +168,8 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={isSubmitting}
-            className={`px-5 py-2 text-[13px] font-bold text-white rounded-full transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 flex items-center gap-2 ${
+            disabled={isSubmitting || cannotDeactivate}
+            className={`px-5 py-2 text-[13px] font-bold text-white rounded-full transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 ${
               isDeactivating
                 ? 'bg-[#F93C65] hover:bg-[#E02852]'
                 : 'bg-[#00B69B] hover:bg-[#009E86]'

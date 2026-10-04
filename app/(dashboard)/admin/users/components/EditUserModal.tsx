@@ -20,6 +20,8 @@ import { UserAccountItem, AppRole } from '../types';
 interface EditUserModalProps {
   /** The target user account to inspect and edit */
   user: UserAccountItem | null;
+  /** Current signed-in user ID for self-action protection */
+  currentUserId?: string;
   /** Controls modal visibility */
   isOpen: boolean;
   /** Callback to close the modal dialog */
@@ -42,6 +44,7 @@ interface EditUserModalProps {
  */
 export const EditUserModal: React.FC<EditUserModalProps> = ({
   user,
+  currentUserId,
   isOpen,
   onClose,
   onSave,
@@ -52,6 +55,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (!isOpen || !user) return null;
+
+  const isSelf = Boolean(currentUserId && user.user_id === currentUserId);
 
   /**
    * Handles form submission by calculating delta of permitted PATCH fields.
@@ -165,8 +170,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             <select
               value={appRole}
               onChange={(e) => setAppRole(e.target.value as AppRole)}
-              disabled={isSubmitting}
-              className="w-full h-10 px-3.5 text-[14px] bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60"
+              disabled={isSubmitting || (isSelf && user.app_role === 'system_administrator')}
+              className="w-full h-10 px-3.5 text-[14px] bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="system_administrator">System Administrator</option>
               <option value="logistics_manager">Logistics Manager</option>
@@ -174,6 +179,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               <option value="fleet_supervisor">Fleet Supervisor</option>
               <option value="order_entry_clerk">Order Entry Clerk</option>
             </select>
+            {isSelf && user.app_role === 'system_administrator' && (
+              <p className="text-[11px] text-[#777586] mt-1 px-0.5">
+                Administrators cannot change their own application role.
+              </p>
+            )}
           </div>
 
           {/* Status Toggle */}
@@ -185,8 +195,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               <button
                 type="button"
                 onClick={() => setIsActive(!isActive)}
-                disabled={isSubmitting}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-60 ${
+                disabled={isSubmitting || (isSelf && user.is_active)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${
                   isActive ? 'bg-[#00B69B]' : 'bg-[#C8C4D7]'
                 }`}
                 role="switch"
@@ -202,6 +212,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 {isActive ? 'Active (Can sign in)' : 'Deactivated (Login blocked)'}
               </span>
             </div>
+            {isSelf && user.is_active && (
+              <p className="text-[11px] text-[#777586] mt-1 px-0.5">
+                Administrators cannot deactivate their own account.
+              </p>
+            )}
           </div>
 
           {/* Actions */}

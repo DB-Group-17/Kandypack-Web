@@ -617,6 +617,7 @@ export default function UserAccountsPage(): React.JSX.Element {
         {/* User Accounts Directory Table */}
         <UsersTable
           users={users}
+          currentUserId={authUser?.user_id}
           isLoading={isLoadingUsers}
           onToggleStatus={(target) => setStatusModalUser(target)}
           onEditUser={(target) => setEditModalUser(target)}
@@ -652,6 +653,7 @@ export default function UserAccountsPage(): React.JSX.Element {
         key={statusModalUser?.user_id}
         isOpen={!!statusModalUser}
         user={statusModalUser}
+        currentUserId={authUser?.user_id}
         onClose={() => setStatusModalUser(null)}
         onConfirm={handleConfirmStatusToggle}
       />
@@ -661,6 +663,7 @@ export default function UserAccountsPage(): React.JSX.Element {
         key={editModalUser?.user_id}
         isOpen={!!editModalUser}
         user={editModalUser}
+        currentUserId={authUser?.user_id}
         onClose={() => setEditModalUser(null)}
         onSave={handleSaveEditUser}
       />

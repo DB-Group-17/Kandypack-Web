@@ -12,12 +12,15 @@
  */
 
 import React from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { UserAccountItem } from '../types';
 import { getRoleDisplayLabel, getRoleBadgeStyles } from '../mockData';
 
 interface UsersTableProps {
   /** Array of user items to display on the current page */
   users: UserAccountItem[];
+  /** Optional current signed-in user ID for self-action protection */
+  currentUserId?: string;
   /** Loading state indicator while fetching live data */
   isLoading?: boolean;
   /** Callback to trigger the Activate / Deactivate status toggle dialog */
@@ -73,12 +76,16 @@ function formatDate(isoString: string): string {
  */
 export const UsersTable: React.FC<UsersTableProps> = ({
   users,
+  currentUserId: propCurrentUserId,
   isLoading = false,
   onToggleStatus,
   onEditUser,
   onResetFilters,
   onOpenAddModal,
 }) => {
+  const { user: authUser } = useAuth();
+  const activeUserId = propCurrentUserId ?? authUser?.user_id;
+
   // Render loading skeleton rows while query is in-flight
   if (isLoading) {
     return (
@@ -204,6 +211,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             {users.map((user) => {
               const roleBadge = getRoleBadgeStyles(user.app_role);
               const initials = getInitials(user.display_name);
+              const isSelf = Boolean(activeUserId && user.user_id === activeUserId);
 
               return (
                 <tr
@@ -226,13 +234,18 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                       </div>
                       <div>
                         <p
-                          className={`font-semibold text-[14px] leading-tight ${
+                          className={`font-semibold text-[14px] leading-tight flex items-center gap-1.5 ${
                             user.is_active
                               ? 'text-[#121C2C] group-hover:text-[#4132C7]'
                               : 'text-[#777586] line-through decoration-[#777586]/60'
                           }`}
                         >
-                          {user.display_name}
+                          <span>{user.display_name}</span>
+                          {isSelf && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EDE9FE] text-[#5A4FE0] uppercase tracking-wider">
+                              You
+                            </span>
+                          )}
                         </p>
                         <p className="text-[12px] text-[#474554] mt-0.5">
                           {user.department_or_title}
@@ -301,21 +314,32 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                       </button>
 
                       {/* Activate / Deactivate Toggle Button */}
-                      <button
-                        onClick={() => onToggleStatus(user)}
-                        className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors ${
-                          user.is_active
-                            ? 'text-[#F93C65] hover:bg-[#FFF0F0]'
-                            : 'text-[#00B69B] hover:bg-[#E6F6F4]'
-                        }`}
-                        aria-label={
-                          user.is_active
-                            ? `Deactivate ${user.display_name}`
-                            : `Activate ${user.display_name}`
-                        }
-                      >
-                        {user.is_active ? 'Deactivate' : 'Activate'}
-                      </button>
+                      {isSelf && user.is_active ? (
+                        <button
+                          disabled
+                          className="px-3 py-1.5 text-[12px] font-semibold text-[#777586] bg-[#F1F1F5] rounded-lg cursor-not-allowed opacity-60"
+                          title="You cannot deactivate your own administrative account"
+                          aria-label="Deactivate disabled for own account"
+                        >
+                          Deactivate
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onToggleStatus(user)}
+                          className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors ${
+                            user.is_active
+                              ? 'text-[#F93C65] hover:bg-[#FFF0F0]'
+                              : 'text-[#00B69B] hover:bg-[#E6F6F4]'
+                          }`}
+                          aria-label={
+                            user.is_active
+                              ? `Deactivate ${user.display_name}`
+                              : `Activate ${user.display_name}`
+                          }
+                        >
+                          {user.is_active ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -330,6 +354,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
         {users.map((user) => {
           const roleBadge = getRoleBadgeStyles(user.app_role);
           const initials = getInitials(user.display_name);
+          const isSelf = Boolean(activeUserId && user.user_id === activeUserId);
 
           return (
             <div
@@ -350,11 +375,16 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   </div>
                   <div>
                     <p
-                      className={`font-semibold text-[14px] ${
+                      className={`font-semibold text-[14px] flex items-center gap-1.5 ${
                         user.is_active ? 'text-[#121C2C]' : 'text-[#777586] line-through'
                       }`}
                     >
-                      {user.display_name}
+                      <span>{user.display_name}</span>
+                      {isSelf && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EDE9FE] text-[#5A4FE0] uppercase tracking-wider">
+                          You
+                        </span>
+                      )}
                     </p>
                     <p className="text-[12px] text-[#474554]">{user.department_or_title}</p>
                   </div>
@@ -408,16 +438,26 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                 >
                   Edit Details
                 </button>
-                <button
-                  onClick={() => onToggleStatus(user)}
-                  className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg ${
-                    user.is_active
-                      ? 'text-[#F93C65] bg-[#FFF0F0]'
-                      : 'text-[#00B69B] bg-[#E6F6F4]'
-                  }`}
-                >
-                  {user.is_active ? 'Deactivate' : 'Activate'}
-                </button>
+                {isSelf && user.is_active ? (
+                  <button
+                    disabled
+                    className="px-3 py-1.5 text-[12px] font-semibold text-[#777586] bg-[#F1F1F5] rounded-lg cursor-not-allowed opacity-60"
+                    title="You cannot deactivate your own administrative account"
+                  >
+                    Deactivate
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onToggleStatus(user)}
+                    className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg ${
+                      user.is_active
+                        ? 'text-[#F93C65] bg-[#FFF0F0]'
+                        : 'text-[#00B69B] bg-[#E6F6F4]'
+                    }`}
+                  >
+                    {user.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                )}
               </div>
             </div>
           );

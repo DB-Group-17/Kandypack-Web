@@ -13,6 +13,8 @@
  * - Requires active authentication session.
  * - Restricted to system_administrator role (`users:update` permission).
  * - Password hashes and secrets are NEVER exposed or returned in responses.
+ * - Prevents self-deactivation and self-demotion away from system_administrator for signed-in admins.
+ * - Protects the last remaining active system administrator account with row-level locks (FOR UPDATE).
  * - Updates across `users` and `user_profiles` are executed within an atomic database transaction.
  * - Connection session context (@current_user_id, @current_app_role) is configured via `withUserContext`.
  * 
@@ -264,7 +266,36 @@ export async function PATCH(
       newAppRole = cleanRole;
     }
 
-    // 7. Verify target user exists
+    // 7. Enforce administrator self-protection: prevent self-deactivation and self-demotion
+    const isSelf = session.user_id === targetUserId;
+
+    if (isSelf && newIsActive === false) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'SELF_DEACTIVATION_PROHIBITED',
+            message: 'Administrators cannot deactivate their own account.',
+            field: 'is_active'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
+    if (isSelf && newAppRole !== undefined && newAppRole !== 'system_administrator') {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'SELF_DEMOTION_PROHIBITED',
+            message: 'Administrators cannot change their own role away from system administrator.',
+            field: 'app_role'
+          }
+        },
+        { status: 400 }
+      );
+    }
+
+    // 8. Verify target user exists
     const userQuerySql = `
       SELECT 
         u.user_id,
@@ -299,7 +330,7 @@ export async function PATCH(
       );
     }
 
-    // 8. Validate role transition rules and store scoping requirements
+    // 9. Validate role transition rules and store scoping requirements
     if (newAppRole !== undefined) {
       // Prohibit assigning system login roles to operational personnel (driver, assistant)
       if (
@@ -336,37 +367,116 @@ export async function PATCH(
       }
     }
 
-    // 9. Execute atomic database update inside connection user context
-    await withUserContext(session.user_id, session.role, async (connection) => {
-      await connection.beginTransaction();
-      try {
-        // Synchronize active flag across both users and user_profiles tables
-        if (newIsActive !== undefined) {
-          const activeInt = newIsActive ? 1 : 0;
-          await connection.execute(
-            'UPDATE users SET is_active = ? WHERE user_id = ?',
-            [activeInt, targetUserId]
-          );
-          await connection.execute(
-            'UPDATE user_profiles SET is_active = ? WHERE user_id = ?',
-            [activeInt, targetUserId]
-          );
-        }
+    // 10. Execute atomic database update inside connection user context with concurrency safeguards
+    interface UpdateUserTxResult {
+      status: number;
+      error?: {
+        code: string;
+        message: string;
+        field?: string;
+      };
+    }
 
-        // Update application role in user_profiles
-        if (newAppRole !== undefined) {
-          await connection.execute(
-            'UPDATE user_profiles SET app_role = ? WHERE user_id = ?',
-            [newAppRole, targetUserId]
+    const txResult = await withUserContext<UpdateUserTxResult>(
+      session.user_id,
+      session.role,
+      async (connection) => {
+        await connection.beginTransaction();
+        try {
+          // 10a. Lock the target user's records with SELECT ... FOR UPDATE
+          const [targetUserRows] = await connection.execute<RowDataPacket[]>(
+            `SELECT u.user_id, u.is_active AS user_active, up.is_active AS profile_active, up.app_role
+             FROM users u
+             INNER JOIN user_profiles up ON u.user_id = up.user_id
+             WHERE u.user_id = ?
+             FOR UPDATE`,
+            [targetUserId]
           );
-        }
 
-        await connection.commit();
-      } catch (txError) {
-        await connection.rollback();
-        throw txError;
+          if (!targetUserRows || targetUserRows.length === 0) {
+            await connection.rollback();
+            return {
+              status: 404,
+              error: {
+                code: 'NOT_FOUND',
+                message: 'User account not found.'
+              }
+            };
+          }
+
+          const currentTarget = targetUserRows[0];
+          const isTargetActiveAdmin =
+            currentTarget.app_role === 'system_administrator' &&
+            Boolean(currentTarget.user_active && currentTarget.profile_active);
+
+          const willRemoveActiveAdmin =
+            isTargetActiveAdmin &&
+            (newIsActive === false ||
+              (newAppRole !== undefined && newAppRole !== 'system_administrator'));
+
+          // 10b. Protect against removing or deactivating the last active system administrator.
+          // Lock all active system_administrator rows with FOR UPDATE to prevent race conditions
+          // where two administrators simultaneously remove each other.
+          if (willRemoveActiveAdmin) {
+            const [adminRows] = await connection.execute<RowDataPacket[]>(
+              `SELECT u.user_id
+               FROM users u
+               INNER JOIN user_profiles up ON u.user_id = up.user_id
+               WHERE up.app_role = 'system_administrator'
+                 AND up.is_active = 1
+                 AND u.is_active = 1
+               FOR UPDATE`
+            );
+
+            if (adminRows.length <= 1) {
+              await connection.rollback();
+              return {
+                status: 400,
+                error: {
+                  code: 'LAST_ADMIN_PROTECTED',
+                  message: 'Cannot deactivate or change the role of the last remaining active system administrator.',
+                  field: newIsActive === false ? 'is_active' : 'app_role'
+                }
+              };
+            }
+          }
+
+          // 10c. Synchronize active flag across both users and user_profiles tables
+          if (newIsActive !== undefined) {
+            const activeInt = newIsActive ? 1 : 0;
+            await connection.execute(
+              'UPDATE users SET is_active = ? WHERE user_id = ?',
+              [activeInt, targetUserId]
+            );
+            await connection.execute(
+              'UPDATE user_profiles SET is_active = ? WHERE user_id = ?',
+              [activeInt, targetUserId]
+            );
+          }
+
+          // 10d. Update application role in user_profiles
+          if (newAppRole !== undefined) {
+            await connection.execute(
+              'UPDATE user_profiles SET app_role = ? WHERE user_id = ?',
+              [newAppRole, targetUserId]
+            );
+          }
+
+          await connection.commit();
+          return { status: 200 };
+        } catch (txError) {
+          await connection.rollback();
+          throw txError;
+        }
       }
-    });
+    );
+
+    if (txResult && txResult.status !== 200 && txResult.error) {
+      return NextResponse.json(
+        { error: txResult.error },
+        { status: txResult.status }
+      );
+    }
 
     // 10. Fetch updated user record to return latest database state
     const updatedUser = await queryOne<UserDbRow>(userQuerySql, [targetUserId]);
