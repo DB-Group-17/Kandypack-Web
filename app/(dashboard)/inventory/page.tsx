@@ -376,7 +376,6 @@ export default function StoreInventoryPage(): React.JSX.Element {
               delivery_id: row.delivery_id,
               reference_code: refCode,
               created_at: row.created_at,
-              created_by_name: 'Verified Ledger',
             };
           });
 

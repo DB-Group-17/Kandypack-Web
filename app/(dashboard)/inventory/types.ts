@@ -88,10 +88,6 @@ export interface InventoryTransaction {
   reference_code: string;
   /** Date and time when the transaction was committed (ISO or formatted) */
   created_at: string;
-  /** Operator name if recorded */
-  created_by_name?: string;
-  /** Optional memo or note explaining discrepancies or special handling */
-  notes?: string;
 }
 
 /**

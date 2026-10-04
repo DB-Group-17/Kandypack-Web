@@ -270,8 +270,6 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'receive',
     reference_code: 'TB-102',
     created_at: '2026-08-31 08:30:15',
-    created_by_name: 'Operator Silva',
-    notes: 'Arrived on Express Cargo 401 on schedule',
   },
   {
     transaction_id: 5002,
@@ -284,8 +282,6 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'dispatch',
     reference_code: 'DEL-8801',
     created_at: '2026-08-31 07:45:00',
-    created_by_name: 'Driver Perera (NB-1001)',
-    notes: 'Loaded for Colombo North Route delivery',
   },
   {
     transaction_id: 5003,
@@ -298,8 +294,6 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'dispatch',
     reference_code: 'DEL-8802',
     created_at: '2026-08-30 14:15:30',
-    created_by_name: 'Driver Fernando (NB-1002)',
-    notes: 'Colombo South Wholesale distribution',
   },
   {
     transaction_id: 5004,
@@ -312,8 +306,6 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'receive',
     reference_code: 'TB-098',
     created_at: '2026-08-30 09:45:00',
-    created_by_name: 'Operator Silva',
-    notes: 'Batch inspected and verified',
   },
   {
     transaction_id: 5005,
@@ -326,8 +318,6 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'adjustment',
     reference_code: 'ADJ-2026-012',
     created_at: '2026-08-29 16:20:00',
-    created_by_name: 'Store Manager John Doe',
-    notes: 'Water damaged packaging written off during audit',
   },
   {
     transaction_id: 5006,
@@ -340,8 +330,6 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'receive',
     reference_code: 'TB-095',
     created_at: '2026-08-28 11:15:00',
-    created_by_name: 'Operator Silva',
-    notes: 'Standard delivery receipt',
   },
   {
     transaction_id: 5007,
@@ -354,8 +342,6 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'dispatch',
     reference_code: 'DEL-8790',
     created_at: '2026-08-27 15:10:00',
-    created_by_name: 'Driver Jayawardena',
-    notes: 'Retail Mart replenishment',
   },
   {
     transaction_id: 5008,
@@ -368,7 +354,5 @@ export const INITIAL_MOCK_TRANSACTIONS: InventoryTransaction[] = [
     transaction_type: 'receive',
     reference_code: 'TB-091',
     created_at: '2026-08-26 14:00:00',
-    created_by_name: 'Operator Silva',
-    notes: 'Received without remarks',
   },
 ];

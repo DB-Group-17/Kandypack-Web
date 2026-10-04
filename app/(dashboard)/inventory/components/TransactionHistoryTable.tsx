@@ -235,9 +235,6 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                 <th className="py-4 px-6 text-[11px] font-bold text-[#474554] uppercase tracking-wider">
                   Reference
                 </th>
-                <th className="py-4 px-6 text-[11px] font-bold text-[#474554] uppercase tracking-wider">
-                  Operator & Notes
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EEFF]">
@@ -263,15 +260,12 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                     <td className="py-4 px-6">
                       <div className="h-4 bg-[#E7EEFF] rounded w-20" />
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-[#E7EEFF] rounded w-32" />
-                    </td>
                   </tr>
                 ))
               ) : error ? (
                 /* Error State Row */
                 <tr>
-                  <td colSpan={7} className="py-12 text-center">
+                  <td colSpan={6} className="py-12 text-center">
                     <div className="flex flex-col items-center justify-center max-w-md mx-auto px-4">
                       <div className="w-12 h-12 rounded-full bg-[#FFF0F0] text-[#F93C65] flex items-center justify-center mb-3">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,23 +335,13 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                           {txn.reference_code}
                         </span>
                       </td>
-
-                      {/* Operator & Notes */}
-                      <td className="py-4 px-6 text-[13px] text-[#474554]">
-                        <div className="font-medium text-[#121C2C]">{txn.created_by_name || 'System'}</div>
-                        {txn.notes && (
-                          <div className="text-[12px] text-[#777586] italic mt-0.5 line-clamp-1">
-                            {txn.notes}
-                          </div>
-                        )}
-                      </td>
                     </tr>
                   );
                 })
               ) : (
                 /* Empty Table State */
                 <tr>
-                  <td colSpan={7} className="py-14 text-center">
+                  <td colSpan={6} className="py-14 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-full bg-[#F0F3FF] flex items-center justify-center text-[#4132C7] mb-3">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
