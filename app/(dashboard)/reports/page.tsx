@@ -80,22 +80,33 @@ interface CustomerOption {
 // so they never go stale (reviewer issue #4).
 // ---------------------------------------------------------------------------
 
-/** Returns the ISO date string (YYYY-MM-DD) of the Monday of the current week. */
+/**
+ * Formats a Date object as a YYYY-MM-DD string in the user's LOCAL timezone (reviewer issues B & D).
+ * Avoids Date.toISOString() which converts to UTC and shifts dates backward in timezones like Asia/Colombo (UTC+5:30).
+ */
+function toLocalIsoDate(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** Returns the local ISO date string (YYYY-MM-DD) of the Monday of the current week. */
 function getCurrentMonday(): string {
   const now = new Date();
   const day = now.getDay(); // 0=Sun, 1=Mon … 6=Sat
   const daysBack = day === 0 ? 6 : day - 1;
   now.setDate(now.getDate() - daysBack);
-  return now.toISOString().split("T")[0];
+  return toLocalIsoDate(now);
 }
 
-/** Returns { from, to } covering the first day of last month to today. */
+/** Returns { from, to } covering the first day of last month to today in local timezone. */
 function getDefaultDateRange(): { from: string; to: string } {
   const now = new Date();
-  const to = now.toISOString().split("T")[0];
+  const to = toLocalIsoDate(now);
   // First day of the previous calendar month
   const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const from = firstOfLastMonth.toISOString().split("T")[0];
+  const from = toLocalIsoDate(firstOfLastMonth);
   return { from, to };
 }
 
@@ -267,6 +278,11 @@ export default function ReportsPage() {
           break;
         }
         case "driver-assistant-hours":
+          if (!weekStart) {
+            setDriverAssistantHours([]);
+            setIsLoading(false);
+            return;
+          }
           endpoint = `/api/reports/driver-assistant-hours?week_start=${weekStart}`;
           break;
         case "truck-usage":
@@ -639,14 +655,24 @@ export default function ReportsPage() {
                   type="date"
                   value={weekStart}
                   onChange={(e) => {
-                    // Snap any picked date to that week's Monday before storing.
-                    // v_driver_assistant_hours week_start is always a Monday, so
-                    // non-Monday inputs would return no rows (reviewer issue #3).
-                    const raw = new Date(e.target.value + "T00:00:00");
-                    const day = raw.getDay(); // 0=Sun, 1=Mon … 6=Sat
+                    const val = e.target.value;
+                    // Safely handle cleared input without throwing RangeError (reviewer issue B)
+                    if (!val) {
+                      setWeekStart("");
+                      return;
+                    }
+                    // Parse year, month, day to construct a local Date, avoiding UTC shift bugs (reviewer issue B)
+                    const parts = val.split("-").map(Number);
+                    if (parts.length !== 3 || parts.some(Number.isNaN)) {
+                      setWeekStart(val);
+                      return;
+                    }
+                    const [y, m, d] = parts;
+                    const picked = new Date(y, m - 1, d);
+                    const day = picked.getDay(); // 0=Sun, 1=Mon … 6=Sat
                     const daysBack = day === 0 ? 6 : day - 1; // distance to Monday
-                    raw.setDate(raw.getDate() - daysBack);
-                    setWeekStart(raw.toISOString().split("T")[0]);
+                    picked.setDate(picked.getDate() - daysBack);
+                    setWeekStart(toLocalIsoDate(picked));
                   }}
                   className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-2.5 py-1.5 text-[#121C2C]"
                 />
