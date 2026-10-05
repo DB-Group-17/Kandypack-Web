@@ -630,8 +630,11 @@ export async function fetchCustomerOrderHistory(
       CAST(order_id AS SIGNED) AS order_id,
       CAST(customer_id AS SIGNED) AS customer_id,
       customer_name,
-      order_placed_at,
-      expected_delivery_date,
+      -- Format DATETIME columns as ISO 8601 strings so mysql2 returns plain strings,
+      -- not JS Date objects whose String() conversion is locale-dependent (Docs/05_api-and-pages.md §A9).
+      DATE_FORMAT(order_placed_at, '%Y-%m-%dT%H:%i:%s.000Z') AS order_placed_at,
+      -- expected_delivery_date is a DATE column; format as YYYY-MM-DD only.
+      DATE_FORMAT(expected_delivery_date, '%Y-%m-%d') AS expected_delivery_date,
       status,
       delivery_address,
       delivery_area,
@@ -641,7 +644,8 @@ export async function fetchCustomerOrderHistory(
       CAST(total_space_required AS DOUBLE) AS total_space_required,
       CAST(delivery_id AS SIGNED) AS delivery_id,
       delivery_status,
-      delivered_at,
+      -- delivered_at is nullable DATETIME; NULL passes through as null in mysql2.
+      DATE_FORMAT(delivered_at, '%Y-%m-%dT%H:%i:%s.000Z') AS delivered_at,
       driver_name,
       assistant_name,
       truck_plate
