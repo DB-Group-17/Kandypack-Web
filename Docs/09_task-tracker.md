@@ -92,7 +92,7 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [x] All 6 report GET endpoints (`quarterly-sales`, `most-ordered-items`, `city-route-sales`, `driver-assistant-hours`, `truck-usage`, `customer-history`)
 - [x] `GET /reports/:type/export/csv`
 - [x] `/reports` page — tabs + tables + CSV button wired (PDF button deferred to Phase 3)
-- [x] Open PR → review → merge  <!-- Phase 2 complete; branch `member2` ready — open PR into `development` for team review -->
+- [ ] Open PR → review → merge
 
 ### Member 3 — Deliveries (needs Orders + Truck Scheduling both on `main`)
 - [ ] `GET /deliveries`, `PATCH /deliveries/:id/complete` → `complete_delivery()`
