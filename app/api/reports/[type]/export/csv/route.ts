@@ -23,6 +23,8 @@ import { getSession } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
 import {
   generateCsv,
+  validateReportFilters,
+  CSV_ROW_CAP,
   fetchQuarterlySales,
   fetchMostOrderedItems,
   fetchCityRouteSales,
@@ -109,6 +111,15 @@ export async function GET(
 
     const { searchParams } = new URL(req.url);
     const reportType = type as AllowedReportType;
+
+    // Run shared filter validation — consistent with JSON endpoint checks (reviewer issue #5).
+    const validation = validateReportFilters(reportType, searchParams);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: { code: 'INVALID_PARAM', message: validation.error } },
+        { status: validation.status ?? 400 }
+      );
+    }
 
     let headers: string[] = [];
     let rows: (string | number | null | undefined)[][] = [];
@@ -330,6 +341,20 @@ export async function GET(
         ]);
         break;
       }
+    }
+
+    // Enforce row cap to prevent exporting arbitrarily large datasets.
+    // Docs/03_architecture.md §11 and §13 require a maximum size for synchronous exports.
+    if (rows.length > CSV_ROW_CAP) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'EXPORT_TOO_LARGE',
+            message: `Export exceeds the ${CSV_ROW_CAP.toLocaleString()} row limit. Narrow your filters and try again.`,
+          },
+        },
+        { status: 400 }
+      );
     }
 
     const csvContent = generateCsv(headers, rows);

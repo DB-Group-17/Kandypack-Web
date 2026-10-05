@@ -25,6 +25,107 @@ import { getOrSetCache, REDIS_KEYS } from '@/lib/redis';
 /** Cache time-to-live for heavy aggregate reporting queries (1 hour = 3600 seconds) */
 export const REPORT_CACHE_TTL_SECONDS = 3600;
 
+/**
+ * Maximum number of data rows allowed in a single CSV export response.
+ * Enforced by the CSV route to prevent runaway memory usage.
+ * Authority: Docs/03_architecture.md §11, §13 (reporting rules).
+ */
+export const CSV_ROW_CAP = 5000;
+
+/**
+ * Shared filter validation result returned by validateReportFilters().
+ */
+export interface FilterValidationResult {
+  valid: boolean;
+  /** Human-readable error message when valid === false. */
+  error?: string;
+  /** The HTTP status code to return when valid === false (typically 400). */
+  status?: number;
+}
+
+/**
+ * Validates query-string filter parameters for a given report type.
+ * Reused by both the JSON endpoints and the CSV export route to ensure
+ * consistent error responses (reviewer issue #5).
+ *
+ * @param type - The report slug (e.g. "quarterly-sales").
+ * @param params - URLSearchParams from the incoming request.
+ * @returns { valid, error?, status? }
+ */
+export function validateReportFilters(
+  type: string,
+  params: URLSearchParams
+): FilterValidationResult {
+  const yearRaw = params.get('year');
+  const quarterRaw = params.get('quarter');
+  const monthRaw = params.get('month');
+  const customerIdRaw = params.get('customer_id');
+  const weekStartRaw = params.get('week_start');
+
+  /** Simple ISO date check (YYYY-MM-DD) */
+  const isValidDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+  /** Positive integer check */
+  const isPosInt = (s: string) => /^\d+$/.test(s) && Number(s) > 0;
+  /** Year within a reasonable range */
+  const isValidYear = (s: string) => isPosInt(s) && Number(s) >= 2000 && Number(s) <= 2100;
+  /** Quarter 1–4 */
+  const isValidQuarter = (s: string) => ['1', '2', '3', '4'].includes(s);
+  /** Month 1–12 */
+  const isValidMonth = (s: string) => isPosInt(s) && Number(s) >= 1 && Number(s) <= 12;
+
+  switch (type) {
+    case 'quarterly-sales':
+      if (yearRaw && !isValidYear(yearRaw))
+        return { valid: false, error: "'year' must be a 4-digit year (e.g. 2026).", status: 400 };
+      if (quarterRaw && !isValidQuarter(quarterRaw))
+        return { valid: false, error: "'quarter' must be 1, 2, 3, or 4.", status: 400 };
+      break;
+
+    case 'most-ordered-items':
+      if (!yearRaw || !quarterRaw)
+        return { valid: false, error: "Both 'year' and 'quarter' are required for this report.", status: 400 };
+      if (!isValidYear(yearRaw))
+        return { valid: false, error: "'year' must be a 4-digit year (e.g. 2026).", status: 400 };
+      if (!isValidQuarter(quarterRaw))
+        return { valid: false, error: "'quarter' must be 1, 2, 3, or 4.", status: 400 };
+      break;
+
+    case 'city-route-sales': {
+      const dateFrom = params.get('date_from');
+      const dateTo = params.get('date_to');
+      if (dateFrom && !isValidDate(dateFrom))
+        return { valid: false, error: "'date_from' must be YYYY-MM-DD.", status: 400 };
+      if (dateTo && !isValidDate(dateTo))
+        return { valid: false, error: "'date_to' must be YYYY-MM-DD.", status: 400 };
+      break;
+    }
+
+    case 'driver-assistant-hours':
+      if (!weekStartRaw)
+        return { valid: false, error: "'week_start' (YYYY-MM-DD) is required for this report.", status: 400 };
+      if (!isValidDate(weekStartRaw))
+        return { valid: false, error: "'week_start' must be YYYY-MM-DD.", status: 400 };
+      break;
+
+    case 'truck-usage':
+      if (yearRaw && !isValidYear(yearRaw))
+        return { valid: false, error: "'year' must be a 4-digit year.", status: 400 };
+      if (monthRaw && !isValidMonth(monthRaw))
+        return { valid: false, error: "'month' must be between 1 and 12.", status: 400 };
+      break;
+
+    case 'customer-history':
+      if (!customerIdRaw)
+        return { valid: false, error: "'customer_id' is required for this report.", status: 400 };
+      if (!isPosInt(customerIdRaw))
+        return { valid: false, error: "'customer_id' must be a positive integer.", status: 400 };
+      break;
+  }
+
+  return { valid: true };
+}
+
+
 /* =========================================================================
    TYPE DEFINITIONS FOR REPORTING DATA
    ========================================================================= */
