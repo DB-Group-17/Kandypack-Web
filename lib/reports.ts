@@ -460,8 +460,12 @@ export async function fetchDriverAssistantHours(
   const params: QueryParam[] = [];
 
   if (week_start) {
-    conditions.push('DATE(week_start) = ?');
-    params.push(week_start);
+    // Snap the input date to that week's Monday using WEEKDAY().
+    // v_driver_assistant_hours always stores week_start as a Monday.
+    // Without snapping, any non-Monday input returns 0 rows (reviewer issue #3).
+    // WEEKDAY(?) returns 0 for Monday … 6 for Sunday, so subtracting it gives the Monday.
+    conditions.push('DATE(week_start) = DATE(? - INTERVAL WEEKDAY(?) DAY)');
+    params.push(week_start, week_start);
   }
 
   if (role) {

@@ -550,11 +550,20 @@ export default function ReportsPage() {
             {/* Week Start Filter (Report 4) */}
             {activeTab === "driver-assistant-hours" && (
               <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-[#474554]">Week starting:</label>
+                <label className="text-xs font-semibold text-[#474554]">Week starting (Monday):</label>
                 <input
                   type="date"
                   value={weekStart}
-                  onChange={(e) => setWeekStart(e.target.value)}
+                  onChange={(e) => {
+                    // Snap any picked date to that week's Monday before storing.
+                    // v_driver_assistant_hours week_start is always a Monday, so
+                    // non-Monday inputs would return no rows (reviewer issue #3).
+                    const raw = new Date(e.target.value + "T00:00:00");
+                    const day = raw.getDay(); // 0=Sun, 1=Mon … 6=Sat
+                    const daysBack = day === 0 ? 6 : day - 1; // distance to Monday
+                    raw.setDate(raw.getDate() - daysBack);
+                    setWeekStart(raw.toISOString().split("T")[0]);
+                  }}
                   className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-2.5 py-1.5 text-[#121C2C]"
                 />
               </div>
