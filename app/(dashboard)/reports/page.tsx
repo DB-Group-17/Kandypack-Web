@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useAuth } from "@/context/AuthContext";
 import type {
   QuarterlySalesRow,
   MostOrderedItemRow,
@@ -88,6 +89,13 @@ interface CustomerOption {
  * @returns {JSX.Element} The rendered Reports page component.
  */
 export default function ReportsPage() {
+  // Read the current user's role from AuthContext for RBAC-driven UI gating.
+  // fleet_supervisor has reports.read but NOT reports.export (lib/rbac.ts line 250).
+  const { role } = useAuth();
+
+  /** True when the current role is permitted to export reports. */
+  const canExport = role === "system_administrator" || role === "logistics_manager";
+
   // --- Active Tab State ---
   const [activeTab, setActiveTab] = useState<ReportTab>("quarterly-sales");
 
@@ -389,34 +397,37 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        {/* Export Toolbar Buttons */}
-        <div className="flex items-center gap-2.5">
-          {/* CSV Export Button */}
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            disabled={isExportingCsv || isLoading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#C8C4D7] text-xs font-semibold text-[#121C2C] hover:bg-[#F0F3FF] transition-all shadow-xs disabled:opacity-50 cursor-pointer"
-          >
-            <svg className="w-4 h-4 text-[#474554]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span>{isExportingCsv ? "Exporting CSV…" : "Export CSV"}</span>
-          </button>
+        {/* Export Toolbar Buttons — visible to system_administrator and logistics_manager only.
+            fleet_supervisor has reports.read but not reports.export (lib/rbac.ts). */}
+        {canExport && (
+          <div className="flex items-center gap-2.5">
+            {/* CSV Export Button */}
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={isExportingCsv || isLoading}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#C8C4D7] text-xs font-semibold text-[#121C2C] hover:bg-[#F0F3FF] transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+            >
+              <svg className="w-4 h-4 text-[#474554]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>{isExportingCsv ? "Exporting CSV…" : "Export CSV"}</span>
+            </button>
 
-          {/* PDF Export Button */}
-          <button
-            type="button"
-            onClick={handleExportPdf}
-            disabled={isExportingPdf || isLoading}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#4132C7] text-white text-xs font-semibold hover:bg-[#3427A8] transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <span>{isExportingPdf ? "Generating PDF…" : "Export PDF"}</span>
-          </button>
-        </div>
+            {/* PDF Export Button */}
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={isExportingPdf || isLoading}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#4132C7] text-white text-xs font-semibold hover:bg-[#3427A8] transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span>{isExportingPdf ? "Generating PDF…" : "Export PDF"}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Report Tabs Navigation Bar */}
