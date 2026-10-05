@@ -178,7 +178,8 @@ export default function ReportsPage() {
   };
 
   /**
-   * Fetches customer accounts directory on initial mount to populate Customer History selector.
+   * Fetches customer accounts directory once on initial mount to populate Customer History selector.
+   * Loads once ([]) so selecting a customer doesn't trigger a refetch (reviewer issue #6).
    */
   useEffect(() => {
     async function loadCustomers() {
@@ -189,10 +190,7 @@ export default function ReportsPage() {
           const data = await res.json();
           if (Array.isArray(data.items) && data.items.length > 0) {
             setCustomers(data.items);
-            // Default to the first customer if current selectedCustomerId is not in the list
-            if (!data.items.some((c: CustomerOption) => c.customer_id === selectedCustomerId)) {
-              setSelectedCustomerId(data.items[0].customer_id);
-            }
+            setSelectedCustomerId(data.items[0].customer_id);
           }
         }
       } catch (err) {
@@ -203,7 +201,7 @@ export default function ReportsPage() {
     }
 
     loadCustomers();
-  }, [selectedCustomerId]);
+  }, []);
 
   /**
    * Fetches the report dataset corresponding to the specified tab with current filter parameters.
