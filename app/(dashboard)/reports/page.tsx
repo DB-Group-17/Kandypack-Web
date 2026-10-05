@@ -178,6 +178,8 @@ export default function ReportsPage() {
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
   // null = "All quarters" (default for Quarterly Sales so the full comparison view loads first).
   const [selectedQuarter, setSelectedQuarter] = useState<number | null>(null);
+  // Dedicated quarter state for Most Ordered Items which requires a non-null quarter (reviewer issue C).
+  const [mostOrderedQuarter, setMostOrderedQuarter] = useState<number>(CURRENT_QUARTER);
   const [selectedMonth, setSelectedMonth] = useState<number>(CURRENT_MONTH);
   const [dateFrom, setDateFrom] = useState<string>(_defaultDateRange.from);
   const [dateTo, setDateTo] = useState<string>(_defaultDateRange.to);
@@ -268,7 +270,7 @@ export default function ReportsPage() {
           break;
         }
         case "most-ordered-items":
-          endpoint = `/api/reports/most-ordered-items?year=${selectedYear}&quarter=${selectedQuarter ?? CURRENT_QUARTER}`;
+          endpoint = `/api/reports/most-ordered-items?year=${selectedYear}&quarter=${mostOrderedQuarter}`;
           break;
         case "city-route-sales": {
           const params = new URLSearchParams();
@@ -333,7 +335,7 @@ export default function ReportsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [role, selectedYear, selectedQuarter, selectedMonth, dateFrom, dateTo, weekStart, selectedCustomerId]);
+  }, [role, selectedYear, selectedQuarter, mostOrderedQuarter, selectedMonth, dateFrom, dateTo, weekStart, selectedCustomerId]);
 
   /**
    * Refetches report data whenever active tab changes.
@@ -368,8 +370,7 @@ export default function ReportsPage() {
         break;
       case "most-ordered-items":
         params.append("year", String(selectedYear));
-        // Most Ordered Items requires a specific quarter; fall back to current quarter
-        params.append("quarter", String(selectedQuarter ?? CURRENT_QUARTER));
+        params.append("quarter", String(mostOrderedQuarter));
         break;
       case "city-route-sales":
         if (dateFrom) params.append("date_from", dateFrom);
@@ -576,11 +577,8 @@ export default function ReportsPage() {
               </div>
             )}
 
-            {/* Quarter Filter (Reports 1, 2).
-                "All quarters" (value "") is the default for Quarterly Sales so the
-                full quarter-by-quarter comparison loads on first visit. */}
-            {(activeTab === "quarterly-sales" ||
-              activeTab === "most-ordered-items") && (
+            {/* Quarter Filter (Report 1: Quarterly Sales — supports All quarters) */}
+            {activeTab === "quarterly-sales" && (
               <div className="flex items-center gap-1.5">
                 <label className="text-xs font-semibold text-[#474554]">Quarter:</label>
                 <select
@@ -590,10 +588,24 @@ export default function ReportsPage() {
                   }
                   className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-1.5 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
                 >
-                  {/* "All quarters" only shown for Quarterly Sales; Most Ordered Items requires a specific quarter */}
-                  {activeTab === "quarterly-sales" && (
-                    <option value="">All quarters</option>
-                  )}
+                  <option value="">All quarters</option>
+                  <option value={1}>Q1 (Jan – Mar)</option>
+                  <option value={2}>Q2 (Apr – Jun)</option>
+                  <option value={3}>Q3 (Jul – Sep)</option>
+                  <option value={4}>Q4 (Oct – Dec)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Quarter Filter (Report 2: Most Ordered Items — requires specific quarter, reviewer issue C) */}
+            {activeTab === "most-ordered-items" && (
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-[#474554]">Quarter:</label>
+                <select
+                  value={mostOrderedQuarter}
+                  onChange={(e) => setMostOrderedQuarter(Number(e.target.value))}
+                  className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-1.5 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
+                >
                   <option value={1}>Q1 (Jan – Mar)</option>
                   <option value={2}>Q2 (Apr – Jun)</option>
                   <option value={3}>Q3 (Jul – Sep)</option>
