@@ -133,8 +133,35 @@ export default function ReportsPage() {
   /** True when the current role is permitted to export reports. */
   const canExport = role === "system_administrator" || role === "logistics_manager";
 
-  // --- Active Tab State ---
-  const [activeTab, setActiveTab] = useState<ReportTab>("quarterly-sales");
+  /**
+   * Filter TABS by user role (reviewer issue A).
+   * fleet_supervisor can only access operational/fleet reports: driver-assistant-hours and truck-usage.
+   * system_administrator and logistics_manager retain access to all 6 reports.
+   */
+  const visibleTabs = useMemo(() => {
+    if (role === "fleet_supervisor") {
+      return TABS.filter(
+        (t) => t.id === "driver-assistant-hours" || t.id === "truck-usage"
+      );
+    }
+    return TABS;
+  }, [role]);
+
+  // --- Selected Tab State ---
+  const [selectedTab, setSelectedTab] = useState<ReportTab>("quarterly-sales");
+
+  /**
+   * Derive the effective active tab based on role permissions (reviewer issue A).
+   * If selectedTab is permitted for the user's role, use it;
+   * otherwise immediately fallback to the first allowed tab (e.g. driver-assistant-hours for fleet_supervisor).
+   * Computing during render eliminates setState-in-effect cascading render violations.
+   */
+  const activeTab: ReportTab = useMemo(() => {
+    if (visibleTabs.some((t) => t.id === selectedTab)) {
+      return selectedTab;
+    }
+    return visibleTabs[0]?.id ?? "quarterly-sales";
+  }, [visibleTabs, selectedTab]);
 
   // --- Dynamic Filter Parameters (defaults derived from today — reviewer issue #4) ---
   const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
@@ -209,6 +236,11 @@ export default function ReportsPage() {
    * @param {ReportTab} tab - The report tab to fetch.
    */
   const fetchReportData = useCallback(async (tab: ReportTab) => {
+    // Guard against fetching reports not permitted for fleet_supervisor (reviewer issue A)
+    if (role === "fleet_supervisor" && tab !== "driver-assistant-hours" && tab !== "truck-usage") {
+      return;
+    }
+
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -285,7 +317,7 @@ export default function ReportsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedYear, selectedQuarter, selectedMonth, dateFrom, dateTo, weekStart, selectedCustomerId]);
+  }, [role, selectedYear, selectedQuarter, selectedMonth, dateFrom, dateTo, weekStart, selectedCustomerId]);
 
   /**
    * Refetches report data whenever active tab changes.
@@ -473,16 +505,16 @@ export default function ReportsPage() {
         )}
       </div>
 
-      {/* Report Tabs Navigation Bar */}
+      {/* Report Tabs Navigation Bar — displays only tabs permitted for current user role */}
       <div className="bg-white p-1.5 rounded-2xl border border-[#C8C4D7]/50 shadow-xs">
         <div className="flex overflow-x-auto gap-1 no-scrollbar">
-          {TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => setSelectedTab(tab.id)}
                 className={`px-4 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex-1 sm:flex-initial text-center cursor-pointer ${
                   active
                     ? "bg-[#5A4FE0] text-white font-semibold shadow-xs"
