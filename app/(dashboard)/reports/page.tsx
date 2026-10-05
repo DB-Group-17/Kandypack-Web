@@ -75,6 +75,43 @@ interface CustomerOption {
   phone?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Dynamic filter defaults — computed from the current date at module load time
+// so they never go stale (reviewer issue #4).
+// ---------------------------------------------------------------------------
+
+/** Returns the ISO date string (YYYY-MM-DD) of the Monday of the current week. */
+function getCurrentMonday(): string {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon … 6=Sat
+  const daysBack = day === 0 ? 6 : day - 1;
+  now.setDate(now.getDate() - daysBack);
+  return now.toISOString().split("T")[0];
+}
+
+/** Returns { from, to } covering the first day of last month to today. */
+function getDefaultDateRange(): { from: string; to: string } {
+  const now = new Date();
+  const to = now.toISOString().split("T")[0];
+  // First day of the previous calendar month
+  const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const from = firstOfLastMonth.toISOString().split("T")[0];
+  return { from, to };
+}
+
+const _now = new Date();
+/** Current calendar year. */
+const CURRENT_YEAR = _now.getFullYear();
+/** Current calendar quarter (1–4). */
+const CURRENT_QUARTER = Math.ceil((_now.getMonth() + 1) / 3);
+/** Current calendar month (1–12). */
+const CURRENT_MONTH = _now.getMonth() + 1;
+
+/** Year dropdown options: current year going back 4 years. */
+const YEAR_OPTIONS: number[] = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
+
+const _defaultDateRange = getDefaultDateRange();
+
 /**
  * ReportsPage provides the operational management analytics interface for Kandypack.
  *
@@ -99,14 +136,15 @@ export default function ReportsPage() {
   // --- Active Tab State ---
   const [activeTab, setActiveTab] = useState<ReportTab>("quarterly-sales");
 
-  // --- Dynamic Filter Parameters ---
-  const [selectedYear, setSelectedYear] = useState<number>(2026);
-  const [selectedQuarter, setSelectedQuarter] = useState<number>(3);
-  const [selectedMonth, setSelectedMonth] = useState<number>(9);
-  const [dateFrom, setDateFrom] = useState<string>("2026-08-01");
-  const [dateTo, setDateTo] = useState<string>("2026-09-30");
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(1);
-  const [weekStart, setWeekStart] = useState<string>("2026-08-31");
+  // --- Dynamic Filter Parameters (defaults derived from today — reviewer issue #4) ---
+  const [selectedYear, setSelectedYear] = useState<number>(CURRENT_YEAR);
+  // null = "All quarters" (default for Quarterly Sales so the full comparison view loads first).
+  const [selectedQuarter, setSelectedQuarter] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number>(CURRENT_MONTH);
+  const [dateFrom, setDateFrom] = useState<string>(_defaultDateRange.from);
+  const [dateTo, setDateTo] = useState<string>(_defaultDateRange.to);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number>(0);
+  const [weekStart, setWeekStart] = useState<string>(getCurrentMonday());
 
   // --- Customers Directory State ---
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -180,11 +218,16 @@ export default function ReportsPage() {
       let endpoint = "";
 
       switch (tab) {
-        case "quarterly-sales":
-          endpoint = `/api/reports/quarterly-sales?year=${selectedYear}&quarter=${selectedQuarter}`;
+        case "quarterly-sales": {
+          // When selectedQuarter is null, omit the quarter param to get all quarters
+          // (the full year-over-year comparison the report exists for).
+          const qParams = new URLSearchParams({ year: String(selectedYear) });
+          if (selectedQuarter !== null) qParams.append("quarter", String(selectedQuarter));
+          endpoint = `/api/reports/quarterly-sales?${qParams.toString()}`;
           break;
+        }
         case "most-ordered-items":
-          endpoint = `/api/reports/most-ordered-items?year=${selectedYear}&quarter=${selectedQuarter}`;
+          endpoint = `/api/reports/most-ordered-items?year=${selectedYear}&quarter=${selectedQuarter ?? CURRENT_QUARTER}`;
           break;
         case "city-route-sales": {
           const params = new URLSearchParams();
@@ -274,11 +317,13 @@ export default function ReportsPage() {
     switch (activeTab) {
       case "quarterly-sales":
         params.append("year", String(selectedYear));
-        params.append("quarter", String(selectedQuarter));
+        // Omit quarter when "All quarters" is selected (selectedQuarter === null)
+        if (selectedQuarter !== null) params.append("quarter", String(selectedQuarter));
         break;
       case "most-ordered-items":
         params.append("year", String(selectedYear));
-        params.append("quarter", String(selectedQuarter));
+        // Most Ordered Items requires a specific quarter; fall back to current quarter
+        params.append("quarter", String(selectedQuarter ?? CURRENT_QUARTER));
         break;
       case "city-route-sales":
         if (dateFrom) params.append("date_from", dateFrom);
@@ -467,7 +512,7 @@ export default function ReportsPage() {
 
           {/* Filter Inputs Tailored per Report */}
           <div className="flex flex-wrap items-center gap-3">
-            {/* Year Filter (Reports 1, 2, 5) */}
+            {/* Year Filter (Reports 1, 2, 5) — dynamic list from YEAR_OPTIONS */}
             {(activeTab === "quarterly-sales" ||
               activeTab === "most-ordered-items" ||
               activeTab === "truck-usage") && (
@@ -478,26 +523,35 @@ export default function ReportsPage() {
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-1.5 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
                 >
-                  <option value={2026}>2026</option>
-                  <option value={2025}>2025</option>
+                  {YEAR_OPTIONS.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
                 </select>
               </div>
             )}
 
-            {/* Quarter Filter (Reports 1, 2) */}
+            {/* Quarter Filter (Reports 1, 2).
+                "All quarters" (value "") is the default for Quarterly Sales so the
+                full quarter-by-quarter comparison loads on first visit. */}
             {(activeTab === "quarterly-sales" ||
               activeTab === "most-ordered-items") && (
               <div className="flex items-center gap-1.5">
                 <label className="text-xs font-semibold text-[#474554]">Quarter:</label>
                 <select
-                  value={selectedQuarter}
-                  onChange={(e) => setSelectedQuarter(Number(e.target.value))}
+                  value={selectedQuarter ?? ""}
+                  onChange={(e) =>
+                    setSelectedQuarter(e.target.value === "" ? null : Number(e.target.value))
+                  }
                   className="text-xs bg-[#F0F3FF] border border-[#C8C4D7] rounded-lg px-3 py-1.5 text-[#121C2C] focus:outline-hidden focus:ring-2 focus:ring-[#4132C7]"
                 >
-                  <option value={1}>Q1 (Jan - Mar)</option>
-                  <option value={2}>Q2 (Apr - Jun)</option>
-                  <option value={3}>Q3 (Jul - Sep)</option>
-                  <option value={4}>Q4 (Oct - Dec)</option>
+                  {/* "All quarters" only shown for Quarterly Sales; Most Ordered Items requires a specific quarter */}
+                  {activeTab === "quarterly-sales" && (
+                    <option value="">All quarters</option>
+                  )}
+                  <option value={1}>Q1 (Jan – Mar)</option>
+                  <option value={2}>Q2 (Apr – Jun)</option>
+                  <option value={3}>Q3 (Jul – Sep)</option>
+                  <option value={4}>Q4 (Oct – Dec)</option>
                 </select>
               </div>
             )}
