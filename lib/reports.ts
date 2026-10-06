@@ -133,7 +133,7 @@ export function validateReportFilters(
         return { valid: false, error: "'customer_id' is required for this report.", status: 400 };
       if (!isPosInt(customerIdRaw))
         return { valid: false, error: "'customer_id' must be a positive integer.", status: 400 };
-      if (status && !['Pending', 'Processing', 'Dispatched', 'Delivered', 'Cancelled'].includes(status))
+      if (status && !['Pending', 'In Transit', 'At Store', 'Out for Delivery', 'Delivered', 'Cancelled'].includes(status))
         return { valid: false, error: "Invalid 'status' filter.", status: 400 };
       if (dateFrom && !isValidDate(dateFrom))
         return { valid: false, error: "'date_from' must be a valid calendar date in YYYY-MM-DD format.", status: 400 };
