@@ -44,9 +44,8 @@ export interface FilterValidationResult {
 }
 
 /**
- * Validates query-string filter parameters for a given report type.
- * Reused by both the JSON endpoints and the CSV export route to ensure
- * consistent error responses (reviewer issue #5).
+ * Validates query-string filter parameters for a given report type in the CSV export route.
+ * Ensures strict input validation, real calendar date checking, and consistent error responses (Docs/03_architecture.md §11).
  *
  * @param type - The report slug (e.g. "quarterly-sales").
  * @param params - URLSearchParams from the incoming request.
@@ -62,8 +61,18 @@ export function validateReportFilters(
   const customerIdRaw = params.get('customer_id');
   const weekStartRaw = params.get('week_start');
 
-  /** Simple ISO date check (YYYY-MM-DD) */
-  const isValidDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s);
+  /** Validates that a string is a real calendar date in YYYY-MM-DD format */
+  const isValidDate = (s: string) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const [y, m, d] = s.split('-').map(Number);
+    const date = new Date(Date.UTC(y, m - 1, d));
+    return (
+      date.getUTCFullYear() === y &&
+      date.getUTCMonth() === m - 1 &&
+      date.getUTCDate() === d
+    );
+  };
+
   /** Positive integer check */
   const isPosInt = (s: string) => /^\d+$/.test(s) && Number(s) > 0;
   /** Year within a reasonable range */
@@ -94,9 +103,11 @@ export function validateReportFilters(
       const dateFrom = params.get('date_from');
       const dateTo = params.get('date_to');
       if (dateFrom && !isValidDate(dateFrom))
-        return { valid: false, error: "'date_from' must be YYYY-MM-DD.", status: 400 };
+        return { valid: false, error: "'date_from' must be a valid calendar date in YYYY-MM-DD format.", status: 400 };
       if (dateTo && !isValidDate(dateTo))
-        return { valid: false, error: "'date_to' must be YYYY-MM-DD.", status: 400 };
+        return { valid: false, error: "'date_to' must be a valid calendar date in YYYY-MM-DD format.", status: 400 };
+      if (dateFrom && dateTo && dateFrom > dateTo)
+        return { valid: false, error: "'date_from' cannot be after 'date_to'.", status: 400 };
       break;
     }
 
@@ -104,7 +115,7 @@ export function validateReportFilters(
       if (!weekStartRaw)
         return { valid: false, error: "'week_start' (YYYY-MM-DD) is required for this report.", status: 400 };
       if (!isValidDate(weekStartRaw))
-        return { valid: false, error: "'week_start' must be YYYY-MM-DD.", status: 400 };
+        return { valid: false, error: "'week_start' must be a valid calendar date in YYYY-MM-DD format.", status: 400 };
       break;
 
     case 'truck-usage':
@@ -114,12 +125,24 @@ export function validateReportFilters(
         return { valid: false, error: "'month' must be between 1 and 12.", status: 400 };
       break;
 
-    case 'customer-history':
+    case 'customer-history': {
+      const status = params.get('status');
+      const dateFrom = params.get('date_from');
+      const dateTo = params.get('date_to');
       if (!customerIdRaw)
         return { valid: false, error: "'customer_id' is required for this report.", status: 400 };
       if (!isPosInt(customerIdRaw))
         return { valid: false, error: "'customer_id' must be a positive integer.", status: 400 };
+      if (status && !['Pending', 'Processing', 'Dispatched', 'Delivered', 'Cancelled'].includes(status))
+        return { valid: false, error: "Invalid 'status' filter.", status: 400 };
+      if (dateFrom && !isValidDate(dateFrom))
+        return { valid: false, error: "'date_from' must be a valid calendar date in YYYY-MM-DD format.", status: 400 };
+      if (dateTo && !isValidDate(dateTo))
+        return { valid: false, error: "'date_to' must be a valid calendar date in YYYY-MM-DD format.", status: 400 };
+      if (dateFrom && dateTo && dateFrom > dateTo)
+        return { valid: false, error: "'date_from' cannot be after 'date_to'.", status: 400 };
       break;
+    }
   }
 
   return { valid: true };
