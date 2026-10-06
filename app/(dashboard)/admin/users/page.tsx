@@ -547,7 +547,7 @@ export default function UserAccountsPage(): React.JSX.Element {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-[28px] md:text-[32px] font-bold text-[#121C2C] tracking-tight leading-tight">
+            <h1 className="text-[30px] font-bold text-[#121C2C] leading-[38px] tracking-[-0.02em]">
               User Accounts
             </h1>
             <p className="text-[14px] text-[#474554] mt-0.5 font-normal">

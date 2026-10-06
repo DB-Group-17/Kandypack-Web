@@ -100,9 +100,9 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] Open PR → review → merge
 
 ### Member 4 — Inventory + Admin Users
-- [✅] `GET /stores/:id/inventory` (completed in Subtask 1), `POST /stores/:id/receive-goods` → `receive_goods_at_store()` (completed in Subtask 2), `GET /inventory/transactions` (completed in Subtask 3)
-- [✅] `GET/POST /users` (completed in Subtask 5), `PATCH /users/:id` (completed in Subtask 6)
-- [✅] `/inventory` (completed in Subtask 4) and `/admin/users` (completed in Subtask 7) pages wired to real data
+- [x] `GET /stores/:id/inventory` (completed in Subtask 1), `POST /stores/:id/receive-goods` → `receive_goods_at_store()` (completed in Subtask 2), `GET /inventory/transactions` (completed in Subtask 3)
+- [x] `GET/POST /users` (completed in Subtask 5), `PATCH /users/:id` (completed in Subtask 6)
+- [x] `/inventory` (completed in Subtask 4) and `/admin/users` (completed in Subtask 7) pages wired to real data
 - [ ] Open PR → review → merge
 
 ### Member 5 — Report Exports (needs Member 2's report queries merged first)

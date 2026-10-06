@@ -230,7 +230,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
         <div className="px-6 py-5 border-b border-[#E7EEFF] flex items-center justify-between bg-[#F9F9FF]/80">
           <div>
             <h2 id="receive-goods-title" className="text-[20px] font-bold text-[#121C2C]">
-              Receive Goods
+              Receive goods
             </h2>
             <p className="text-[13px] text-[#474554] mt-0.5">
               Receiving cargo at{' '}
@@ -256,7 +256,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
             {/* Inline Error Message Banner */}
             {errorMessage && (
               <div
-                className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#93000A] p-3.5 rounded-xl flex items-start gap-3 animate-in fade-in duration-200"
+                className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#F93C65] p-3.5 rounded-xl flex items-start gap-3 animate-in fade-in duration-200"
                 role="alert"
               >
                 <svg
@@ -279,7 +279,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
             {/* Arrived Bookings Fetch Error Banner */}
             {bookingsFetchError && (
               <div
-                className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#93000A] p-3.5 rounded-xl flex items-start gap-3"
+                className="bg-[#FFF0F0] border border-[#F93C65]/30 text-[#F93C65] p-3.5 rounded-xl flex items-start gap-3"
                 role="alert"
               >
                 <svg className="w-5 h-5 text-[#F93C65] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

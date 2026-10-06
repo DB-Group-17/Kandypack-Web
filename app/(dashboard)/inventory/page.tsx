@@ -58,9 +58,15 @@ const INITIAL_TRANSACTION_FILTERS: TransactionFilters = {
 };
 
 /**
- * Table page size for client-side pagination.
+ * Table page size for stock levels client-side pagination.
  */
-const PAGE_SIZE = 5;
+const STOCK_PAGE_SIZE = 5;
+
+/**
+ * Table page size for transaction history client-side pagination.
+ * Set to 10 rows per page per PR review feedback.
+ */
+const TRANSACTION_PAGE_SIZE = 10;
 
 /**
  * Evaluates semantic inventory health status based on quantity on hand and an authoritative threshold.
@@ -492,8 +498,8 @@ export default function StoreInventoryPage(): React.JSX.Element {
    * Paginated slice of current stock items.
    */
   const paginatedStockItems = useMemo(() => {
-    const startIndex = (stockPage - 1) * PAGE_SIZE;
-    return filteredStockItems.slice(startIndex, startIndex + PAGE_SIZE);
+    const startIndex = (stockPage - 1) * STOCK_PAGE_SIZE;
+    return filteredStockItems.slice(startIndex, startIndex + STOCK_PAGE_SIZE);
   }, [filteredStockItems, stockPage]);
 
   /**
@@ -514,19 +520,19 @@ export default function StoreInventoryPage(): React.JSX.Element {
    * Paginated slice of current transactions.
    */
   const paginatedTransactions = useMemo(() => {
-    const startIndex = (transactionPage - 1) * PAGE_SIZE;
-    return filteredTransactions.slice(startIndex, startIndex + PAGE_SIZE);
+    const startIndex = (transactionPage - 1) * TRANSACTION_PAGE_SIZE;
+    return filteredTransactions.slice(startIndex, startIndex + TRANSACTION_PAGE_SIZE);
   }, [filteredTransactions, transactionPage]);
 
   const stockPagination: PaginationState = {
     currentPage: stockPage,
-    pageSize: PAGE_SIZE,
+    pageSize: STOCK_PAGE_SIZE,
     totalCount: filteredStockItems.length,
   };
 
   const transactionPagination: PaginationState = {
     currentPage: transactionPage,
-    pageSize: PAGE_SIZE,
+    pageSize: TRANSACTION_PAGE_SIZE,
     totalCount: filteredTransactions.length,
   };
 
@@ -552,7 +558,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h2 className="text-[18px] font-bold text-[#121C2C] mb-2">Access Restricted</h2>
+        <h2 className="text-[18px] font-bold text-[#121C2C] mb-2">Access restricted</h2>
         <p className="text-[14px] text-[#474554] leading-relaxed">
           Your active account role (<strong className="text-[#121C2C]">{role || 'Unassigned'}</strong>) is not authorized
           to inspect or manage physical store inventory.
@@ -570,7 +576,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-[18px] font-bold text-[#121C2C] mb-2">No Store Assigned</h2>
+        <h2 className="text-[18px] font-bold text-[#121C2C] mb-2">No store assigned</h2>
         <p className="text-[14px] text-[#474554] leading-relaxed">
           Your store manager account does not have a physical store assigned in the system registry. Please
           contact a System Administrator to link your profile to a home store.
@@ -585,21 +591,25 @@ export default function StoreInventoryPage(): React.JSX.Element {
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
           <div
-            className={`text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 border ${
+            className={`px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 border ${
               toastType === 'error'
-                ? 'bg-[#93000A] border-white/20'
-                : 'bg-[#121c2c] border-white/10'
+                ? 'bg-[#FFF0F0] border-[#F93C65]/30 text-[#F93C65]'
+                : 'bg-[#121C2C] border-white/10 text-white'
             }`}
           >
             <span
               className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                toastType === 'error' ? 'bg-[#FFDAD6]' : 'bg-[#00B69B]'
+                toastType === 'error' ? 'bg-[#F93C65]' : 'bg-[#00B69B]'
               }`}
             />
             <span className="text-[14px] font-medium">{toastMessage}</span>
             <button
               onClick={() => setToastMessage(null)}
-              className="text-white/60 hover:text-white ml-2 text-sm cursor-pointer"
+              className={`${
+                toastType === 'error'
+                  ? 'text-[#F93C65]/70 hover:text-[#F93C65]'
+                  : 'text-white/60 hover:text-white'
+              } ml-2 text-sm cursor-pointer`}
               aria-label="Dismiss toast"
             >
               ✕
@@ -611,9 +621,9 @@ export default function StoreInventoryPage(): React.JSX.Element {
       {/* Page Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-[32px] font-bold text-[#121C2C] tracking-tight leading-tight">
+          <h1 className="text-[30px] font-bold text-[#121C2C] leading-[38px] tracking-[-0.02em]">
             Store Inventory
-          </h2>
+          </h1>
           <p className="text-[14px] text-[#474554] mt-1">
             {currentStore.store_name} stock levels
           </p>
