@@ -26,6 +26,9 @@ export const DEFAULT_TRAIN_CAPACITY = 500.0;
 /** Maximum consecutive work days allowed before a mandatory rest day */
 export const MAX_CONSECUTIVE_WORK_DAYS = 6;
 
+/** Shared threshold for low stock alert classification across inventory and dashboard */
+export const LOW_STOCK_THRESHOLD = 20;
+
 // =========================================================================
 // 2. 7-Day Lead-Time Validation (BR-001)
 // =========================================================================

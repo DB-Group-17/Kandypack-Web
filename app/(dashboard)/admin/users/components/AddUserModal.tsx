@@ -3,55 +3,38 @@
 /**
  * @file AddUserModal.tsx
  * @description Modal dialog for creating a new user account (/admin/users).
- * Conforms to Docs/05_api-and-pages.md §380, Docs/07_content-copy.md §346, and DESIGN.md:
+ * Conforms to Docs/05_api-and-pages.md §A10, Docs/07_content-copy.md §/admin/users, and DESIGN.md:
  * - Email, Role selection, Link to employee (optional), Display name override, Temporary password
  * - Random secure password generator and visibility toggle
- * - Form validation with clear error messaging
+ * - Form validation with clear backend-propagated error messaging
+ * - Strictly maps payload to POST /api/users schema
  */
 
 import React, { useState } from 'react';
-import { AppRole, EmployeeOption, NewUserPayload, UserAccountItem } from '../types';
+import { AppRole, EmployeeOption, NewUserPayload } from '../types';
+import { generateSecureTemporaryPassword } from '@/lib/password';
 
 interface AddUserModalProps {
   /** Controls modal visibility */
   isOpen: boolean;
   /** Callback fired when user cancels or closes modal */
   onClose: () => void;
-  /** Callback fired with valid payload upon creation */
-  onSubmit: (payload: NewUserPayload) => void;
-  /** List of available employees to link */
+  /** Async callback fired with valid payload upon creation */
+  onSubmit: (
+    payload: NewUserPayload
+  ) => Promise<{ success: boolean; error?: string; field?: string }>;
+  /** List of eligible active employees to link */
   employees: EmployeeOption[];
-  /** Existing users for duplicate email validation */
-  existingUsers: UserAccountItem[];
 }
 
 /**
- * Generates a random alphanumeric temporary password.
+ * Generates a cryptographically secure random temporary password.
+ * Delegates to the centralized Web Crypto / Fisher–Yates implementation in `@/lib/password`.
  *
  * @returns 12-character secure temporary password string
  */
 function generateRandomPassword(): string {
-  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const lower = 'abcdefghijkmnopqrstuvwxyz';
-  const digits = '23456789';
-  const special = '!@#$%&*';
-
-  let pwd = '';
-  pwd += upper.charAt(Math.floor(Math.random() * upper.length));
-  pwd += lower.charAt(Math.floor(Math.random() * lower.length));
-  pwd += digits.charAt(Math.floor(Math.random() * digits.length));
-  pwd += special.charAt(Math.floor(Math.random() * special.length));
-
-  const allChars = upper + lower + digits + special;
-  for (let i = 4; i < 12; i++) {
-    pwd += allChars.charAt(Math.floor(Math.random() * allChars.length));
-  }
-
-  // Shuffle characters
-  return pwd
-    .split('')
-    .sort(() => 0.5 - Math.random())
-    .join('');
+  return generateSecureTemporaryPassword();
 }
 
 /**
@@ -59,15 +42,14 @@ function generateRandomPassword(): string {
  *
  * Renders the modal dialog for registering a new user account with employee linkage and temp password generation.
  *
- * @param props Component properties
- * @returns Modal element
+ * @param props - Component properties containing modal state and submission callback
+ * @returns JSX.Element | null
  */
 export const AddUserModal: React.FC<AddUserModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
   employees,
-  existingUsers,
 }) => {
   // Form fields state
   const [email, setEmail] = useState('');
@@ -77,7 +59,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   const [tempPassword, setTempPassword] = useState(() => generateRandomPassword());
   const [showPassword, setShowPassword] = useState(true);
 
-  // Field validation errors
+  // Submission & Validation feedback state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   /**
@@ -91,23 +75,33 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
     setTempPassword(generateRandomPassword());
     setShowPassword(true);
     setErrors({});
+    setApiError(null);
+    setIsSubmitting(false);
   };
 
   /**
-   * Closes modal and resets form inputs.
+   * Closes modal and resets form inputs if not actively submitting.
    */
   const handleClose = () => {
+    if (isSubmitting) return;
     resetForm();
     onClose();
   };
 
-  // Handle employee selection change
+  /**
+   * Handles employee selection change, preselecting compatible role when available.
+   *
+   * @param empIdStr - Selected employee ID string or empty for standalone
+   */
   const handleEmployeeChange = (empIdStr: string) => {
     setSelectedEmployeeId(empIdStr);
+    setApiError(null);
+    setErrors((prev) => ({ ...prev, employee_id: '', displayNameOverride: '' }));
+
     if (empIdStr) {
       const emp = employees.find((e) => e.employee_id === Number(empIdStr));
       if (emp) {
-        // Clear manual name override since employee is selected
+        // Clear manual name override since employee full name will be used
         setDisplayNameOverride('');
 
         // Map employee type to matching app role if direct match exists
@@ -125,31 +119,33 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
   };
 
   /**
-   * Validates form inputs and submits new user payload if valid.
+   * Validates form inputs client-side, then dispatches POST /api/users payload.
+   * Preserves entered values and displays backend error if API returns failure.
+   *
+   * @param e - Form submit event
    */
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setApiError(null);
     const newErrors: Record<string, string> = {};
 
-    // Validate email
+    // 1. Client-side email validation
     const trimmedEmail = email.trim().toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!trimmedEmail) {
       newErrors.email = 'Email address is required.';
     } else if (!emailRegex.test(trimmedEmail)) {
       newErrors.email = 'Please enter a valid email address.';
-    } else if (existingUsers.some((u) => u.email.toLowerCase() === trimmedEmail)) {
-      newErrors.email = 'An account with this email address already exists.';
     }
 
-    // Validate password
+    // 2. Client-side password validation
     if (!tempPassword.trim()) {
       newErrors.tempPassword = 'Temporary password is required.';
-    } else if (tempPassword.length < 8) {
+    } else if (tempPassword.trim().length < 8) {
       newErrors.tempPassword = 'Password must be at least 8 characters long.';
     }
 
-    // Validate display name if no employee is linked
+    // 3. Client-side display name validation (enforces chk_user_profiles_name)
     if (!selectedEmployeeId && !displayNameOverride.trim()) {
       newErrors.displayNameOverride =
         'Display name is required when not linking to an existing employee.';
@@ -160,15 +156,38 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
       return;
     }
 
-    // Submit payload
-    onSubmit({
-      email: trimmedEmail,
-      app_role: appRole,
-      employee_id: selectedEmployeeId ? Number(selectedEmployeeId) : null,
-      display_name_override: selectedEmployeeId ? undefined : displayNameOverride.trim(),
-      temp_password: tempPassword,
-    });
-    resetForm();
+    // 4. Dispatch mutation to parent handler
+    setIsSubmitting(true);
+    try {
+      const result = await onSubmit({
+        email: trimmedEmail,
+        app_role: appRole,
+        employee_id: selectedEmployeeId ? Number(selectedEmployeeId) : null,
+        display_name_override: selectedEmployeeId ? undefined : displayNameOverride.trim(),
+        temp_password: tempPassword.trim(),
+      });
+
+      if (result.success) {
+        resetForm();
+        onClose();
+      } else {
+        setIsSubmitting(false);
+        if (result.field) {
+          const mappedField =
+            result.field === 'temp_password'
+              ? 'tempPassword'
+              : result.field === 'display_name_override'
+              ? 'displayNameOverride'
+              : result.field;
+          setErrors({ [mappedField]: result.error || 'Validation error' });
+        } else {
+          setApiError(result.error || 'Failed to create user account. Please check inputs.');
+        }
+      }
+    } catch {
+      setIsSubmitting(false);
+      setApiError('Unexpected network failure while transmitting registration.');
+    }
   };
 
   if (!isOpen) return null;
@@ -193,7 +212,8 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           </div>
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-[#777586] hover:bg-[#F5F5FA] hover:text-[#121C2C] transition-colors"
+            disabled={isSubmitting}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-[#777586] hover:bg-[#F5F5FA] hover:text-[#121C2C] transition-colors disabled:opacity-50"
             aria-label="Close modal"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,6 +221,16 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             </svg>
           </button>
         </div>
+
+        {/* Top API Error Alert */}
+        {apiError && (
+          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-[12px] text-[#F93C65] flex items-start gap-2">
+            <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span className="leading-snug">{apiError}</span>
+          </div>
+        )}
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
@@ -212,12 +242,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             <input
               type="email"
               value={email}
+              disabled={isSubmitting}
               onChange={(e) => {
                 setEmail(e.target.value);
                 if (errors.email) setErrors((prev) => ({ ...prev, email: '' }));
+                if (apiError) setApiError(null);
               }}
               placeholder="staff@kandypack.lk"
-              className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all ${
+              className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
                 errors.email
                   ? 'border-[#F93C65] focus:border-[#F93C65] focus:ring-[#F93C65]'
                   : 'border-[#C8C4D7]/60 focus:border-[#4132C7] focus:ring-[#4132C7]'
@@ -235,8 +267,12 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             </label>
             <select
               value={appRole}
-              onChange={(e) => setAppRole(e.target.value as AppRole)}
-              className="w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer"
+              disabled={isSubmitting}
+              onChange={(e) => {
+                setAppRole(e.target.value as AppRole);
+                if (errors.app_role) setErrors((prev) => ({ ...prev, app_role: '' }));
+              }}
+              className="w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60"
             >
               <option value="system_administrator">System Administrator</option>
               <option value="logistics_manager">Logistics Manager</option>
@@ -244,6 +280,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               <option value="fleet_supervisor">Fleet Supervisor</option>
               <option value="order_entry_clerk">Order Entry Clerk</option>
             </select>
+            {errors.app_role && (
+              <p className="text-[12px] text-[#F93C65] mt-1">{errors.app_role}</p>
+            )}
           </div>
 
           {/* Link to Employee (Optional) */}
@@ -253,8 +292,11 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             </label>
             <select
               value={selectedEmployeeId}
+              disabled={isSubmitting}
               onChange={(e) => handleEmployeeChange(e.target.value)}
-              className="w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer"
+              className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60 ${
+                errors.employee_id ? 'border-[#F93C65]' : 'border-[#C8C4D7]/60'
+              }`}
             >
               <option value="">-- Standalone account (No linked employee) --</option>
               {employees.map((emp) => (
@@ -263,9 +305,13 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-[#474554] mt-1">
-              Linking attaches the employee&apos;s verified name and store affiliation.
-            </p>
+            {errors.employee_id ? (
+              <p className="text-[12px] text-[#F93C65] mt-1">{errors.employee_id}</p>
+            ) : (
+              <p className="text-[11px] text-[#474554] mt-1">
+                Linking attaches the employee&apos;s verified name and store affiliation.
+              </p>
+            )}
           </div>
 
           {/* Display Name Override (Visible when no employee linked) */}
@@ -277,6 +323,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               <input
                 type="text"
                 value={displayNameOverride}
+                disabled={isSubmitting}
                 onChange={(e) => {
                   setDisplayNameOverride(e.target.value);
                   if (errors.displayNameOverride) {
@@ -284,7 +331,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   }
                 }}
                 placeholder="e.g. Operations Service Lead"
-                className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all ${
+                className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
                   errors.displayNameOverride
                     ? 'border-[#F93C65] focus:border-[#F93C65] focus:ring-[#F93C65]'
                     : 'border-[#C8C4D7]/60 focus:border-[#4132C7] focus:ring-[#4132C7]'
@@ -306,8 +353,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               </label>
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => setTempPassword(generateRandomPassword())}
-                className="text-[12px] font-semibold text-[#4132C7] hover:text-[#5A4FE0] hover:underline"
+                className="text-[12px] font-semibold text-[#4132C7] hover:text-[#5A4FE0] hover:underline disabled:opacity-50"
               >
                 Generate Random
               </button>
@@ -316,6 +364,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={tempPassword}
+                disabled={isSubmitting}
                 onChange={(e) => {
                   setTempPassword(e.target.value);
                   if (errors.tempPassword) {
@@ -323,7 +372,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   }
                 }}
                 placeholder="Enter temporary password"
-                className={`w-full h-11 pl-3.5 pr-10 text-[14px] bg-[#F5F5FA] font-mono border rounded-xl focus:outline-none focus:ring-1 transition-all ${
+                className={`w-full h-11 pl-3.5 pr-10 text-[14px] bg-[#F5F5FA] font-mono border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
                   errors.tempPassword
                     ? 'border-[#F93C65] focus:border-[#F93C65] focus:ring-[#F93C65]'
                     : 'border-[#C8C4D7]/60 focus:border-[#4132C7] focus:ring-[#4132C7]'
@@ -331,8 +380,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               />
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#777586] hover:text-[#121C2C]"
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-[#777586] hover:text-[#121C2C] disabled:opacity-50"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
@@ -376,15 +426,23 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
             <button
               type="button"
               onClick={handleClose}
-              className="px-5 py-2.5 rounded-full text-[13px] font-semibold text-[#474554] hover:bg-[#F5F5FA] transition-colors"
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-full text-[13px] font-semibold text-[#474554] hover:bg-[#F5F5FA] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-full text-[13px] font-bold bg-[#4132C7] hover:bg-[#5A4FE0] text-white transition-all shadow-sm active:scale-[0.98]"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 rounded-full text-[13px] font-bold bg-[#4132C7] hover:bg-[#5A4FE0] text-white transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 flex items-center gap-2"
             >
-              Create Account
+              {isSubmitting && (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+              )}
+              <span>{isSubmitting ? 'Creating...' : 'Create Account'}</span>
             </button>
           </div>
         </form>

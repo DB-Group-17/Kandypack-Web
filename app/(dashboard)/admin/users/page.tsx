@@ -2,31 +2,35 @@
 
 /**
  * @file page.tsx
- * @description Master client page component for User Accounts management (/admin/users).
+ * @description Master client page component for User Accounts administration (/admin/users).
+ * Connects directly to backend API routes to manage staff logins, roles, and profiles.
  *
- * Structure and Data Flow:
- * 1. State:
- *    - `users`: Array of `UserAccountItem` records initialized from `initialMockUsers`.
- *    - `employees`: Array of `EmployeeOption` records initialized from `initialMockEmployees`.
- *    - `filters`: `UserFilterState` tracking search query, role filter, and status filter.
- *    - `pagination`: `PaginationState` managing current page and page size (10 items per page).
- *    - `isAddModalOpen`: Controls visibility of the Add User dialog.
- *    - `statusModalUser`: Target user for the Activate/Deactivate confirmation dialog.
- *    - `editModalUser`: Target user for viewing and editing account details.
- *    - `tempPasswordNotice`: Holds temporary password payload to render the dismissible banner upon account creation.
- *    - `toast`: Ephemeral feedback notification for actions (copy, activate, deactivate, creation).
+ * Architecture and Data Flow:
+ * 1. Authentication & RBAC:
+ *    - Ingests active session identity and role from AuthContext (`useAuth`).
+ *    - Strictly enforces RBAC boundaries: only `system_administrator` has authorization
+ *      to read, provision, or modify user accounts (Docs/05_api-and-pages.md §A10).
+ *    - Unauthorized roles receive a clear Access Denied notice conforming to DESIGN.md.
+ * 2. Real API Integrations:
+ *    - User Listing & Filtering: `GET /api/users?search=...&role=...&status=...&page=...&limit=...`
+ *    - Overall System KPI Metrics: `GET /api/users?limit=100` (populates 4-card Bento overview)
+ *    - Account Provisioning: `POST /api/users`
+ *    - Account Mutation: `PATCH /api/users/:id` (role updates and soft deactivation)
+ *    - Active Staff Master Data: `GET /api/employees` (supplies eligible personnel for account linking)
+ * 3. Reactive State & Synchronization:
+ *    - Server-side filtering and pagination prevent double-filtering or client-server discrepancy.
+ *    - Search input is debounced by 300ms to eliminate unnecessary API roundtrips while typing.
+ *    - Mutating actions (Add, Edit, Status Toggle) trigger automatic re-fetching of both the
+ *      active users table slice and the global KPI stats counter.
+ *    - Temporary password from `POST /api/users` is shown once in a dismissible warning banner.
  *
- * 2. User Interactions:
- *    - Live search and multi-criteria filtering across 5 application roles and active/deactivated statuses.
- *    - 4-card Bento grid displaying real-time metrics with interactive one-click filtering.
- *    - Creating a new user account with temporary password generation, employee linking, and one-time password banner.
- *    - One-click clipboard copy of temporary password.
- *    - Toggling user activation status with confirmation dialog.
- *    - Editing user role and display details.
- *    - Pagination navigation with 10 records per page.
+ * Authority: Docs/03_architecture.md §6, Docs/04_database-schema-v4.md §1 & §2, Docs/05_api-and-pages.md §A10 & §B
+ * Copy Source: Docs/07_content-copy.md §/admin/users
+ * Owner: Member 4 (Vidura)
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { UserStatsBento } from './components/UserStatsBento';
 import { UserFilterBar } from './components/UserFilterBar';
 import { UsersTable } from './components/UsersTable';
@@ -39,41 +43,68 @@ import {
   UserAccountItem,
   UserFilterState,
   NewUserPayload,
+  UserStats,
+  EmployeeOption,
+  AppRole,
 } from './types';
-import {
-  initialMockUsers,
-  initialMockEmployees,
-  calculateUserStats,
-  filterUsers,
-  getRoleDisplayLabel,
-} from './mockData';
+import { calculateUserStats } from './mockData';
 
+/**
+ * Standard pagination limit for the user accounts directory table.
+ */
 const PAGE_SIZE = 10;
+
+/**
+ * Default empty KPI stats metrics baseline.
+ */
+const INITIAL_STATS: UserStats = {
+  totalUsers: 0,
+  activeUsers: 0,
+  deactivatedUsers: 0,
+  adminUsers: 0,
+};
 
 /**
  * UserAccountsPage Component
  *
- * Main page component for the /admin/users route.
+ * Orchestrates live staff directory management, filtering, creation, and status updates.
  *
  * @returns Complete User Accounts management interface
  */
-export default function UserAccountsPage() {
-  // Primary datasets
-  const [users, setUsers] = useState<UserAccountItem[]>(initialMockUsers);
-  const [employees] = useState(initialMockEmployees);
+export default function UserAccountsPage(): React.JSX.Element {
+  // Authentication & Session context
+  const { user: authUser, role: authRole, isLoading: authLoading } = useAuth();
 
-  // Filter state
+  // Primary live dataset state (no mock runtime fallback)
+  const [users, setUsers] = useState<UserAccountItem[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [isLoadingUsers, setIsLoadingUsers] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Overall system KPI statistics for Bento cards
+  const [systemStats, setSystemStats] = useState<UserStats>(INITIAL_STATS);
+
+  // Available staff roster fetched from GET /api/employees for account linking
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+
+  // Filter criteria state
   const [filters, setFilters] = useState<UserFilterState>({
     searchQuery: '',
     roleFilter: 'ALL',
     statusFilter: 'ALL',
   });
 
+  // Debounced search query to prevent excessive backend queries during rapid typing
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+
   // Pagination state (1-indexed current page)
   const [currentPage, setCurrentPage] = useState<number>(1);
 
+  // Trigger counter to refresh data following a mutation
+  const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
+
   // Modal dialog states
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
   const [statusModalUser, setStatusModalUser] = useState<UserAccountItem | null>(null);
   const [editModalUser, setEditModalUser] = useState<UserAccountItem | null>(null);
 
@@ -83,13 +114,13 @@ export default function UserAccountsPage() {
     tempPassword: string;
   } | null>(null);
 
-  // Toast feedback state
+  // Ephemeral toast feedback state
   const [toast, setToast] = useState<{
     type: 'success' | 'info' | 'error';
     message: string;
   } | null>(null);
 
-  // Auto-dismiss toast notification after 4 seconds
+  // Automatically dismiss toast notification after 4 seconds
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 4000);
@@ -97,35 +128,180 @@ export default function UserAccountsPage() {
     }
   }, [toast]);
 
-  // Compute aggregated stats over full dataset
-  const stats = useMemo(() => calculateUserStats(users), [users]);
-
-  // Filter users based on active search and filter dropdowns
-  const filteredUsers = useMemo(() => {
-    return filterUsers(users, filters);
-  }, [users, filters]);
-
-  // Compute paginated slice for current view
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    return filteredUsers.slice(start, start + PAGE_SIZE);
-  }, [filteredUsers, currentPage]);
+  // Debounce search query input by 300ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(filters.searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [filters.searchQuery]);
 
   /**
-   * Helper to trigger a toast message.
+   * Dispatches an ephemeral toast notification alert.
    *
-   * @param message Text to display
-   * @param type Semantic tone of the alert
+   * @param message - User-facing text to display
+   * @param type - Semantic tone of the alert ('success' | 'info' | 'error')
    */
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
-    setToast({ message, type });
-  };
+  const showToast = useCallback(
+    (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+      setToast({ message, type });
+    },
+    []
+  );
 
   /**
-   * Handles filter selection changes from the filter bar or Bento cards.
-   * Resets page to 1 whenever filters change.
+   * Fetches active personnel from GET /api/employees to populate Add User dropdown.
+   * Filters out operational roles (driver, assistant) that cannot receive user logins.
+   */
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadEmployees() {
+      try {
+        const res = await fetch('/api/employees', { cache: 'no-store' });
+        if (ignore) return;
+
+        if (res.ok) {
+          const data = await res.json();
+          const items = Array.isArray(data.items) ? data.items : [];
+          // Operational personnel are forbidden from receiving web login accounts
+          const eligible = items
+            .filter(
+              (emp: { employee_type?: string }) =>
+                emp.employee_type !== 'driver' && emp.employee_type !== 'assistant'
+            )
+            .map(
+              (emp: {
+                employee_id: number;
+                full_name: string;
+                nic_number: string;
+                employee_type: string;
+                home_store_id?: number | null;
+                home_store_name?: string;
+              }) => ({
+                employee_id: Number(emp.employee_id),
+                full_name: emp.full_name,
+                nic_number: emp.nic_number,
+                employee_type: emp.employee_type,
+                home_store_id: emp.home_store_id ?? null,
+                home_store_name: emp.home_store_name,
+              })
+            );
+
+          setEmployees(eligible);
+        } else {
+          // If employee fetch is unsupported or unauthorized, standalone account creation remains usable
+          console.warn('Employees endpoint responded with status:', res.status);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch eligible employees for account linking:', err);
+      }
+    }
+
+    if (authRole === 'system_administrator') {
+      void loadEmployees();
+    }
+
+    return () => {
+      ignore = true;
+    };
+  }, [authRole]);
+
+  /**
+   * Synchronizes the paginated users list and global KPI statistics from GET /api/users.
+   */
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadData() {
+      if (authRole !== 'system_administrator') return;
+
+      setIsLoadingUsers(true);
+      setFetchError(null);
+
+      try {
+        const params = new URLSearchParams();
+
+        if (debouncedSearch.trim()) {
+          params.set('search', debouncedSearch.trim());
+        }
+
+        if (filters.roleFilter && filters.roleFilter !== 'ALL') {
+          params.set('role', filters.roleFilter);
+        }
+
+        if (filters.statusFilter && filters.statusFilter !== 'ALL') {
+          params.set('status', filters.statusFilter.toLowerCase());
+        }
+
+        params.set('page', String(currentPage));
+        params.set('limit', String(PAGE_SIZE));
+
+        // Fetch filtered page slice and unfiltered global KPI pool in parallel
+        const [usersRes, statsRes] = await Promise.all([
+          fetch(`/api/users?${params.toString()}`, { cache: 'no-store' }),
+          fetch('/api/users?limit=100', { cache: 'no-store' }),
+        ]);
+
+        if (ignore) return;
+
+        if (usersRes.status === 401) {
+          setFetchError('Authentication required. Please log in.');
+          setUsers([]);
+          return;
+        }
+
+        if (usersRes.status === 403) {
+          setFetchError('Access denied: Role is not authorized to view user accounts.');
+          setUsers([]);
+          return;
+        }
+
+        if (usersRes.ok) {
+          const data = await usersRes.json();
+          const items = Array.isArray(data.items) ? data.items : [];
+          setUsers(items);
+          setTotalCount(typeof data.total === 'number' ? data.total : items.length);
+          setFetchError(null);
+        } else {
+          const errBody = await usersRes.json().catch(() => null);
+          const msg =
+            errBody?.error?.message || `Failed to retrieve user accounts (HTTP ${usersRes.status}).`;
+          setFetchError(msg);
+          setUsers([]);
+        }
+
+        // Calculate global KPI stats from the master dataset
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          const allItems = Array.isArray(statsData.items) ? statsData.items : [];
+          setSystemStats(calculateUserStats(allItems));
+        }
+      } catch (err: unknown) {
+        if (!ignore) {
+          console.error('Network error loading users:', err);
+          setFetchError('Network error while retrieving user accounts. Please check connection.');
+          setUsers([]);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingUsers(false);
+        }
+      }
+    }
+
+    void loadData();
+
+    return () => {
+      ignore = true;
+    };
+  }, [debouncedSearch, filters.roleFilter, filters.statusFilter, currentPage, refreshTrigger, authRole]);
+
+  /**
+   * Handles filter changes from the search & filter toolbar.
+   * Resets active page to 1 whenever search query or select filters change.
    *
-   * @param newFilters Updated filter state
+   * @param newFilters - Updated user filter state
    */
   const handleFilterChange = (newFilters: UserFilterState) => {
     setFilters(newFilters);
@@ -133,9 +309,9 @@ export default function UserAccountsPage() {
   };
 
   /**
-   * Handles direct filtering triggered from Bento KPI cards.
+   * Handles direct filter selection triggered from Bento KPI cards.
    *
-   * @param cardType Bento card category clicked
+   * @param cardType - Bento card category clicked
    */
   const handleBentoFilterSelect = (cardType: 'ALL' | 'ACTIVE' | 'DEACTIVATED' | 'ADMIN') => {
     setCurrentPage(1);
@@ -155,90 +331,189 @@ export default function UserAccountsPage() {
   };
 
   /**
-   * Handles submission of the Add User modal.
-   * Inserts the new account into state, displays the temporary password banner, and triggers toast.
+   * Submits a new user creation payload to POST /api/users.
+   * On success, reveals the temporary password banner, refetches live data, and triggers toast.
    *
-   * @param payload New user registration payload
+   * @param payload - Validated user registration payload
+   * @returns Mutation result with backend error message if rejected
    */
-  const handleCreateUser = (payload: NewUserPayload) => {
-    let displayName = payload.display_name_override || 'Staff Member';
-    let deptOrTitle = getRoleDisplayLabel(payload.app_role);
-    let homeStoreName: string | undefined = undefined;
+  const handleCreateUser = async (
+    payload: NewUserPayload
+  ): Promise<{ success: boolean; error?: string; field?: string }> => {
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-    if (payload.employee_id) {
-      const matchedEmp = employees.find((e) => e.employee_id === payload.employee_id);
-      if (matchedEmp) {
-        displayName = matchedEmp.full_name;
-        deptOrTitle = `${getRoleDisplayLabel(payload.app_role)} (${matchedEmp.employee_type.replace('_', ' ')})`;
-        homeStoreName = matchedEmp.home_store_name;
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data?.error?.message || `Failed to create user account (HTTP ${res.status}).`,
+          field: data?.error?.field,
+        };
       }
+
+      // Display one-time temporary password warning banner
+      setTempPasswordNotice({
+        email: payload.email,
+        tempPassword: payload.temp_password,
+      });
+
+      showToast(`User account created successfully for ${payload.email}.`);
+      setRefreshTrigger((prev) => prev + 1);
+      return { success: true };
+    } catch (err) {
+      console.error('Network failure invoking POST /api/users:', err);
+      return {
+        success: false,
+        error: 'Network connection failed while creating user account.',
+      };
     }
-
-    const newUser: UserAccountItem = {
-      user_id: `usr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-      email: payload.email,
-      app_role: payload.app_role,
-      is_active: true,
-      created_at: new Date().toISOString(),
-      employee_id: payload.employee_id || null,
-      display_name: displayName,
-      department_or_title: deptOrTitle,
-      home_store_name: homeStoreName,
-    };
-
-    // Prepend new user to the accounts list
-    setUsers((prev) => [newUser, ...prev]);
-
-    // Close modal and set temporary password banner
-    setIsAddModalOpen(false);
-    setTempPasswordNotice({
-      email: payload.email,
-      tempPassword: payload.temp_password,
-    });
-
-    showToast(`User account created successfully for ${payload.email}.`);
   };
 
   /**
-   * Confirms and applies Activate or Deactivate status toggle.
+   * Applies Activate or Deactivate status toggle via PATCH /api/users/:id.
+   * Sends boolean `is_active` parameter conforming to the documented API contract.
    *
-   * @param targetUser The user record to modify
+   * @param targetUser - User record whose status is being toggled
+   * @returns Mutation result with error message if rejected
    */
-  const handleConfirmStatusToggle = (targetUser: UserAccountItem) => {
+  const handleConfirmStatusToggle = async (
+    targetUser: UserAccountItem
+  ): Promise<{ success: boolean; error?: string }> => {
     const updatedStatus = !targetUser.is_active;
 
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === targetUser.user_id ? { ...u, is_active: updatedStatus } : u
-      )
-    );
+    try {
+      const res = await fetch(`/api/users/${targetUser.user_id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: updatedStatus }),
+      });
 
-    setStatusModalUser(null);
-    showToast(
-      updatedStatus
-        ? `Account for ${targetUser.email} has been activated.`
-        : `Account for ${targetUser.email} has been deactivated.`,
-      updatedStatus ? 'success' : 'info'
-    );
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const errMsg =
+          data?.error?.message || `Failed to update account status (HTTP ${res.status}).`;
+        showToast(errMsg, 'error');
+        return { success: false, error: errMsg };
+      }
+
+      setStatusModalUser(null);
+      showToast(
+        updatedStatus
+          ? `Account for ${targetUser.email} has been activated.`
+          : `Account for ${targetUser.email} has been deactivated.`,
+        updatedStatus ? 'success' : 'info'
+      );
+      setRefreshTrigger((prev) => prev + 1);
+      return { success: true };
+    } catch (err) {
+      console.error('Network failure invoking PATCH /api/users/:id for status:', err);
+      const errMsg = 'Network error while updating user account status.';
+      showToast(errMsg, 'error');
+      return { success: false, error: errMsg };
+    }
   };
 
   /**
-   * Saves updates to an existing user's role, name, or status from the Edit modal.
+   * Persists permitted role or status updates via PATCH /api/users/:id.
+   * Strictly excludes unsupported fields like display name from the PATCH payload.
    *
-   * @param updatedUser Modified user record
+   * @param userId - Target user UUID
+   * @param updates - Permitted PATCH payload fields ({ app_role?, is_active? })
+   * @returns Mutation result with error message if rejected
    */
-  const handleSaveEditUser = (updatedUser: UserAccountItem) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.user_id === updatedUser.user_id ? updatedUser : u))
-    );
+  const handleSaveEditUser = async (
+    userId: string,
+    updates: { app_role?: AppRole; is_active?: boolean }
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
 
-    setEditModalUser(null);
-    showToast(`Updated account details for ${updatedUser.email}.`);
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data?.error?.message || `Failed to update user account (HTTP ${res.status}).`,
+        };
+      }
+
+      setEditModalUser(null);
+      showToast(`Updated account details for ${data?.email || 'user'}.`);
+      setRefreshTrigger((prev) => prev + 1);
+      return { success: true };
+    } catch (err) {
+      console.error('Network failure invoking PATCH /api/users/:id for edit:', err);
+      return {
+        success: false,
+        error: 'Network error while transmitting user account updates.',
+      };
+    }
   };
+
+  // 1. Loading state during session identity verification
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-3 text-[#474554]">
+          <div className="w-8 h-8 border-3 border-[#4132C7] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[14px] font-medium">Verifying administrator authorization...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated state
+  if (!authUser) {
+    return (
+      <div className="bg-white rounded-2xl p-12 border border-[#C8C4D7]/40 text-center shadow-xs">
+        <h3 className="text-[18px] font-bold text-[#121C2C] mb-2">Authentication Required</h3>
+        <p className="text-[14px] text-[#474554] max-w-md mx-auto mb-6">
+          Please log in with a System Administrator account to access the user management console.
+        </p>
+      </div>
+    );
+  }
+
+  // 3. RBAC Access Denied guard: system_administrator only
+  if (authRole !== 'system_administrator') {
+    return (
+      <div className="bg-white rounded-2xl p-12 border border-[#C8C4D7]/40 text-center shadow-xs">
+        <div className="w-16 h-16 rounded-2xl bg-[#FFF0F0] text-[#F93C65] mx-auto flex items-center justify-center mb-4">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+        </div>
+        <h3 className="text-[20px] font-bold text-[#121C2C] mb-1">Access Denied</h3>
+        <p className="text-[14px] text-[#474554] max-w-md mx-auto mb-2">
+          Your current role (<strong className="text-[#121C2C]">{authRole}</strong>) is not
+          authorized to manage user accounts.
+        </p>
+        <p className="text-[13px] text-[#777586]">
+          User accounts administration is strictly restricted to System Administrators.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification Alert */}
+      {/* Toast Feedback Notification Alert */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
           <div
@@ -267,12 +542,12 @@ export default function UserAccountsPage() {
         </div>
       )}
 
-      {/* Main Content Space */}
+      {/* Main Workspace Layout */}
       <div className="space-y-6">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-[28px] md:text-[32px] font-bold text-[#121C2C] tracking-tight leading-tight">
+            <h1 className="text-[30px] font-bold text-[#121C2C] leading-[38px] tracking-[-0.02em]">
               User Accounts
             </h1>
             <p className="text-[14px] text-[#474554] mt-0.5 font-normal">
@@ -304,9 +579,29 @@ export default function UserAccountsPage() {
           />
         )}
 
+        {/* API Fetch Error Banner with Retry Action */}
+        {fetchError && (
+          <div className="p-4 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#F93C65]/10 text-[#F93C65] flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p className="text-[13px] font-medium text-[#F93C65]">{fetchError}</p>
+            </div>
+            <button
+              onClick={() => setRefreshTrigger((prev) => prev + 1)}
+              className="px-4 py-1.5 text-[12px] font-bold text-[#F93C65] hover:bg-[#F93C65]/10 border border-[#F93C65]/40 rounded-full transition-colors self-start sm:self-auto"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* 4-Card Bento Overview Grid */}
         <UserStatsBento
-          stats={stats}
+          stats={systemStats}
           onSelectFilter={handleBentoFilterSelect}
           activeStatusFilter={filters.statusFilter}
           activeRoleFilter={filters.roleFilter}
@@ -316,14 +611,16 @@ export default function UserAccountsPage() {
         <UserFilterBar
           filters={filters}
           onFilterChange={handleFilterChange}
-          totalResults={filteredUsers.length}
+          totalResults={totalCount}
         />
 
-        {/* User Accounts Table */}
+        {/* User Accounts Directory Table */}
         <UsersTable
-          users={paginatedUsers}
-          onToggleStatus={(user) => setStatusModalUser(user)}
-          onEditUser={(user) => setEditModalUser(user)}
+          users={users}
+          currentUserId={authUser?.user_id}
+          isLoading={isLoadingUsers}
+          onToggleStatus={(target) => setStatusModalUser(target)}
+          onEditUser={(target) => setEditModalUser(target)}
           onResetFilters={() =>
             handleFilterChange({ searchQuery: '', roleFilter: 'ALL', statusFilter: 'ALL' })
           }
@@ -331,12 +628,12 @@ export default function UserAccountsPage() {
         />
 
         {/* Pagination Footer */}
-        {filteredUsers.length > 0 && (
+        {totalCount > 0 && !isLoadingUsers && (
           <UserPagination
             pagination={{
               currentPage,
               pageSize: PAGE_SIZE,
-              totalItems: filteredUsers.length,
+              totalItems: totalCount,
             }}
             onPageChange={(page) => setCurrentPage(page)}
           />
@@ -349,13 +646,14 @@ export default function UserAccountsPage() {
         onClose={() => setIsAddModalOpen(false)}
         onSubmit={handleCreateUser}
         employees={employees}
-        existingUsers={users}
       />
 
       {/* Status Toggle Confirmation Modal */}
       <StatusToggleModal
+        key={statusModalUser?.user_id}
         isOpen={!!statusModalUser}
         user={statusModalUser}
+        currentUserId={authUser?.user_id}
         onClose={() => setStatusModalUser(null)}
         onConfirm={handleConfirmStatusToggle}
       />
@@ -365,6 +663,7 @@ export default function UserAccountsPage() {
         key={editModalUser?.user_id}
         isOpen={!!editModalUser}
         user={editModalUser}
+        currentUserId={authUser?.user_id}
         onClose={() => setEditModalUser(null)}
         onSave={handleSaveEditUser}
       />

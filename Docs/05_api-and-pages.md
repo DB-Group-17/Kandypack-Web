@@ -180,6 +180,15 @@ Conventions used throughout:
 - **Response 200:** `{ "items": [{ product_id, product_name, quantity_on_hand, updated_at }] }`
 - **Business logic:** `store_manager` request is rejected with 403 if `:id` doesn't match their `store_id` from the JWT.
 
+### `GET /api/stores/:id/arrived-bookings`
+- **Roles:** store_manager (own store), system_administrator, logistics_manager
+- **Response 200:** `{ "items": [{ booking_id, train_booking_id, trip_id, order_id, arrival_datetime, items: [{ booking_item_id, product_id, product_name, sku, expected_quantity }] }] }`
+- **Business logic:**
+  1. Rejects with 403 if `store_manager` requests a store ID other than their assigned `store_id`.
+  2. Queries train bookings where `train_trips.destination_city_id = stores.city_id` for `:id` and `train_trips.status = 'Arrived'`.
+  3. Filters out any bookings that have already been received into inventory (`NOT EXISTS` in `inventory_transactions` where `transaction_type = 'receive'`).
+  4. Returns line items with expected quantities derived from `train_booking_items`, `order_items`, and `products`.
+
 ### `POST /api/stores/:id/receive-goods`
 - **Roles:** store_manager (own store), system_administrator
 - **Request body:** `{ "train_booking_id": number }` — the received quantities are read from `train_booking_items`, not supplied by the caller
