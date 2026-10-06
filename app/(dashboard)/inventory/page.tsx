@@ -32,6 +32,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { LOW_STOCK_THRESHOLD } from '@/lib/business-rules';
 import { StockLevelsTable } from './components/StockLevelsTable';
 import { TransactionHistoryTable } from './components/TransactionHistoryTable';
 import { ReceiveGoodsModal } from './components/ReceiveGoodsModal';
@@ -59,8 +60,9 @@ const INITIAL_TRANSACTION_FILTERS: TransactionFilters = {
 
 /**
  * Table page size for stock levels client-side pagination.
+ * Set to 10 rows per page per PR review feedback.
  */
-const STOCK_PAGE_SIZE = 5;
+const STOCK_PAGE_SIZE = 10;
 
 /**
  * Table page size for transaction history client-side pagination.
@@ -70,14 +72,12 @@ const TRANSACTION_PAGE_SIZE = 10;
 
 /**
  * Evaluates semantic inventory health status based on quantity on hand and an authoritative threshold.
- * When threshold is undefined or null, no status classification is inferred.
  *
  * @param quantity - Current physical count on hand
- * @param threshold - Minimum threshold before low stock alert triggers (optional)
- * @returns 'critical' | 'low_stock' | 'healthy' | undefined
+ * @param threshold - Minimum threshold before low stock alert triggers (required)
+ * @returns 'critical' | 'low_stock' | 'healthy'
  */
-function computeStockStatus(quantity: number, threshold?: number): StockStatus | undefined {
-  if (threshold === undefined || threshold === null) return undefined;
+function computeStockStatus(quantity: number, threshold: number): StockStatus {
   if (quantity <= threshold * 0.25) return 'critical';
   if (quantity <= threshold) return 'low_stock';
   return 'healthy';
@@ -281,8 +281,6 @@ export default function StoreInventoryPage(): React.JSX.Element {
           const items: StockItem[] = (data.items || []).map((row) => {
             const productMeta = productsMap.get(row.product_id);
             const qty = Number(row.quantity_on_hand);
-            // Authoritative per-product threshold (undefined until provided by backend schema)
-            const threshold: number | undefined = undefined;
             return {
               product_id: row.product_id,
               product_name: row.product_name,
@@ -290,9 +288,9 @@ export default function StoreInventoryPage(): React.JSX.Element {
               category: productMeta?.category,
               unit_of_measure: productMeta?.unit_of_measure,
               quantity_on_hand: qty,
-              threshold,
+              threshold: LOW_STOCK_THRESHOLD,
               updated_at: row.updated_at,
-              status: computeStockStatus(qty, threshold),
+              status: computeStockStatus(qty, LOW_STOCK_THRESHOLD),
             };
           });
 

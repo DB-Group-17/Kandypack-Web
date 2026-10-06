@@ -295,7 +295,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                 htmlFor="train-booking-select"
                 className="block text-[12px] font-bold uppercase tracking-wider text-[#474554] mb-1.5"
               >
-                Train Booking <span className="text-[#F93C65]">*</span>
+                Train booking <span className="text-[#F93C65]">*</span>
               </label>
               <div className="relative">
                 <select

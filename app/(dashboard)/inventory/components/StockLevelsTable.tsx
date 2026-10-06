@@ -103,8 +103,8 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
 
     if (item.status === 'critical') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF0F0] text-[#93000A] text-[12px] font-semibold">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#BA1A1A]" />
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF0F0] text-[#F93C65] text-[12px] font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#F93C65]" />
           {formatted} Critical
         </span>
       );
@@ -112,9 +112,9 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
 
     if (item.status === 'low_stock') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF9E6] text-[#B87C00] text-[12px] font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF9E6] text-[#FFB800] text-[12px] font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-[#FFB800]" />
-          {formatted} Low Stock
+          {formatted} Low stock
         </span>
       );
     }
