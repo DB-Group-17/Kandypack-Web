@@ -15,7 +15,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { PATCH } from '@/app/api/users/[id]/route';
-import { pool } from '@/lib/db';
+import { pool, withUserContext } from '@/lib/db';
 import { RowDataPacket } from 'mysql2/promise';
 import type { SessionUser } from '@/lib/auth';
 
@@ -37,6 +37,17 @@ vi.mock('@/lib/auth', async (importOriginal) => {
   return {
     ...actual,
     getSession: vi.fn().mockImplementation(() => Promise.resolve(mockSession)),
+  };
+});
+
+// Mock withUserContext to allow testing database deadlock and timeout concurrency mappings
+vi.mock('@/lib/db', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/db')>();
+  return {
+    ...actual,
+    withUserContext: vi.fn((...args: Parameters<typeof actual.withUserContext>) =>
+      actual.withUserContext(...args)
+    ),
   };
 });
 
@@ -221,5 +232,74 @@ describe('API Route: PATCH /api/users/:id Administrator Safeguards', () => {
 
     // 4. Clean up the second admin
     await cleanupTestUser(SECOND_ADMIN_ID);
+  });
+
+  describe('Review Fix #10: Concurrency conflict error mapping', () => {
+    it('maps ER_LOCK_DEADLOCK to HTTP 409 with the required user-facing message', async () => {
+      mockSession.user_id = '99999999-9999-9999-9999-999999999999';
+      mockSession.role = 'system_administrator';
+
+      const deadlockError = Object.assign(
+        new Error('Deadlock found when trying to get lock; try restarting transaction'),
+        { code: 'ER_LOCK_DEADLOCK', errno: 1213 }
+      );
+      vi.mocked(withUserContext).mockRejectedValueOnce(deadlockError);
+
+      const req = createPatchRequest(PRIMARY_ADMIN_ID, { is_active: false });
+      const res = await PATCH(req, {
+        params: Promise.resolve({ id: PRIMARY_ADMIN_ID }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(409);
+      expect(body?.error?.code).toBe('CONCURRENT_UPDATE_CONFLICT');
+      expect(body?.error?.message).toBe(
+        'Another administrator changed accounts at the same time. Refresh and try again.'
+      );
+    });
+
+    it('maps ER_LOCK_WAIT_TIMEOUT to HTTP 409 with the required user-facing message', async () => {
+      mockSession.user_id = '99999999-9999-9999-9999-999999999999';
+      mockSession.role = 'system_administrator';
+
+      const timeoutError = Object.assign(
+        new Error('Lock wait timeout exceeded; try restarting transaction'),
+        { code: 'ER_LOCK_WAIT_TIMEOUT', errno: 1205 }
+      );
+      vi.mocked(withUserContext).mockRejectedValueOnce(timeoutError);
+
+      const req = createPatchRequest(PRIMARY_ADMIN_ID, { is_active: false });
+      const res = await PATCH(req, {
+        params: Promise.resolve({ id: PRIMARY_ADMIN_ID }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(409);
+      expect(body?.error?.code).toBe('CONCURRENT_UPDATE_CONFLICT');
+      expect(body?.error?.message).toBe(
+        'Another administrator changed accounts at the same time. Refresh and try again.'
+      );
+    });
+
+    it('continues to return HTTP 500 for unrelated database errors', async () => {
+      mockSession.user_id = '99999999-9999-9999-9999-999999999999';
+      mockSession.role = 'system_administrator';
+
+      const genericDbError = Object.assign(
+        new Error('Disk full or table storage engine failure'),
+        { code: 'ER_DISK_FULL', errno: 1021 }
+      );
+      vi.mocked(withUserContext).mockRejectedValueOnce(genericDbError);
+
+      const req = createPatchRequest(PRIMARY_ADMIN_ID, { is_active: false });
+      const res = await PATCH(req, {
+        params: Promise.resolve({ id: PRIMARY_ADMIN_ID }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(500);
+      expect(body?.error?.code).toBe('SERVER_ERROR');
+      expect(body?.error?.message).toBe('Failed to update user account. Please try again.');
+    });
   });
 });

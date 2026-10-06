@@ -15,6 +15,7 @@
  * - Password hashes and secrets are NEVER exposed or returned in responses.
  * - Prevents self-deactivation and self-demotion away from system_administrator for signed-in admins.
  * - Protects the last remaining active system administrator account with row-level locks (FOR UPDATE).
+ * - Maps MySQL concurrency deadlocks (ER_LOCK_DEADLOCK) and wait timeouts (ER_LOCK_WAIT_TIMEOUT) to HTTP 409 Conflict.
  * - Updates across `users` and `user_profiles` are executed within an atomic database transaction.
  * - Connection session context (@current_user_id, @current_app_role) is configured via `withUserContext`.
  * 
@@ -465,7 +466,11 @@ export async function PATCH(
           await connection.commit();
           return { status: 200 };
         } catch (txError) {
-          await connection.rollback();
+          try {
+            await connection.rollback();
+          } catch {
+            // Ignore rollback failure if transaction was already rolled back by MySQL deadlock engine
+          }
           throw txError;
         }
       }
@@ -494,6 +499,30 @@ export async function PATCH(
 
     return NextResponse.json(formatUserResponse(updatedUser), { status: 200 });
   } catch (error: unknown) {
+    // Check for MySQL concurrency conflicts (deadlock or lock wait timeout) per Review Fix #10
+    const err = error as { code?: string; errno?: number; message?: string } | null;
+    const isLockConflict =
+      err?.code === 'ER_LOCK_DEADLOCK' ||
+      err?.code === 'ER_LOCK_WAIT_TIMEOUT' ||
+      err?.errno === 1213 ||
+      err?.errno === 1205 ||
+      (typeof err?.message === 'string' &&
+        (err.message.includes('ER_LOCK_DEADLOCK') ||
+         err.message.includes('ER_LOCK_WAIT_TIMEOUT')));
+
+    if (isLockConflict) {
+      console.warn('Concurrent administrator update conflict detected:', err?.code || err?.errno);
+      return NextResponse.json(
+        {
+          error: {
+            code: 'CONCURRENT_UPDATE_CONFLICT',
+            message: 'Another administrator changed accounts at the same time. Refresh and try again.'
+          }
+        },
+        { status: 409 }
+      );
+    }
+
     console.error('Error updating user account:', error);
     return NextResponse.json(
       {
