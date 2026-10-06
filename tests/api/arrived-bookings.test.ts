@@ -166,17 +166,18 @@ describe('API Route: GET /api/stores/:id/arrived-bookings', () => {
       expect(item.expected_quantity).toBeGreaterThan(0);
     }
 
-    // Now query Store 1 (Colombo), where Bookings #2, #3, #4, #5 are Arrived but already received
+    // In clean seed data for Store 1 (Colombo), Bookings #2 and #3 are already received,
+    // while Bookings #4 and #5 are arrived but unreceived.
     const { req: req1, context: context1 } = createGetRequest('1');
     const res1 = await GET(req1, context1);
     expect(res1.status).toBe(200);
     const body1 = await res1.json();
 
-    // Verify none of the already-received bookings (2, 3, 4, 5) appear in the result
+    // Verify already-received bookings (2, 3) are excluded while arrived unreceived bookings (4, 5) are returned
     const returnedBookingIds = body1.items.map((b: { booking_id: number }) => b.booking_id);
     expect(returnedBookingIds).not.toContain(2);
     expect(returnedBookingIds).not.toContain(3);
-    expect(returnedBookingIds).not.toContain(4);
-    expect(returnedBookingIds).not.toContain(5);
+    expect(returnedBookingIds).toContain(4);
+    expect(returnedBookingIds).toContain(5);
   });
 });
