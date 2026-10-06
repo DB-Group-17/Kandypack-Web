@@ -149,9 +149,10 @@ export interface ProductCatalogItem {
 }
 
 /**
- * Item specification for a train booking ready for goods receipt (legacy / UI compatibility).
+ * Item specification for a train booking ready for goods receipt.
  */
 export interface TrainBookingItem {
+  booking_item_id?: number;
   product_id: number;
   product_name: string;
   sku: string;
@@ -159,15 +160,25 @@ export interface TrainBookingItem {
 }
 
 /**
- * Represents an arrived train trip booking available for receiving at the store (legacy / UI compatibility).
+ * Represents an arrived train trip booking available for receiving at the store.
  */
 export interface ArrivedTrainBooking {
-  train_booking_id: number;
-  trip_code: string;
-  origin_city: string;
-  destination_city: string;
+  booking_id: number;
+  train_booking_id?: number;
+  trip_id?: number;
+  order_id?: number;
+  trip_code?: string;
+  origin_city?: string;
+  destination_city?: string;
   arrival_datetime: string;
   items: TrainBookingItem[];
+}
+
+/**
+ * API response contract for GET /api/stores/:id/arrived-bookings.
+ */
+export interface ApiArrivedBookingsResponse {
+  items: ArrivedTrainBooking[];
 }
 
 /**

@@ -202,6 +202,7 @@ export const INITIAL_MOCK_STOCK: Record<number, StockItem[]> = {
 export const MOCK_ARRIVED_TRAIN_BOOKINGS: Record<number, ArrivedTrainBooking[]> = {
   1: [
     {
+      booking_id: 101,
       train_booking_id: 101,
       trip_code: 'TRIP-CMB-2026-088',
       origin_city: 'Kandy',
@@ -215,6 +216,7 @@ export const MOCK_ARRIVED_TRAIN_BOOKINGS: Record<number, ArrivedTrainBooking[]> 
       ],
     },
     {
+      booking_id: 102,
       train_booking_id: 102,
       trip_code: 'TRIP-CMB-2026-089',
       origin_city: 'Kandy',
@@ -229,6 +231,7 @@ export const MOCK_ARRIVED_TRAIN_BOOKINGS: Record<number, ArrivedTrainBooking[]> 
   ],
   2: [
     {
+      booking_id: 201,
       train_booking_id: 201,
       trip_code: 'TRIP-NEG-2026-041',
       origin_city: 'Kandy',
@@ -242,6 +245,7 @@ export const MOCK_ARRIVED_TRAIN_BOOKINGS: Record<number, ArrivedTrainBooking[]> 
   ],
   3: [
     {
+      booking_id: 301,
       train_booking_id: 301,
       trip_code: 'TRIP-GAL-2026-033',
       origin_city: 'Kandy',
