@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type {
   QuarterlySalesRow,
@@ -137,26 +137,33 @@ const _defaultDateRange = getDefaultDateRange();
  * @returns {JSX.Element} The rendered Reports page component.
  */
 export default function ReportsPage() {
-  // Read the current user's role from AuthContext for RBAC-driven UI gating.
+  // Read the current user's role and auth hydration status from AuthContext (reviewer issue #1).
   // fleet_supervisor has reports.read but NOT reports.export (lib/rbac.ts line 250).
-  const { role } = useAuth();
+  const { role, isLoading: isAuthLoading } = useAuth();
+
+  /** Counter tracking latest report fetch request ID to ignore stale out-of-order responses */
+  const activeRequestIdRef = useRef<number>(0);
 
   /** True when the current role is permitted to export reports. */
   const canExport = role === "system_administrator" || role === "logistics_manager";
 
   /**
-   * Filter TABS by user role (reviewer issue A).
+   * Filter TABS by user role (reviewer issue A & issue #1).
+   * While auth is hydrating, returns an empty array to avoid flashing unauthorized tabs.
    * fleet_supervisor can only access operational/fleet reports: driver-assistant-hours and truck-usage.
    * system_administrator and logistics_manager retain access to all 6 reports.
    */
   const visibleTabs = useMemo(() => {
+    if (isAuthLoading || !role) {
+      return [];
+    }
     if (role === "fleet_supervisor") {
       return TABS.filter(
         (t) => t.id === "driver-assistant-hours" || t.id === "truck-usage"
       );
     }
     return TABS;
-  }, [role]);
+  }, [role, isAuthLoading]);
 
   // --- Selected Tab State ---
   const [selectedTab, setSelectedTab] = useState<ReportTab>("quarterly-sales");
@@ -218,10 +225,14 @@ export default function ReportsPage() {
   };
 
   /**
-   * Fetches customer accounts directory once on initial mount to populate Customer History selector.
-   * Loads once ([]) so selecting a customer doesn't trigger a refetch (reviewer issue #6).
+   * Fetches customer accounts directory once auth is ready to populate Customer History selector.
+   * Only fetches for roles that have access to Customer History (skips fleet_supervisor, reviewer issue #2).
    */
   useEffect(() => {
+    if (isAuthLoading || !role || role === "fleet_supervisor") {
+      return;
+    }
+
     async function loadCustomers() {
       setIsLoadingCustomers(true);
       try {
@@ -241,7 +252,7 @@ export default function ReportsPage() {
     }
 
     loadCustomers();
-  }, []);
+  }, [isAuthLoading, role]);
 
   /**
    * Fetches the report dataset corresponding to the specified tab with current filter parameters.
@@ -249,11 +260,17 @@ export default function ReportsPage() {
    * @param {ReportTab} tab - The report tab to fetch.
    */
   const fetchReportData = useCallback(async (tab: ReportTab) => {
+    // Wait until auth is resolved and user role is confirmed (reviewer issue #1)
+    if (isAuthLoading || !role) {
+      return;
+    }
+
     // Guard against fetching reports not permitted for fleet_supervisor (reviewer issue A)
     if (role === "fleet_supervisor" && tab !== "driver-assistant-hours" && tab !== "truck-usage") {
       return;
     }
 
+    const currentRequestId = ++activeRequestIdRef.current;
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -303,6 +320,11 @@ export default function ReportsPage() {
       const res = await fetch(endpoint);
       const json = await res.json();
 
+      // If a newer request was dispatched while this was in flight, ignore the response (reviewer issue #1)
+      if (currentRequestId !== activeRequestIdRef.current) {
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(json.error?.message || "Failed to load report data.");
       }
@@ -330,18 +352,27 @@ export default function ReportsPage() {
           break;
       }
     } catch (err: unknown) {
+      if (currentRequestId !== activeRequestIdRef.current) {
+        return;
+      }
       const msg = err instanceof Error ? err.message : "An unexpected error occurred.";
       setErrorMessage(msg);
     } finally {
-      setIsLoading(false);
+      if (currentRequestId === activeRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
-  }, [role, selectedYear, selectedQuarter, mostOrderedQuarter, selectedMonth, dateFrom, dateTo, weekStart, selectedCustomerId]);
+  }, [isAuthLoading, role, selectedYear, selectedQuarter, mostOrderedQuarter, selectedMonth, dateFrom, dateTo, weekStart, selectedCustomerId]);
 
   /**
-   * Refetches report data whenever active tab changes.
+   * Refetches report data whenever active tab or auth status changes.
    * Uses a microtask deferral to prevent synchronous cascading re-renders.
    */
   useEffect(() => {
+    if (isAuthLoading || !role) {
+      return;
+    }
+
     let ignore = false;
     const timer = setTimeout(() => {
       if (!ignore) {
@@ -353,7 +384,7 @@ export default function ReportsPage() {
       ignore = true;
       clearTimeout(timer);
     };
-  }, [activeTab, fetchReportData]);
+  }, [isAuthLoading, role, activeTab, fetchReportData]);
 
   /**
    * Handles immediate synchronous CSV export download from the server.
@@ -455,6 +486,23 @@ export default function ReportsPage() {
     () => customers.find((c) => c.customer_id === selectedCustomerId),
     [customers, selectedCustomerId]
   );
+
+  // Show loading skeleton while authentication session is being hydrated (reviewer issue #1)
+  if (isAuthLoading || !role) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="h-8 bg-[#E2E8F0] rounded-lg w-40" />
+            <div className="h-4 bg-[#E2E8F0] rounded-md w-56 mt-2" />
+          </div>
+        </div>
+        <div className="h-12 bg-[#E2E8F0] rounded-2xl w-full" />
+        <div className="h-28 bg-[#E2E8F0] rounded-2xl w-full" />
+        <div className="h-64 bg-[#E2E8F0] rounded-2xl w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
