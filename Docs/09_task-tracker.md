@@ -3,7 +3,7 @@
 > Status: Active
 > Authority: Supporting implementation tracker
 > Primary source: `Docs/03_architecture.md`
-> Last reviewed: 2026-09-26
+> Last reviewed: 2026-10-07
 
 Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
@@ -92,32 +92,47 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [x] All 6 report GET endpoints (`quarterly-sales`, `most-ordered-items`, `city-route-sales`, `driver-assistant-hours`, `truck-usage`, `customer-history`)
 - [x] `GET /reports/:type/export/csv`
 - [x] `/reports` page — tabs + tables + CSV button wired (PDF button deferred to Phase 3)
-- [ ] Open PR → review → merge
+- [x] Open PR → review → merge — PR #16 merged to `development`
 
 ### Member 3 — Deliveries (needs Orders + Truck Scheduling both on `main`)
 - [x] `GET /deliveries`, `PATCH /deliveries/:id/complete` → `complete_delivery()` — completion runs under a Redis lock and an explicit transaction (a rejected stock dispatch rolls the delivery and order back). Verified 2026-10-07 against the shared dev DB through the real route: the read paths and rejections (not found, already completed, bad id, bad filters); an insufficient-stock completion returned 400 and left the delivery `Scheduled`, the order `At Store`, no dispatch rows and stock unchanged (rollback); a normal completion of delivery 7 (order #29) set it `Completed`, the order `Delivered` (trigger-verified), wrote one dispatch of 36 and left 90 on hand; a repeat call was rejected and changed nothing. The 409 lock-contention path was not exercised
 - [x] `/deliveries` page wired to real data — table with mobile cards, status and date filters, "Mark complete" dialog; checked in the browser pane as the fleet supervisor account (list, dialog open/close)
-- [ ] Open PR → review → merge
+- [x] Open PR → review → merge — PR #18 merged to `development` (2026-10-07)
 
 ### Member 4 — Inventory + Admin Users
 - [x] `GET /stores/:id/inventory` (completed in Subtask 1), `POST /stores/:id/receive-goods` → `receive_goods_at_store()` (completed in Subtask 2), `GET /inventory/transactions` (completed in Subtask 3)
 - [x] `GET/POST /users` (completed in Subtask 5), `PATCH /users/:id` (completed in Subtask 6)
 - [x] `/inventory` (completed in Subtask 4) and `/admin/users` (completed in Subtask 7) pages wired to real data
-- [ ] Open PR → review → merge
+- [x] Open PR → review → merge — PR #17 merged to `development`
 
 ### Member 5 — Report Exports (needs Member 2's report queries merged first)
-- [ ] `POST /reports/:type/export/pdf` returns a direct PDF response
-- [ ] Add PDF renderer, report-size limits, permission checks, and export tests
-- [ ] Confirm no `report_jobs` migration, polling endpoint, or report-file storage is needed for version one
+> Status 2026-10-07: **not started.** Member 2's report queries are merged (PR #16), so this is unblocked. `lib/export.ts` (jsPDF renderer scaffold), `lib/rate-limit.ts` (a `POST /api/reports/:type/export/pdf` profile, 10 per 5 minutes per user) and the CSV route already exist; no `export/pdf` route does.
+
+- [ ] `POST /api/reports/:type/export/pdf` (`app/api/reports/[type]/export/pdf/route.ts`) returns a direct PDF: `Content-Type: application/pdf`, `Content-Disposition: attachment`, no persistence (`03_architecture.md` §11, `05_api-and-pages.md` §A9). Reuse the report queries and role rules from the CSV route so both exports return the same data
+- [ ] Add PDF renderer wiring, report-size limits, permission checks and rate limiting (`applyRateLimit` with the existing profile, per user)
+- [ ] Add export tests: content type and headers, permissions per role, filters, empty result, and a representative output that is a valid PDF (`03_architecture.md` §16)
+- [ ] Confirm no `report_jobs` migration, polling endpoint, or report-file storage is needed for version one (the code shows none; tick this once confirmed in the PR)
+- [ ] Produce a downloadable PDF end to end at least once against the seeded data (this closes the last Phase 2 gate item)
 - [ ] Open PR → review → merge
+
+### Member 1 — Phase 2 review follow-ups
+Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/migrations/`, `lib/db.ts`, `lib/auth.ts`, `proxy.ts`) or to shared documentation. Details and plans are in `member1-followups.md` (local, untracked) until each is done.
+- [ ] **O1, timezone:** set `timezone: 'Z'` in the `mysql2` pool options in `lib/db.ts` so `DATETIME` values (stored in UTC) are read as UTC; every `.toISOString()` response then agrees with the reports. Announce it to the team, and re-check order dates, the 7-day rule and the seed scripts afterwards
+- [ ] **R7, audit logging for user changes:** migration `25_audit_users.sql` adding audit triggers on `users` and `user_profiles` (`record_id` NULL with the user UUID in the JSON; never log `password_hash`), then update `04` §5.5 and §10, `03` §19 and `10_local-setup.md`
+- [ ] **R8, session staleness:** document in `05` §A10 that deactivation and role changes take effect at the user's next login (JWT lives up to 8 hours), plus the self-deactivation and last-admin guards; add the `03` §19 decision-log row
+- [ ] **F1, `complete_delivery` guard:** a new migration so only `Scheduled` or `In Progress` deliveries can be completed (today `Failed` and `Cancelled` can be); then remove the "Known limitation" line from `05` §A8
+- [ ] **F2, start-delivery decision:** decide whether version one needs a `Scheduled` → `In Progress` endpoint (the `UI/deliveries` mockup shows a "Start delivery" button; no document defines one)
+- [ ] **D1, stale documentation:** `05` Part B `/reports` and `07` `/reports` still describe PDF polling and R2; `05` §A9 names the wrong view for Report 4; `03` §7 and `08` use the old conflicts path; record the Report 5 and 6 deviations from the SRS in `03` §19 (or extend the views)
+- [ ] Team message and PR hygiene: tell the team about the `lib/redis.ts` delivery lock key (Member 5's file) and `timezone: 'Z'` when it lands
 
 ---
 
 ### 🔒 PHASE 2 GATE — do not proceed to Phase 3 until ALL of these are true:
-- [ ] Deliveries merged — confirm `complete_delivery()` correctly flips linked order to `Delivered` (trigger-verified)
-- [ ] Reports data endpoints merged and returning correct numbers against the seeded baseline data
-- [ ] Inventory + Admin Users merged
-- [ ] PDF generation successfully produces a downloadable file end-to-end at least once
+- [x] Deliveries merged — PR #18 (2026-10-07). `complete_delivery()` flipping the linked order to `Delivered` was verified through the real route: a normal completion set the order `Delivered` and wrote the dispatch; an insufficient-stock completion rolled everything back
+- [x] Reports data endpoints merged and returning correct numbers against the seeded baseline data — PR #16, checked against the seeded data at review
+- [x] Inventory + Admin Users merged — PR #17
+- [ ] PDF generation successfully produces a downloadable file end-to-end at least once — **open; owner Member 5**
+- **Status (2026-10-07):** 3 of 4 criteria met. Phase 3 does not start until the PDF item closes. Member 1's follow-ups above do not block the gate.
 
 ---
 
