@@ -95,7 +95,7 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] Open PR → review → merge
 
 ### Member 3 — Deliveries (needs Orders + Truck Scheduling both on `main`)
-- [x] `GET /deliveries`, `PATCH /deliveries/:id/complete` → `complete_delivery()` — completion runs under a Redis lock and an explicit transaction (a rejected stock dispatch rolls the delivery and order back). Verified 2026-10-07 against the shared dev DB for the read paths and rejections (not found, already completed, bad id, bad filters); a successful completion and the insufficient-stock rollback are not yet verified end to end
+- [x] `GET /deliveries`, `PATCH /deliveries/:id/complete` → `complete_delivery()` — completion runs under a Redis lock and an explicit transaction (a rejected stock dispatch rolls the delivery and order back). Verified 2026-10-07 against the shared dev DB through the real route: the read paths and rejections (not found, already completed, bad id, bad filters); an insufficient-stock completion returned 400 and left the delivery `Scheduled`, the order `At Store`, no dispatch rows and stock unchanged (rollback); a normal completion of delivery 7 (order #29) set it `Completed`, the order `Delivered` (trigger-verified), wrote one dispatch of 36 and left 90 on hand; a repeat call was rejected and changed nothing. The 409 lock-contention path was not exercised
 - [x] `/deliveries` page wired to real data — table with mobile cards, status and date filters, "Mark complete" dialog; checked in the browser pane as the fleet supervisor account (list, dialog open/close)
 - [ ] Open PR → review → merge
 
