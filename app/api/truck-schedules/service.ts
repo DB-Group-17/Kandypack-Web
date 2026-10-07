@@ -12,12 +12,26 @@ interface ScheduleJoinRow {
   status: TruckScheduleItem['status'];
 }
 
+/**
+ * Formats a schedule DATETIME as the naive wall-clock string 'YYYY-MM-DD HH:MM:SS'.
+ *
+ * The pool reads DATETIME as UTC (`timezone: 'Z'` in lib/db.ts), so the Date's UTC fields
+ * ARE the stored wall-clock fields. The getUTC* getters therefore reproduce exactly what is
+ * in the database on any server timezone; the local getters would shift the time by the
+ * server's UTC offset (e.g. 08:00 would show as 13:30 on an Asia/Colombo machine).
+ *
+ * @param value - Date from mysql2, or an already-formatted string
+ * @returns 'YYYY-MM-DD HH:MM:SS', or the original text if it cannot be parsed
+ */
 function formatDatetime(value: Date | string): string {
+  // An already-formatted naive string is returned untouched (re-parsing it would apply the
+  // server's local offset).
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) return value;
   const d = value instanceof Date ? value : new Date(value);
   if (isNaN(d.getTime())) return String(value);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+         `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
 }
 
 export async function fetchTruckSchedulesFromDB(filters: {

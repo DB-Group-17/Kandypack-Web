@@ -56,7 +56,7 @@ Member 1's `db.ts` + auth/RBAC being merged first.
 ### Backend
 - `GET /trucks`, `GET /drivers`, `GET /assistants` (with current weekly hours)
 - `GET /truck-schedules`, `POST /truck-schedules` (calls `schedule_truck_delivery()`)
-- `GET /truck-schedules/:id/conflicts` (live pre-check for the UI)
+- `GET /truck-schedules/conflicts` (live pre-check for the UI; query params, no schedule id — `05_api-and-pages.md` §A7)
 - `GET /deliveries`, `PATCH /deliveries/:id/complete` (calls `complete_delivery()`)
 
 ### Frontend

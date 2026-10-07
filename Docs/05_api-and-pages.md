@@ -7,7 +7,7 @@ Conventions used throughout:
 - All protected routes require the JWT cookie; `Roles` lists who may call it.
 - Error shape is always: `{ "error": { "code": string, "message": string, "field"?: string } }`
 - All money fields are `DECIMAL` serialized as strings to avoid float rounding.
-- Timestamps are ISO 8601 strings over the wire (converted from MySQL `DATETIME`).
+- Timestamps are ISO 8601 strings over the wire (converted from MySQL `DATETIME`). The database stores UTC and the `mysql2` pool reads `DATETIME` as UTC (`timezone: 'Z'` in `lib/db.ts`, `03_architecture.md` §19), so a value such as `2026-09-21T09:00:00.000Z` is exactly what is stored. Exception: truck-schedule `start_time` / `end_time` are naive wall-clock strings (`YYYY-MM-DD HH:MM:SS`) because schedules are entered and checked as local operating hours (06:00–20:00).
 
 ---
 
@@ -271,7 +271,7 @@ Conventions used throughout:
   4. `trg_delivery_complete_order` fires on the status update → sets the linked `orders.status = 'Delivered'` automatically
   5. A corresponding `inventory_transactions` row (`transaction_type = 'dispatch'`) is written, linked via `delivery_id`
   6. Any failure rolls the delivery, order and stock back together
-- **Known limitation:** the procedure only checks `status <> 'Completed'`, so a `Failed` or `Cancelled` delivery can still be completed through the API (the page hides the button for those). A guard needs a new migration.
+- **Which deliveries can be completed:** only `Scheduled` or `In Progress`. Since migration `26` the procedure rejects `Failed` and `Cancelled` deliveries ("Delivery N is Cancelled and cannot be completed.") and a repeat call ("Delivery N is already Completed."), both as 400. There is no start-delivery endpoint in version one, so a `Scheduled` delivery is completed directly (`03_architecture.md` §19).
 
 ---
 
@@ -288,7 +288,7 @@ All 6 report GET endpoints share the same pattern:
 | `GET /api/reports/quarterly-sales` | `v_quarterly_sales` | `year?`, `quarter?` |
 | `GET /api/reports/most-ordered-items` | `v_most_ordered_items` | `year`, `quarter` (required) |
 | `GET /api/reports/city-route-sales` | `v_city_route_sales` | `date_from?`, `date_to?` |
-| `GET /api/reports/driver-assistant-hours` | `v_driver_hours` + `v_assistant_hours` | `week_start` (required) |
+| `GET /api/reports/driver-assistant-hours` | `v_driver_assistant_hours` (one combined view, migration `19`) | `week_start` (required) |
 | `GET /api/reports/truck-usage` | `v_truck_usage_monthly` | `month?`, `year?` |
 | `GET /api/reports/customer-history` | `v_customer_order_history` | `customer_id` (required) |
 
@@ -325,7 +325,12 @@ All 6 report GET endpoints share the same pattern:
 - **Roles:** system_administrator only
 - **Request body:** `{ is_active?: boolean, app_role?: string }`
 - **Response 200:** updated user/profile
+- **Response 400:** validation error, `INVALID_ROLE`, `SELF_DEACTIVATION_PROHIBITED`, `SELF_DEMOTION_PROHIBITED` or `LAST_ADMIN_PROTECTED`
+- **Response 404:** account not found; **409:** `CONCURRENT_UPDATE_CONFLICT` (another administrator changed accounts at the same time; refresh and retry)
 - **Business logic:** deactivation sets `is_active = 0` (soft, login blocked at step 2 of the login flow) rather than deleting the row.
+  - **Guards:** an administrator cannot deactivate their own account or move it away from `system_administrator`, and the last active `system_administrator` can neither be deactivated nor demoted. A store manager must be linked to an employee that has a home store.
+  - **Audit:** the change is recorded by the migration `25` triggers on `user_profiles` (and `users` for an email change), with the acting administrator, the target account's UUID in the JSON and never the password hash.
+- **Known limitation (version one):** deactivation and role changes take effect at the user's **next login**. An existing JWT keeps its old role and active state until it expires (`TOKEN_EXPIRY`, 8 hours in `lib/auth.ts`), because only `POST /api/auth/login` checks `is_active` and the optional Redis deny-list (§A1) is not implemented. Recorded in `03_architecture.md` §19.
 
 ### `GET /api/employees` / `POST /api/employees`
 - **Roles:** system_administrator
@@ -396,11 +401,11 @@ For each page: which API routes it calls, and the interaction flow.
 - **Flow:** stock table loads on mount; "Receive Goods" form (select `train_booking_id`, enter received quantities per product) → POST → refetch stock table. Transactions history shown as a secondary tab/table.
 
 ## `/reports`
-- **Calls:** all 6 `GET /api/reports/*` endpoints (one per report tab), `GET /api/reports/:type/export/csv`, `POST /api/reports/:type/export/pdf` + `GET /api/reports/jobs/:job_id` (polling)
+- **Calls:** all 6 `GET /api/reports/*` endpoints (one per report tab), `GET /api/reports/:type/export/csv`, `POST /api/reports/:type/export/pdf` (direct PDF response; no job, polling or storage)
 - **Flow:**
   1. Tabbed UI, one tab per report; selecting a tab + filling filters (quarter/year/date range/customer) fetches that report's JSON and renders a table
   2. "Export CSV" button triggers a direct browser download from the CSV endpoint (no extra state needed)
-  3. "Export PDF" button calls the POST endpoint, receives `job_id`, shows a "Generating…" state, and polls `GET /api/reports/jobs/:job_id` every ~2s until `status: done`, then shows a download link (`file_url`, served from Cloudflare R2)
+  3. "Export PDF" button calls the POST endpoint with the same filters as the on-screen report and shows a "Generating PDF…" state while the request is in flight. The response is the PDF itself (`Content-Type: application/pdf`, `Content-Disposition: attachment`), so the page saves it as a download directly. There is no `job_id`, no polling and no stored file (`03_architecture.md` §11). A failure shows the error toast and the user can retry
 
 ## `/admin/users`
 - **Calls:** `GET /api/users`, `POST /api/users`, `PATCH /api/users/:id`
