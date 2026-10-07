@@ -95,8 +95,8 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] Open PR → review → merge
 
 ### Member 3 — Deliveries (needs Orders + Truck Scheduling both on `main`)
-- [ ] `GET /deliveries`, `PATCH /deliveries/:id/complete` → `complete_delivery()`
-- [ ] `/deliveries` page wired to real data
+- [x] `GET /deliveries`, `PATCH /deliveries/:id/complete` → `complete_delivery()` — completion runs under a Redis lock and an explicit transaction (a rejected stock dispatch rolls the delivery and order back). Verified 2026-10-07 against the shared dev DB for the read paths and rejections (not found, already completed, bad id, bad filters); a successful completion and the insufficient-stock rollback are not yet verified end to end
+- [x] `/deliveries` page wired to real data — table with mobile cards, status and date filters, "Mark complete" dialog; checked in the browser pane as the fleet supervisor account (list, dialog open/close)
 - [ ] Open PR → review → merge
 
 ### Member 4 — Inventory + Admin Users
