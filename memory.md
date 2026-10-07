@@ -70,3 +70,115 @@ Last updated: 2026-09-23
 - `v_quarterly_sales` filters `status = 'Delivered'`, so it shows one quarter only; if Member 2 wants a period comparison, seed §9 needs Delivered orders in two quarters.
 - The leave-the-page guard cannot intercept sidebar links or the browser Back button (App Router limitation); the `SectionCard` and `StatusBadge` components are duplicated across pages and should be extracted when convenient.
 - `DATABASE_URL`'s `ssl-mode=REQUIRED` is ignored by mysql2 and `lib/db.ts` sets `rejectUnauthorized: false`. `package.json` lists `lucide-react` twice.
+
+---
+
+# Memory — Member 3 (Monishka) Phase 2: Deliveries
+
+Last updated: 2026-10-04
+
+## Phase 1 — What was built (completed, merged to `main`)
+
+### Backend — Truck Scheduling & Fleet APIs (PR #12 → `development` → `main`)
+
+- `app/api/trucks/route.ts` — `GET /api/trucks` returns `{ items: TruckItem[] }`
+- `app/api/drivers/route.ts` — `GET /api/drivers` returns `{ items: DriverItem[] }` with live `current_week_hours` / `hours_remaining` from `get_driver_weekly_hours()`
+- `app/api/assistants/route.ts` — `GET /api/assistants` returns `{ items: AssistantItem[] }` with live roster hours from `get_assistant_weekly_hours()`
+- `app/api/truck-schedules/route.ts` — `GET /api/truck-schedules` (filterable: date_from, date_to, status, driver_id, driver_name, truck_id) and `POST /api/truck-schedules` (calls `schedule_truck_delivery()` under triple Redis lock on truck + driver + assistant, TTL 15s)
+- `app/api/truck-schedules/service.ts` — `fetchTruckSchedulesFromDB()` shared query builder
+- `app/api/truck-schedules/conflicts/route.ts` — `GET /api/truck-schedules/conflicts` read-only pre-check (all 8 BR checks without writing or locking)
+- `types/fleet.ts` — canonical types: `TruckScheduleStatus`, `DeliveryStatus`, `TruckItem`, `DriverItem`, `AssistantItem`, `TruckScheduleItem`, `ConflictPreCheckRequest/Response`, `CreateTruckSchedulePayload`, `DeliveryItem`, `RouteCoverageArea`, `RouteItem`
+
+### Frontend — Truck Schedule pages
+
+- `app/(dashboard)/truck-schedule/page.tsx` — list page with `TruckScheduleFilters` component, status filter bar, date range, real data from `GET /api/truck-schedules`
+- `app/(dashboard)/truck-schedule/TruckScheduleFilters.tsx` — reusable filter bar component
+- `app/(dashboard)/truck-schedule/new/page.tsx` — creation form: truck/driver/assistant/route dropdowns with hours_remaining inline, date-time picker, debounced live conflict check via `GET /api/truck-schedules/conflicts`, submit to `POST /api/truck-schedules`, creation toast
+- `app/(dashboard)/truck-schedule/ScheduleCreatedToast.tsx` — toast component
+
+### Frontend — Deliveries shell (Phase 0, static mock)
+
+- `app/(dashboard)/deliveries/page.tsx` — static shell with mock data, `DeliveryItem[]` state, `getDeliveryBadgeClass()`, inline notes input and "Complete" button (client-side only, no API calls)
+
+### Not verified (from Phase 1)
+
+- Creating a truck schedule end to end in a browser (PR merged but untested in live browser flow)
+
+---
+
+## Phase 2 — Deliveries module: workload split into 3 parts
+
+Member 3's Phase 2 scope from `09_task-tracker.md`:
+- `GET /api/deliveries`, `PATCH /api/deliveries/:id/complete` → `complete_delivery()`
+- `/deliveries` page wired to real data
+- Open PR → review → merge
+
+### Part 1: `GET /api/deliveries` backend route — ✅ DONE (2026-10-04)
+
+**Files created:**
+- `app/api/deliveries/route.ts` — GET handler with auth, status/date filters
+- `app/api/deliveries/service.ts` — `fetchDeliveriesFromDB()` with JOIN query (deliveries → orders → customers → truck_schedules → trucks → drivers → employees)
+
+**Verified:** TypeScript typecheck passes (exit code 0).
+
+---
+
+### Part 2: `PATCH /api/deliveries/:id/complete` backend route — ✅ DONE (2026-10-07)
+
+**Files created:**
+- `app/api/deliveries/[id]/complete/route.ts` — PATCH handler, calls `complete_delivery()` via `withUserContext`, RBAC action `complete_delivery`, isSqlSignal error handling
+
+**Verified:** TypeScript typecheck passes (exit code 0).
+
+---
+
+### Part 3: Wire `/deliveries` page to real data — ✅ DONE (2026-10-07)
+
+**Files modified:**
+- `app/(dashboard)/deliveries/page.tsx` — rewritten from static mock to live client component
+
+**What it has:**
+- Fetches from `GET /api/deliveries` on mount and on filter change
+- Status pill filter bar (All / Scheduled / In Progress / Completed / Failed / Cancelled)
+- Date range filter inputs (date_from, date_to)
+- "Mark Complete" button per active delivery → `PATCH /api/deliveries/:id/complete`
+- Inline notes input, per-row error messages, success toast
+- Loading spinner, error state, empty state with contextual help text
+- `getDeliveryBadgeClass()` preserved with DESIGN.md semantic colors
+
+**Verified:** TypeScript typecheck passes (exit code 0).
+
+---
+
+## Current state (2026-10-07)
+
+- **All 3 parts implemented and passing typecheck.** No other members' files were modified.
+- **Not yet verified:** browser end-to-end test (needs dev server running + authenticated session)
+- **Not yet done:** open PR → review → merge
+- **No git commits made** — all changes are local only
+
+## Files created/modified by Member 3 in Phase 2
+
+| File | Action |
+|---|---|
+| `app/api/deliveries/route.ts` | Created — GET /api/deliveries |
+| `app/api/deliveries/service.ts` | Created — fetchDeliveriesFromDB query builder |
+| `app/api/deliveries/[id]/complete/route.ts` | Created — PATCH complete endpoint |
+| `app/(dashboard)/deliveries/page.tsx` | Rewritten — live data with filters + complete action |
+
+## Key references
+
+- API contract: `Docs/05_api-and-pages.md` §A8 (Deliveries) and §B `/deliveries` page spec
+- Procedure: `db/migrations/18_proc_remaining.sql` lines 77–112 (`complete_delivery`)
+- Table: `db/migrations/08_fleet.sql` lines 38–52 (`deliveries`)
+- Trigger: `trg_delivery_complete_order` (auto-sets linked order to Delivered)
+- Types: `types/fleet.ts` — `DeliveryItem`, `DeliveryStatus`
+- Pattern reference: `app/api/truck-schedules/route.ts` (same auth/error/response patterns)
+- RBAC: `lib/rbac.ts` — `deliveries.read` and `deliveries.complete_delivery`
+- DB helper: `lib/db.ts` — `withUserContext` for procedure calls
+
+## Next steps
+
+1. Start dev server, log in as fleet_supervisor, verify `/deliveries` loads real data
+2. Test marking a delivery as complete end-to-end in the browser
+3. Commit all changes on a feature branch, open PR → review → merge
