@@ -253,18 +253,25 @@ Conventions used throughout:
 
 ### `GET /api/deliveries`
 - **Roles:** fleet_supervisor, system_administrator (read for others)
-- **Query params:** `status?` (`Scheduled`, `In Progress`, `Completed`, `Failed`, `Cancelled`), `date_from?`, `date_to?`
-- **Response 200:** `{ "items": [{ delivery_id, order_id, customer_name, truck_plate, driver_name, status, delivered_at }] }`
+- **Query params:** `status?` (`Scheduled`, `In Progress`, `Completed`, `Failed`, `Cancelled`; any other value is a 400), `date_from?`, `date_to?` (`YYYY-MM-DD`, malformed is a 400; both filter on the delivery's **creation** date, because `delivered_at` is null until completion)
+- **Response 200:** `{ "items": [{ delivery_id, order_id, customer_name, truck_plate, driver_name, status, delivered_at, notes? }], "total": number }` (`delivered_at` is an ISO 8601 string or null)
+- **Response 401:** no session; **403:** role may not read deliveries
 
 ### `PATCH /api/deliveries/:id/complete`
-- **Roles:** fleet_supervisor, system_administrator
+- **Roles:** fleet_supervisor, system_administrator, logistics_manager (the `/deliveries` page itself is limited to fleet_supervisor and system_administrator)
 - **Request body:** `{ "notes"?: string }`
-- **Response 200:** `{ "delivery_id", "status": "Completed", "order_status": "Delivered" }`
+- **Response 200:** `{ "delivery_id", "status": "Completed", "order_status": "Delivered" }` (read back from the database after the procedure, not assumed)
+- **Response 400:** bad id, or a rule violation named by the database (delivery not found, already completed, store has too little stock to dispatch)
+- **Response 401 / 403:** no session / role not allowed
+- **Response 409:** another request is completing the same delivery (`LOCK_CONTENTION`)
 - **Business logic:**
-  1. `CALL complete_delivery(delivery_id, notes)`
-  2. Procedure validates the delivery exists and isn't already completed
-  3. `trg_delivery_complete_order` fires on the status update → sets the linked `orders.status = 'Delivered'` automatically
-  4. A corresponding `inventory_transactions` row (`transaction_type = 'dispatch'`) is written, linked via `delivery_id`
+  1. Take a Redis lock on `REDIS_KEYS.LOCK_DELIVERY_COMPLETE(delivery_id)` (fail-fast, 10 s TTL)
+  2. Inside the lock, open an **explicit transaction** and `CALL complete_delivery(delivery_id, notes)` under `withUserContext`; commit before the lock is released. The transaction is required: the procedure updates the delivery first and writes the stock dispatch last, so under autocommit a dispatch rejected for insufficient stock would leave a committed `Completed` delivery and `Delivered` order with no stock movement (same defect class as `03_architecture.md` §19.1)
+  3. Procedure validates the delivery exists and isn't already completed
+  4. `trg_delivery_complete_order` fires on the status update → sets the linked `orders.status = 'Delivered'` automatically
+  5. A corresponding `inventory_transactions` row (`transaction_type = 'dispatch'`) is written, linked via `delivery_id`
+  6. Any failure rolls the delivery, order and stock back together
+- **Known limitation:** the procedure only checks `status <> 'Completed'`, so a `Failed` or `Cancelled` delivery can still be completed through the API (the page hides the button for those). A guard needs a new migration.
 
 ---
 
