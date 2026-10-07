@@ -3,13 +3,22 @@
 /**
  * @file TransactionHistoryTable.tsx
  * @description Displays the historical ledger of inventory transactions (Receive, Dispatch, Adjustment)
- * for the selected store, including filters by transaction type, search, date range, and pagination.
- * Aligned with Docs/04_database-schema-v4.md and DESIGN.md.
+ * for the selected store, including filters by transaction type, search, date range, pagination,
+ * loading skeletons, and error handling.
+ * 
+ * Adheres to:
+ * - Docs/04_database-schema-v4.md §2.7 & §9
+ * - Docs/05_api-and-pages.md §A6 & §B
+ * - Docs/07_content-copy.md §/inventory
+ * - DESIGN.md table styling and status tokens
  */
 
 import React from 'react';
 import { InventoryTransaction, TransactionFilters, PaginationState, TransactionType } from '../types';
 
+/**
+ * Props accepted by the TransactionHistoryTable component.
+ */
 interface TransactionHistoryTableProps {
   /** Array of inventory transactions to display */
   items: InventoryTransaction[];
@@ -23,12 +32,44 @@ interface TransactionHistoryTableProps {
   pagination: PaginationState;
   /** Callback fired when page index changes */
   onPageChange: (newPage: number) => void;
+  /** Whether transaction ledger data is currently loading */
+  isLoading?: boolean;
+  /** Error message string if transaction query failed */
+  error?: string | null;
+  /** Retry callback if fetching failed */
+  onRetry?: () => void;
+}
+
+/**
+ * Formats an ISO timestamp or date string into a clean, human-readable format.
+ *
+ * @param dateStr - Raw timestamp string from database/API
+ * @returns Formatted date string (e.g., '2026-08-30 14:15:30')
+ */
+function formatDisplayDateTime(dateStr: string): string {
+  if (!dateStr) return '—';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  } catch {
+    return dateStr;
+  }
 }
 
 /**
  * TransactionHistoryTable Component
  *
  * Renders the full audit ledger of stock movements for the active store.
+ *
+ * @param props - Component properties conforming to TransactionHistoryTableProps
+ * @returns JSX element
  */
 export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = ({
   items,
@@ -37,6 +78,9 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
   onFilterChange,
   pagination,
   onPageChange,
+  isLoading = false,
+  error = null,
+  onRetry,
 }) => {
   const { currentPage, pageSize } = pagination;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -46,7 +90,8 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
   /**
    * Helper to format semantic transaction type badges according to DESIGN.md §2.
    *
-   * @param type Transaction type ('receive' | 'dispatch' | 'adjustment')
+   * @param type - Transaction type ('receive' | 'dispatch' | 'adjustment')
+   * @returns JSX element badge
    */
   const renderTypeBadge = (type: TransactionType) => {
     switch (type) {
@@ -73,6 +118,12 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
         );
     }
   };
+
+  const hasActiveFilters =
+    Boolean(filters.searchQuery.trim()) ||
+    filters.typeFilter !== 'all' ||
+    Boolean(filters.dateFrom) ||
+    Boolean(filters.dateTo);
 
   return (
     <div className="space-y-4">
@@ -111,7 +162,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                 <button
                   key={tab.id}
                   onClick={() => onFilterChange({ ...filters, typeFilter: tab.id })}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all shrink-0 ${
+                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all shrink-0 cursor-pointer ${
                     isActive
                       ? 'bg-[#4132C7] text-white shadow-xs'
                       : 'bg-[#F0F3FF] text-[#474554] hover:bg-[#DEE8FF] hover:text-[#121C2C]'
@@ -141,6 +192,22 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
               title="To date"
             />
           </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={() =>
+                onFilterChange({
+                  searchQuery: '',
+                  typeFilter: 'all',
+                  dateFrom: '',
+                  dateTo: '',
+                })
+              }
+              className="text-[12px] font-semibold text-[#4132C7] hover:underline px-2 py-1 cursor-pointer"
+            >
+              Reset
+            </button>
+          )}
         </div>
       </div>
 
@@ -168,13 +235,62 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                 <th className="py-4 px-6 text-[11px] font-bold text-[#474554] uppercase tracking-wider">
                   Reference
                 </th>
-                <th className="py-4 px-6 text-[11px] font-bold text-[#474554] uppercase tracking-wider">
-                  Operator & Notes
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E7EEFF]">
-              {items.length > 0 ? (
+              {isLoading ? (
+                /* Loading Skeleton Rows */
+                Array.from({ length: pageSize }).map((_, idx) => (
+                  <tr key={`txn-skeleton-${idx}`} className="animate-pulse">
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-[#E7EEFF] rounded w-28" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-[#E7EEFF] rounded w-40" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-[#E7EEFF] rounded w-20" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-[#E7EEFF] rounded w-16" />
+                    </td>
+                    <td className="py-4 px-6 text-right">
+                      <div className="h-4 bg-[#E7EEFF] rounded w-14 ml-auto" />
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-[#E7EEFF] rounded w-20" />
+                    </td>
+                  </tr>
+                ))
+              ) : error ? (
+                /* Error State Row */
+                <tr>
+                  <td colSpan={6} className="py-12 text-center">
+                    <div className="flex flex-col items-center justify-center max-w-md mx-auto px-4">
+                      <div className="w-12 h-12 rounded-full bg-[#FFF0F0] text-[#F93C65] flex items-center justify-center mb-3">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <p className="text-[15px] font-semibold text-[#121C2C] mb-1">
+                        Unable to load transaction history
+                      </p>
+                      <p className="text-[13px] text-[#474554] mb-4">
+                        {error}
+                      </p>
+                      {onRetry && (
+                        <button
+                          onClick={onRetry}
+                          className="px-5 py-2 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3928C0] transition-colors cursor-pointer"
+                        >
+                          Try Again
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ) : items.length > 0 ? (
+                /* Normal Transaction Rows */
                 items.map((txn) => {
                   const isPositive = txn.change_qty > 0;
                   return (
@@ -184,7 +300,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                     >
                       {/* Timestamp */}
                       <td className="py-4 px-6 text-[13px] text-[#474554] whitespace-nowrap">
-                        {txn.created_at}
+                        {formatDisplayDateTime(txn.created_at)}
                       </td>
 
                       {/* Product Name */}
@@ -219,23 +335,13 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                           {txn.reference_code}
                         </span>
                       </td>
-
-                      {/* Operator & Notes */}
-                      <td className="py-4 px-6 text-[13px] text-[#474554]">
-                        <div className="font-medium text-[#121C2C]">{txn.created_by_name}</div>
-                        {txn.notes && (
-                          <div className="text-[12px] text-[#777586] italic mt-0.5 line-clamp-1">
-                            {txn.notes}
-                          </div>
-                        )}
-                      </td>
                     </tr>
                   );
                 })
               ) : (
                 /* Empty Table State */
                 <tr>
-                  <td colSpan={7} className="py-14 text-center">
+                  <td colSpan={6} className="py-14 text-center">
                     <div className="flex flex-col items-center justify-center max-w-sm mx-auto">
                       <div className="w-12 h-12 rounded-full bg-[#F0F3FF] flex items-center justify-center text-[#4132C7] mb-3">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,11 +352,11 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                         No transactions recorded yet
                       </h3>
                       <p className="text-[13px] text-[#474554] mb-4">
-                        {filters.searchQuery || filters.typeFilter !== 'all' || filters.dateFrom || filters.dateTo
+                        {hasActiveFilters
                           ? 'No transaction logs match your active filter criteria.'
                           : 'Transactions will appear here when goods are received or dispatched.'}
                       </p>
-                      {(filters.searchQuery || filters.typeFilter !== 'all' || filters.dateFrom || filters.dateTo) && (
+                      {hasActiveFilters && (
                         <button
                           onClick={() =>
                             onFilterChange({
@@ -260,7 +366,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                               dateTo: '',
                             })
                           }
-                          className="px-4 py-2 rounded-full bg-[#DEE8FF] text-[#4132C7] text-[13px] font-semibold hover:bg-[#4132C7] hover:text-white transition-colors"
+                          className="px-4 py-2 rounded-full bg-[#DEE8FF] text-[#4132C7] text-[13px] font-semibold hover:bg-[#4132C7] hover:text-white transition-colors cursor-pointer"
                         >
                           Clear Filters
                         </button>
@@ -284,8 +390,8 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
           <div className="flex items-center gap-2">
             <button
               onClick={() => onPageChange(currentPage - 1)}
-              disabled={currentPage <= 1}
-              className="p-1.5 rounded-lg border border-[#C8C4D7]/50 text-[#474554] hover:bg-white hover:text-[#121C2C] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#474554] transition-colors"
+              disabled={currentPage <= 1 || isLoading}
+              className="p-1.5 rounded-lg border border-[#C8C4D7]/50 text-[#474554] hover:bg-white hover:text-[#121C2C] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#474554] transition-colors cursor-pointer disabled:cursor-not-allowed"
               aria-label="Previous page"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -297,8 +403,8 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
             </span>
             <button
               onClick={() => onPageChange(currentPage + 1)}
-              disabled={currentPage >= totalPages}
-              className="p-1.5 rounded-lg border border-[#C8C4D7]/50 text-[#474554] hover:bg-white hover:text-[#121C2C] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#474554] transition-colors"
+              disabled={currentPage >= totalPages || isLoading}
+              className="p-1.5 rounded-lg border border-[#C8C4D7]/50 text-[#474554] hover:bg-white hover:text-[#121C2C] disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#474554] transition-colors cursor-pointer disabled:cursor-not-allowed"
               aria-label="Next page"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -311,3 +417,4 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
     </div>
   );
 };
+
