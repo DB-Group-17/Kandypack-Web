@@ -40,19 +40,20 @@ interface DeliveryJoinRow {
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
- * Formats a Date or date-string into 'YYYY-MM-DD HH:MM:SS' for consistent
- * API output. Returns null for null/undefined inputs.
+ * Serialises a DATETIME value as an ISO 8601 string, as Docs/05_api-and-pages.md
+ * requires ("Timestamps are ISO 8601 strings over the wire"). Uses toISOString()
+ * like the orders routes, so every API formats datetimes the same way and the
+ * team-wide timezone fix (mysql2 `timezone: 'Z'` in lib/db.ts) corrects them together.
+ * Returns null for null/undefined inputs and the raw text for unparseable values.
  *
- * @param value - A Date object, ISO string, or null
- * @returns Formatted datetime string or null
+ * @param value - A Date object, date string, or null
+ * @returns ISO 8601 string or null
  */
 function formatDatetime(value: Date | string | null): string | null {
   if (value === null || value === undefined) return null;
   const d = value instanceof Date ? value : new Date(value);
   if (isNaN(d.getTime())) return String(value);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-         `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return d.toISOString();
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────

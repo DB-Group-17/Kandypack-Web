@@ -10,9 +10,13 @@
  *        order_entry_clerk, store_manager — per PERMISSION_MATRIX).
  * Query params (all optional):
  *   - status     string  — Scheduled | In Progress | Completed | Failed | Cancelled
- *   - date_from  YYYY-MM-DD — deliveries created on or after this date
- *   - date_to    YYYY-MM-DD — deliveries created on or before this date
+ *                          (any other value is rejected with 400)
+ *   - date_from  YYYY-MM-DD — deliveries CREATED on or after this date
+ *   - date_to    YYYY-MM-DD — deliveries CREATED on or before this date
+ *                (created_at is used because delivered_at is null until completion)
  * Response 200: { items: DeliveryItem[], total: number }
+ * Response 400: invalid status or date format
+ * Response 401: no valid session; 403: role may not read deliveries
  *
  * References:
  *   - Docs/05_api-and-pages.md §A8 (Deliveries)
@@ -26,6 +30,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { requirePermission } from '@/lib/rbac';
 import { fetchDeliveriesFromDB } from './service';
+
+/** Allowed delivery statuses — mirrors the chk_del_status CHECK constraint. */
+const DELIVERY_STATUSES = ['Scheduled', 'In Progress', 'Completed', 'Failed', 'Cancelled'] as const;
+
+/** Strict YYYY-MM-DD shape for the date_from / date_to filters. */
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
@@ -43,15 +53,46 @@ import { fetchDeliveriesFromDB } from './service';
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    // Step 1 — Auth: verify session and check deliveries read permission
+    // Step 1 — Auth: a missing session is a 401; a wrong role is a 403.
+    // requirePermission alone would report both as 403, so check the session first.
     const session = await getSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: { code: 'UNAUTHORIZED', message: 'Authentication required. Please log in.' } },
+        { status: 401 }
+      );
+    }
     requirePermission(session, 'deliveries', 'read');
 
-    // Step 2 — Parse optional filter query params
+    // Step 2 — Parse and validate optional filter query params
     const { searchParams } = new URL(request.url);
-    const status   = searchParams.get('status');     // Scheduled | In Progress | Completed | Failed | Cancelled
-    const dateFrom = searchParams.get('date_from');  // YYYY-MM-DD
-    const dateTo   = searchParams.get('date_to');    // YYYY-MM-DD
+    const status   = searchParams.get('status')?.trim() || null;   // Scheduled | In Progress | Completed | Failed | Cancelled
+    const dateFrom = searchParams.get('date_from')?.trim() || null; // YYYY-MM-DD
+    const dateTo   = searchParams.get('date_to')?.trim() || null;   // YYYY-MM-DD
+
+    // An unknown status would silently return an empty list; reject it instead (mirrors chk_del_status).
+    if (status && !(DELIVERY_STATUSES as readonly string[]).includes(status)) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'BAD_REQUEST',
+            message: `status must be one of: ${DELIVERY_STATUSES.join(', ')}.`,
+            field: 'status',
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    // Malformed dates would reach the SQL as garbage timestamps; reject them too.
+    for (const [field, value] of [['date_from', dateFrom], ['date_to', dateTo]] as const) {
+      if (value && !DATE_ONLY.test(value)) {
+        return NextResponse.json(
+          { error: { code: 'BAD_REQUEST', message: `${field} must be a date in YYYY-MM-DD format.`, field } },
+          { status: 400 }
+        );
+      }
+    }
 
     // Step 3 — Fetch deliveries from database with filters
     const items = await fetchDeliveriesFromDB({

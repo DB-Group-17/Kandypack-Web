@@ -61,6 +61,8 @@ export const REDIS_KEYS = {
   LOCK_TRUCK_SCHEDULE: (truckId: number | string) => `lock:truck:${truckId}`,
   /** Lock for order placement train capacity reservation (destination_city_id) */
   LOCK_ORDER_DESTINATION: (cityId: number | string) => `lock:orders:destination:${cityId}`,
+  /** Lock for completing a delivery (delivery_id) — stops two concurrent complete_delivery() calls */
+  LOCK_DELIVERY_COMPLETE: (deliveryId: number | string) => `lock:delivery:${deliveryId}`,
   /** Cache key for dashboard summary statistics */
   CACHE_DASHBOARD_SUMMARY: (role: string, storeId: number | string = "global") =>
     `cache:dashboard:summary:${role}:${storeId}`,
