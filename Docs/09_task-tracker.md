@@ -116,14 +116,14 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [ ] Open PR → review → merge
 
 ### Member 1 — Phase 2 review follow-ups
-Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/migrations/`, `lib/db.ts`, `lib/auth.ts`, `proxy.ts`) or to shared documentation. Details and plans are in `member1-followups.md` (local, untracked) until each is done.
-- [ ] **O1, timezone:** set `timezone: 'Z'` in the `mysql2` pool options in `lib/db.ts` so `DATETIME` values (stored in UTC) are read as UTC; every `.toISOString()` response then agrees with the reports. Announce it to the team, and re-check order dates, the 7-day rule and the seed scripts afterwards
-- [ ] **R7, audit logging for user changes:** migration `25_audit_users.sql` adding audit triggers on `users` and `user_profiles` (`record_id` NULL with the user UUID in the JSON; never log `password_hash`), then update `04` §5.5 and §10, `03` §19 and `10_local-setup.md`
-- [ ] **R8, session staleness:** document in `05` §A10 that deactivation and role changes take effect at the user's next login (JWT lives up to 8 hours), plus the self-deactivation and last-admin guards; add the `03` §19 decision-log row
-- [ ] **F1, `complete_delivery` guard:** a new migration so only `Scheduled` or `In Progress` deliveries can be completed (today `Failed` and `Cancelled` can be); then remove the "Known limitation" line from `05` §A8
-- [ ] **F2, start-delivery decision:** decide whether version one needs a `Scheduled` → `In Progress` endpoint (the `UI/deliveries` mockup shows a "Start delivery" button; no document defines one)
-- [ ] **D1, stale documentation:** `05` Part B `/reports` and `07` `/reports` still describe PDF polling and R2; `05` §A9 names the wrong view for Report 4; `03` §7 and `08` use the old conflicts path; record the Report 5 and 6 deviations from the SRS in `03` §19 (or extend the views)
-- [ ] Team message and PR hygiene: tell the team about the `lib/redis.ts` delivery lock key (Member 5's file) and `timezone: 'Z'` when it lands
+Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/migrations/`, `lib/db.ts`, `lib/auth.ts`, `proxy.ts`) or to shared documentation. Status 2026-10-08: code and documentation are written; **migrations `25` and `26` are written but not yet applied to the shared database** (apply only after a team-channel check, `10_local-setup.md` §5).
+- [x] **O1, timezone:** `timezone: 'Z'` added to the `mysql2` pool in `lib/db.ts`; `app/api/truck-schedules/service.ts` now formats schedule times with `getUTC*` so they stay naive wall-clock on any server timezone. Verified 2026-10-08 against the shared dev DB on an Asia/Colombo machine: order, train-trip and delivery timestamps now equal the stored values, the orders and reports APIs agree, and schedule times are unchanged. Team announcement drafted (not yet posted)
+- [ ] **R7, audit logging for user changes:** `db/migrations/25_audit_users.sql` written (triggers on `users` and `user_profiles`, `record_id` NULL with the UUID in the JSON, `password_hash` never logged, one row per deactivation or role change); `03` §19, `04` §5.5 and §10 updated. **Still to do: apply the migration, run the audit check, then update `10_local-setup.md`**
+- [x] **R8, session staleness:** documented in `05` §A10 (guards and the 8-hour next-login limitation) and `03` §19
+- [ ] **F1, `complete_delivery` guard:** `db/migrations/26_fix_complete_delivery_guard.sql` written (only `Scheduled` or `In Progress` deliveries complete); `05` §A8, `04` §6.2 and `03` §19 updated. **Still to do: apply the migration and run the guard check**
+- [x] **F2, start-delivery decision:** decided — no start-delivery endpoint in version one (`03` §19, `05` §A8); the mockup's "Start delivery" button stays omitted
+- [x] **D1, stale documentation:** `05` and `07` `/reports` now describe the direct-PDF flow; `05` §A9 and `03` §9 name `v_driver_assistant_hours`; `03` §7 and `08` use `/truck-schedules/conflicts`; the Report 5 and 6 differences from the SRS are recorded in `03` §3 and §19 (accepted for version one, no view migration); `04` §10 lists migrations 21–26; `07` `/deliveries` matches the built page
+- [ ] Team message: announce `timezone: 'Z'`, the `lib/redis.ts` delivery lock key (Member 5's file), migrations `25` and `26`, and the doc changes (message drafted, to be posted by Member 1)
 
 ---
 

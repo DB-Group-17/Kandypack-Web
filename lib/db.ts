@@ -66,6 +66,14 @@ function createPool(): mysql.Pool {
     queueLimit: 0,
     enableKeepAlive: true,
     keepAliveInitialDelay: 10000,
+    // The shared Aiven database runs in UTC, so stored DATETIME values are UTC. Without this
+    // option mysql2 reads them as the *server's local* time (Asia/Colombo on our machines) and
+    // every `.toISOString()` response came out 5½ hours early (Docs/03 §19, "Database datetime
+    // timezone"). 'Z' makes mysql2 read DATETIME as UTC, so API datetimes match the reports.
+    // Query parameters in this code base are plain strings, never Date objects, so writes are
+    // unaffected. Code that shows a DB DATETIME as a naive wall-clock string must therefore use
+    // the getUTC* getters (see app/api/truck-schedules/service.ts).
+    timezone: 'Z',
     ssl: {
       rejectUnauthorized: false
     }

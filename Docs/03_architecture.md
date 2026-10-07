@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** Active and authoritative technical source of truth
 **Primary references:** `01_project-description.md`, `02_srs.md`, `04_database-schema-v4.md`
-**Last reviewed:** 2026-08-25
+**Last reviewed:** 2026-10-08
 
 When technical documents conflict, use this order: `AGENTS.md` → `DESIGN.md` → this document → other active `Docs/` files → `02_srs.md` → `Archive/`. The SRS remains unchanged as the original business-requirements reference. Intentional implementation deviations are recorded in §19.
 
@@ -49,6 +49,8 @@ When technical documents conflict, use this order: `AGENTS.md` → `DESIGN.md` �
 - **Auth:** Manual (`users` table + bcrypt + JWT), not a third-party auth provider — matches Schema v4 §8.
 - **Roles:** Only the 5 roles defined in `user_profiles.app_role` can log in. Drivers and customers are data rows only, never authenticate.
 - **Reports:** SRS specifies CSV. This project also provides **synchronous on-demand PDF export**. PDF output is returned directly and is not persisted.
+- **Report 5 (truck usage):** SRS REQ-FR-054 asks for "delivery runs completed" per truck per month. `v_truck_usage_monthly` counts every non-cancelled schedule and its hours (`num_schedules`, `total_hours`), so it reports scheduled workload rather than completed runs only. Accepted for version one; see the §19 decision log.
+- **Report 6 (customer history):** SRS REQ-FR-055 lists product names and quantities. `v_customer_order_history` returns one row per order and delivery (order, delivery, driver, assistant, truck, dates, status) without product lines; the items of an order are shown on the order detail page. Accepted for version one; see the §19 decision log.
 - **Scheduling:** Operational delivery days are Monday–Saturday; calendar calculations use Monday–Sunday. Version one uses explicit delivery-area assignment rather than intelligent address parsing.
 - Product space rates, train capacity (500 units/trip default), and train frequency follow SRS §2.7 assumptions — configurable in DB, not hardcoded.
 
@@ -217,7 +219,7 @@ All routes under `/api/`. Auth required on all except `/auth/login`.
 | `/assistants` | GET | List assistants + current weekly hours |
 | `/truck-schedules` | GET | List/filter truck schedules |
 | `/truck-schedules` | POST | Calls `schedule_truck_delivery()` — overlap + roster + weekly-hour checks |
-| `/truck-schedules/:id/conflicts` | GET | Pre-check conflicts before submit (UI live-validation) |
+| `/truck-schedules/conflicts` | GET | Pre-check conflicts before submit (UI live-validation). Query params `truck_id`, `driver_id`, `assistant_id`, `route_id`, `start_time`; there is no schedule id yet, and `end_time` is derived server-side (`05_api-and-pages.md` §A7) |
 
 ### Deliveries
 | Route | Method | Description |
@@ -306,7 +308,7 @@ All routes under `/api/`. Auth required on all except `/auth/login`.
 - `calculate_order_space()`, `get_available_capacity()`, `get_driver_weekly_hours()`, `get_assistant_weekly_hours()`, `get_next_available_trip()`
 
 ### Reporting views
-`v_quarterly_sales`, `v_most_ordered_items`, `v_city_route_sales`, `v_driver_hours`, `v_assistant_hours`, `v_truck_usage_monthly`, `v_customer_order_history`
+`v_quarterly_sales`, `v_most_ordered_items`, `v_city_route_sales`, `v_driver_assistant_hours`, `v_truck_usage_monthly`, `v_customer_order_history` (migration `19_reports.sql`; Report 4 reads the single combined view `v_driver_assistant_hours`)
 
 ---
 
@@ -352,7 +354,7 @@ Version-one exports do not create a database record, do not use a `report_jobs` 
 |---|---|---|
 | **Lint + typecheck** | Every PR | ESLint, `tsc --noEmit` — blocks merge on failure |
 | **Automated tests** | Every PR + push to `main` | Spins up a MySQL service container in the runner, applies migrations, runs the Vitest suite (unit + integration tests from §16) |
-| **Migration check** | Every PR touching `db/migrations` | Runs migrations 01→20 against the same throwaway MySQL service container to catch SQL errors before merge |
+| **Migration check** | Every PR touching `db/migrations` | Runs every migration in `db/migrations` (currently 01→26) against the same throwaway MySQL service container to catch SQL errors before merge |
 | **Vercel** | Push to `main`/PR | Handled automatically by Vercel's own Git integration — no custom workflow needed, but can add a required "Vercel Preview" check on PRs |
 
 **Summary:** CI/CD covers code quality gates, migration checks, and the automated test suite. No report-worker build or deployment is required for version one.
@@ -421,7 +423,7 @@ Limited time budget → **prioritize highest-risk business logic, skip UI/e2e en
 
 ## 17. Data Seeding Strategy
 
-Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`) after migrations `01→20` are applied (must run after `users`/`user_profiles` per v4 §11):
+Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`) after every migration in `db/migrations` (currently `01→26`) is applied (must run after `users`/`user_profiles` per v4 §11):
 - 10+ products, 20+ customers across all 6 cities, 10+ routes (1+ per city)
 - Valid train schedule, 2+ trips per city, defined capacities
 - 8+ drivers, 8+ assistants, 6+ trucks
@@ -455,6 +457,13 @@ Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`
 | Historical seed orders carry no train bookings | Previous-quarter orders are closed sales records only | §8's trip window spans ±3 weeks, so no trip exists in the previous quarter; every report needing historical depth reads only `orders` and `order_items` | `06_seed-data-spec.md` §9 | 2026-09-18 |
 | Truck-schedule and stock-decrease fixes | Migration `23` moves the schedule lock from the trigger into `schedule_truck_delivery`; migration `24` rewrites `trg_apply_inventory_transaction` as update-else-insert. `13`, `14` and `18` stay as historical record | Both defects made the feature fail for every caller; an applied migration cannot be edited | `03_architecture.md`, `10_local-setup.md` | 2026-09-26 |
 | Logistics seed scope | Seed §10–§11 covers only the 10 current-quarter orders at a store; stores start from an opening-balance `adjustment` | Historical orders have no bookings, so no receipt to dispatch against; receipts from 10 orders alone cannot stock most products | `06_seed-data-spec.md` §9–§11 | 2026-09-26 |
+| Delivery completion is atomic and locked | `PATCH /api/deliveries/:id/complete` takes a Redis lock (`REDIS_KEYS.LOCK_DELIVERY_COMPLETE`) and runs `complete_delivery()` inside an explicit transaction committed before the lock is released | The procedure updates the delivery first and writes the stock dispatch last; under autocommit a dispatch rejected for insufficient stock would leave a committed `Completed` delivery and `Delivered` order with no stock movement (same defect class as §19.1). Verified 2026-10-07: an insufficient-stock call returned 400 and changed nothing | `05_api-and-pages.md` §A8, `09_task-tracker.md` | 2026-10-07 |
+| Only open deliveries can be completed | Migration `26` recreates `complete_delivery()` so only `Scheduled` or `In Progress` deliveries complete; `Failed` and `Cancelled` are rejected with a clear message. `18` stays as historical record | Migration `18` only checked `status <> 'Completed'`, so a direct API call could complete a failed or cancelled delivery, flip the order to `Delivered` and dispatch stock | `04_database-schema-v4.md`, `05_api-and-pages.md` §A8 | 2026-10-08 |
+| No start-delivery endpoint in version one | No `Scheduled` → `In Progress` endpoint; a `Scheduled` delivery may be completed directly. `In Progress` remains a valid status (used by seed data and the schedule workflow). The "Start delivery" button in `UI/deliveries` is intentionally omitted | No requirement or API document defines it; completion is the only delivery action the SRS and §A8 need. May return later as `PATCH /api/deliveries/:id/start` | `05_api-and-pages.md` §A8, `09_task-tracker.md` | 2026-10-08 |
+| Database datetime timezone | The shared Aiven database stores UTC; the `mysql2` pool is created with `timezone: 'Z'` so `DATETIME` values are read as UTC. Code that shows a stored `DATETIME` as a naive wall-clock string uses `getUTC*` (truck-schedule list) | Without it `mysql2` read UTC values as the server's local time (Asia/Colombo), so every `.toISOString()` response in orders and Member 4's routes was 5½ hours early and disagreed with the reports. Verified 2026-10-08: orders, train trips, deliveries and reports now return the stored values, and schedule times are unchanged | `lib/db.ts`, `10_local-setup.md` | 2026-10-08 |
+| Audit of login accounts | Migration `25` adds audit triggers on `users` (insert; update only on email change) and `user_profiles` (insert; update on role, active flag, employee link or display name). `record_id` is NULL and the account UUID is stored in the JSON; `password_hash` is never logged; no DELETE triggers because accounts are only deactivated | `audit_log.record_id` is `BIGINT` but user ids are UUIDs, so the UUID travels in the JSON and no schema change is needed. Deactivation and role changes write one row each because `is_active` is audited on `user_profiles` only. Satisfies `13_system-operation-guide.md` §11 and SRS REQ-NF-012 | `04_database-schema-v4.md` §5.5, `10_local-setup.md` | 2026-10-08 |
+| Sessions keep old access until expiry | Deactivating an account or changing its role takes effect at the user's next login; an existing JWT keeps its old role and active state until it expires (`TOKEN_EXPIRY`, 8 hours). The optional Redis deny-list and per-request profile re-check are not implemented in version one | Only `POST /api/auth/login` checks `is_active`; `proxy.ts` runs on the Edge runtime and cannot query the database. The limitation is documented rather than adding a lookup on every request | `05_api-and-pages.md` §A1 and §A10 | 2026-10-08 |
+| Report 5 and Report 6 differ from the SRS wording | Report 5 (`v_truck_usage_monthly`) counts all non-cancelled schedules and their hours, not only completed runs (REQ-FR-054). Report 6 (`v_customer_order_history`) has no product names or quantities (REQ-FR-055). Both are accepted for version one; no view migration | The project brief (`01_project-description.md`), this document, `04`, `05` and `07` define the reports as "truck usage per month" and "customer order history with delivery details", and `04` defines the views exactly as built, so the implementation matches every document above the SRS. Extending the views is optional future work (Report 6 first) | `02_srs.md` (unchanged), `04_database-schema-v4.md`, `05_api-and-pages.md` §A9 | 2026-10-08 |
 
 ### 19.1 `place_order` defects corrected on 2026-09-18
 
