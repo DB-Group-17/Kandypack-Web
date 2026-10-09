@@ -282,9 +282,9 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 
 **Subheading:** Track and complete last-mile deliveries
 
-**Filter bar:** `Status` (All / Scheduled / In Progress / Completed)
+**Filter bar:** `Status` (All / Scheduled / In progress / Completed / Failed / Cancelled) plus a created-date range (`From date` / `To date`)
 
-**Table columns:** Order · Customer · Truck · Driver · Status · Delivered On
+**Table columns:** Order · Customer · Truck & driver · Status · Delivered on *(Truck and Driver share one column, as in `UI/deliveries`; below 1280px the table becomes stacked cards)*
 
 **Row action button:** Mark Complete
 
@@ -344,7 +344,7 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 
 **PDF generation states:**
 - Button (in progress): Generating PDF…
-- Toast on completion: *Your PDF report is ready.* — Button: Download
+- Toast on completion: *PDF downloaded.* (the browser saves the file directly from the response; there is no separate Download button, `03_architecture.md` §11)
 - Error toast: *Couldn't generate the PDF. Please try again.*
 
 **Report-specific empty states:**

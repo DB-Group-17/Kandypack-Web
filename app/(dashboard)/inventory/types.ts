@@ -1,12 +1,12 @@
 /**
  * @file types.ts
  * @description TypeScript type definitions and interfaces for the Store Inventory module (/inventory).
- * Covers stores, stock items, inventory transactions, receive goods workflows, filters, and pagination.
+ * Covers stores, stock items, inventory transactions, receive goods workflows, API payloads, filters, and pagination.
  */
 
 /**
  * Represents a physical warehouse/station store entity in the system.
- * Aligns with Docs/04_database-schema-v4.md table `stores`.
+ * Aligns with Docs/04_database-schema-v4.md table `stores` and GET /api/stores.
  */
 export interface Store {
   /** Unique primary key identifier for the store */
@@ -17,6 +17,10 @@ export interface Store {
   city_id: number;
   /** City name for display and filtering */
   city_name: string;
+  /** Optional railway station name */
+  railway_station_name?: string;
+  /** Optional store contact telephone number */
+  contact_phone?: string;
 }
 
 /**
@@ -26,27 +30,27 @@ export type StockStatus = 'healthy' | 'low_stock' | 'critical';
 
 /**
  * Represents an individual product line's stock level at a specific store.
- * Aligns with Docs/04_database-schema-v4.md table `store_inventory`.
+ * Aligns with Docs/04_database-schema-v4.md table `store_inventory` and GET /api/stores/:id/inventory.
  */
 export interface StockItem {
   /** Primary key of the product */
   product_id: number;
   /** Human-readable product name */
   product_name: string;
-  /** Unique Stock Keeping Unit code (e.g., 'CHOC-PR-100') */
+  /** Unique Stock Keeping Unit code (e.g., 'KP-FD-001') */
   sku: string;
   /** Product category grouping */
-  category: string;
+  category?: string;
   /** Unit of measurement (e.g., 'box', 'bottle', 'pack') */
-  unit_of_measure: string;
+  unit_of_measure?: string;
   /** Current quantity on hand at the active store */
   quantity_on_hand: number;
   /** Minimum threshold before a low-stock alert triggers */
-  threshold: number;
-  /** Formatted timestamp of the last stock change */
+  threshold?: number;
+  /** Formatted timestamp or ISO string of the last stock change */
   updated_at: string;
-  /** Calculated health status of the stock */
-  status: StockStatus;
+  /** Calculated health status of the stock (optional when authoritative threshold is available) */
+  status?: StockStatus;
 }
 
 /**
@@ -57,15 +61,15 @@ export type TransactionType = 'receive' | 'dispatch' | 'adjustment';
 
 /**
  * Represents an immutable inventory movement ledger record.
- * Aligns with Docs/04_database-schema-v4.md table `inventory_transactions`.
+ * Aligns with Docs/04_database-schema-v4.md table `inventory_transactions` and GET /api/inventory/transactions.
  */
 export interface InventoryTransaction {
   /** Unique primary key for the transaction */
   transaction_id: number;
   /** ID of the store where the transaction occurred */
   store_id: number;
-  /** Name of the store for quick display */
-  store_name: string;
+  /** Name of the store for display */
+  store_name?: string;
   /** ID of the affected product */
   product_id: number;
   /** Product name */
@@ -76,27 +80,82 @@ export interface InventoryTransaction {
   change_qty: number;
   /** Categorized transaction type */
   transaction_type: TransactionType;
+  /** Linked train booking ID foreign key (set for 'receive' records) */
+  train_booking_id?: number | null;
+  /** Linked delivery ID foreign key (set for 'dispatch' records) */
+  delivery_id?: number | null;
   /** Reference document / trip / delivery code (e.g., 'TB-102', 'DEL-401') */
   reference_code: string;
-  /** Date and time when the transaction was committed */
+  /** Date and time when the transaction was committed (ISO or formatted) */
   created_at: string;
-  /** Full name of the operator or driver who recorded the action */
-  created_by_name: string;
-  /** Optional memo or note explaining discrepancies or special handling */
-  notes?: string;
+}
+
+/**
+ * Raw item shape returned by GET /api/stores/:id/inventory.
+ */
+export interface ApiStoreInventoryItem {
+  product_id: number;
+  product_name: string;
+  quantity_on_hand: number;
+  updated_at: string;
+}
+
+/**
+ * Response payload contract for GET /api/stores/:id/inventory.
+ */
+export interface ApiStoreInventoryResponse {
+  items: ApiStoreInventoryItem[];
+}
+
+/**
+ * Raw item shape returned by GET /api/inventory/transactions.
+ */
+export interface ApiInventoryTransactionItem {
+  transaction_id: number;
+  store_id: number;
+  product_id: number;
+  change_qty: number;
+  transaction_type: TransactionType;
+  train_booking_id: number | null;
+  delivery_id: number | null;
+  created_at: string;
+}
+
+/**
+ * Response payload contract for GET /api/inventory/transactions.
+ */
+export interface ApiInventoryTransactionsResponse {
+  items: ApiInventoryTransactionItem[];
+}
+
+/**
+ * Response payload contract for POST /api/stores/:id/receive-goods.
+ */
+export interface ApiReceiveGoodsResponse {
+  updated_products: number;
+}
+
+/**
+ * Product catalog item metadata retrieved from GET /api/products.
+ */
+export interface ProductCatalogItem {
+  product_id: number;
+  sku: string;
+  product_name: string;
+  category?: string;
+  unit_of_measure?: string;
+  unit_price: number;
+  space_rate: number;
 }
 
 /**
  * Item specification for a train booking ready for goods receipt.
  */
 export interface TrainBookingItem {
-  /** Product identifier */
+  booking_item_id?: number;
   product_id: number;
-  /** Product name */
   product_name: string;
-  /** SKU code */
   sku: string;
-  /** Expected quantity dispatched from Kandy Central */
   expected_quantity: number;
 }
 
@@ -104,22 +163,26 @@ export interface TrainBookingItem {
  * Represents an arrived train trip booking available for receiving at the store.
  */
 export interface ArrivedTrainBooking {
-  /** Unique train booking identifier */
-  train_booking_id: number;
-  /** Human-readable trip code (e.g., 'TRIP-2026-102') */
-  trip_code: string;
-  /** Train departure origin city */
-  origin_city: string;
-  /** Destination city (must match the active store) */
-  destination_city: string;
-  /** Arrival timestamp */
+  booking_id: number;
+  train_booking_id?: number;
+  trip_id?: number;
+  order_id?: number;
+  trip_code?: string;
+  origin_city?: string;
+  destination_city?: string;
   arrival_datetime: string;
-  /** List of products and expected units contained in this booking */
   items: TrainBookingItem[];
 }
 
 /**
- * Form line-item for the Receive Goods modal.
+ * API response contract for GET /api/stores/:id/arrived-bookings.
+ */
+export interface ApiArrivedBookingsResponse {
+  items: ArrivedTrainBooking[];
+}
+
+/**
+ * Form line-item for the Receive Goods modal (legacy / UI compatibility).
  */
 export interface ReceiveGoodsItemInput {
   product_id: number;

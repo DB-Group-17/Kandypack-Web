@@ -7,7 +7,7 @@ Conventions used throughout:
 - All protected routes require the JWT cookie; `Roles` lists who may call it.
 - Error shape is always: `{ "error": { "code": string, "message": string, "field"?: string } }`
 - All money fields are `DECIMAL` serialized as strings to avoid float rounding.
-- Timestamps are ISO 8601 strings over the wire (converted from MySQL `DATETIME`).
+- Timestamps are ISO 8601 strings over the wire (converted from MySQL `DATETIME`). The database stores UTC and the `mysql2` pool reads `DATETIME` as UTC (`timezone: 'Z'` in `lib/db.ts`, `03_architecture.md` §19), so a value such as `2026-09-21T09:00:00.000Z` is exactly what is stored. Exception: truck-schedule `start_time` / `end_time` are naive wall-clock strings (`YYYY-MM-DD HH:MM:SS`) because schedules are entered and checked as local operating hours (06:00–20:00).
 
 ---
 
@@ -180,6 +180,15 @@ Conventions used throughout:
 - **Response 200:** `{ "items": [{ product_id, product_name, quantity_on_hand, updated_at }] }`
 - **Business logic:** `store_manager` request is rejected with 403 if `:id` doesn't match their `store_id` from the JWT.
 
+### `GET /api/stores/:id/arrived-bookings`
+- **Roles:** store_manager (own store), system_administrator, logistics_manager
+- **Response 200:** `{ "items": [{ booking_id, train_booking_id, trip_id, order_id, arrival_datetime, items: [{ booking_item_id, product_id, product_name, sku, expected_quantity }] }] }`
+- **Business logic:**
+  1. Rejects with 403 if `store_manager` requests a store ID other than their assigned `store_id`.
+  2. Queries train bookings where `train_trips.destination_city_id = stores.city_id` for `:id` and `train_trips.status = 'Arrived'`.
+  3. Filters out any bookings that have already been received into inventory (`NOT EXISTS` in `inventory_transactions` where `transaction_type = 'receive'`).
+  4. Returns line items with expected quantities derived from `train_booking_items`, `order_items`, and `products`.
+
 ### `POST /api/stores/:id/receive-goods`
 - **Roles:** store_manager (own store), system_administrator
 - **Request body:** `{ "train_booking_id": number }` — the received quantities are read from `train_booking_items`, not supplied by the caller
@@ -244,18 +253,25 @@ Conventions used throughout:
 
 ### `GET /api/deliveries`
 - **Roles:** fleet_supervisor, system_administrator (read for others)
-- **Query params:** `status?` (`Scheduled`, `In Progress`, `Completed`, `Failed`, `Cancelled`), `date_from?`, `date_to?`
-- **Response 200:** `{ "items": [{ delivery_id, order_id, customer_name, truck_plate, driver_name, status, delivered_at }] }`
+- **Query params:** `status?` (`Scheduled`, `In Progress`, `Completed`, `Failed`, `Cancelled`; any other value is a 400), `date_from?`, `date_to?` (`YYYY-MM-DD`, malformed is a 400; both filter on the delivery's **creation** date, because `delivered_at` is null until completion)
+- **Response 200:** `{ "items": [{ delivery_id, order_id, customer_name, truck_plate, driver_name, status, delivered_at, notes? }], "total": number }` (`delivered_at` is an ISO 8601 string or null)
+- **Response 401:** no session; **403:** role may not read deliveries
 
 ### `PATCH /api/deliveries/:id/complete`
-- **Roles:** fleet_supervisor, system_administrator
+- **Roles:** fleet_supervisor, system_administrator, logistics_manager (the `/deliveries` page itself is limited to fleet_supervisor and system_administrator)
 - **Request body:** `{ "notes"?: string }`
-- **Response 200:** `{ "delivery_id", "status": "Completed", "order_status": "Delivered" }`
+- **Response 200:** `{ "delivery_id", "status": "Completed", "order_status": "Delivered" }` (read back from the database after the procedure, not assumed)
+- **Response 400:** bad id, or a rule violation named by the database (delivery not found, already completed, store has too little stock to dispatch)
+- **Response 401 / 403:** no session / role not allowed
+- **Response 409:** another request is completing the same delivery (`LOCK_CONTENTION`)
 - **Business logic:**
-  1. `CALL complete_delivery(delivery_id, notes)`
-  2. Procedure validates the delivery exists and isn't already completed
-  3. `trg_delivery_complete_order` fires on the status update → sets the linked `orders.status = 'Delivered'` automatically
-  4. A corresponding `inventory_transactions` row (`transaction_type = 'dispatch'`) is written, linked via `delivery_id`
+  1. Take a Redis lock on `REDIS_KEYS.LOCK_DELIVERY_COMPLETE(delivery_id)` (fail-fast, 10 s TTL)
+  2. Inside the lock, open an **explicit transaction** and `CALL complete_delivery(delivery_id, notes)` under `withUserContext`; commit before the lock is released. The transaction is required: the procedure updates the delivery first and writes the stock dispatch last, so under autocommit a dispatch rejected for insufficient stock would leave a committed `Completed` delivery and `Delivered` order with no stock movement (same defect class as `03_architecture.md` §19.1)
+  3. Procedure validates the delivery exists and isn't already completed
+  4. `trg_delivery_complete_order` fires on the status update → sets the linked `orders.status = 'Delivered'` automatically
+  5. A corresponding `inventory_transactions` row (`transaction_type = 'dispatch'`) is written, linked via `delivery_id`
+  6. Any failure rolls the delivery, order and stock back together
+- **Which deliveries can be completed:** only `Scheduled` or `In Progress`. Since migration `26` the procedure rejects `Failed` and `Cancelled` deliveries ("Delivery N is Cancelled and cannot be completed.") and a repeat call ("Delivery N is already Completed."), both as 400. There is no start-delivery endpoint in version one, so a `Scheduled` delivery is completed directly (`03_architecture.md` §19).
 
 ---
 
@@ -272,7 +288,7 @@ All 6 report GET endpoints share the same pattern:
 | `GET /api/reports/quarterly-sales` | `v_quarterly_sales` | `year?`, `quarter?` |
 | `GET /api/reports/most-ordered-items` | `v_most_ordered_items` | `year`, `quarter` (required) |
 | `GET /api/reports/city-route-sales` | `v_city_route_sales` | `date_from?`, `date_to?` |
-| `GET /api/reports/driver-assistant-hours` | `v_driver_hours` + `v_assistant_hours` | `week_start` (required) |
+| `GET /api/reports/driver-assistant-hours` | `v_driver_assistant_hours` (one combined view, migration `19`) | `week_start` (required) |
 | `GET /api/reports/truck-usage` | `v_truck_usage_monthly` | `month?`, `year?` |
 | `GET /api/reports/customer-history` | `v_customer_order_history` | `customer_id` (required) |
 
@@ -309,7 +325,12 @@ All 6 report GET endpoints share the same pattern:
 - **Roles:** system_administrator only
 - **Request body:** `{ is_active?: boolean, app_role?: string }`
 - **Response 200:** updated user/profile
+- **Response 400:** validation error, `INVALID_ROLE`, `SELF_DEACTIVATION_PROHIBITED`, `SELF_DEMOTION_PROHIBITED` or `LAST_ADMIN_PROTECTED`
+- **Response 404:** account not found; **409:** `CONCURRENT_UPDATE_CONFLICT` (another administrator changed accounts at the same time; refresh and retry)
 - **Business logic:** deactivation sets `is_active = 0` (soft, login blocked at step 2 of the login flow) rather than deleting the row.
+  - **Guards:** an administrator cannot deactivate their own account or move it away from `system_administrator`, and the last active `system_administrator` can neither be deactivated nor demoted. A store manager must be linked to an employee that has a home store.
+  - **Audit:** the change is recorded by the migration `25` triggers on `user_profiles` (and `users` for an email change), with the acting administrator, the target account's UUID in the JSON and never the password hash.
+- **Known limitation (version one):** deactivation and role changes take effect at the user's **next login**. An existing JWT keeps its old role and active state until it expires (`TOKEN_EXPIRY`, 8 hours in `lib/auth.ts`), because only `POST /api/auth/login` checks `is_active` and the optional Redis deny-list (§A1) is not implemented. Recorded in `03_architecture.md` §19.
 
 ### `GET /api/employees` / `POST /api/employees`
 - **Roles:** system_administrator
@@ -380,11 +401,11 @@ For each page: which API routes it calls, and the interaction flow.
 - **Flow:** stock table loads on mount; "Receive Goods" form (select `train_booking_id`, enter received quantities per product) → POST → refetch stock table. Transactions history shown as a secondary tab/table.
 
 ## `/reports`
-- **Calls:** all 6 `GET /api/reports/*` endpoints (one per report tab), `GET /api/reports/:type/export/csv`, `POST /api/reports/:type/export/pdf` + `GET /api/reports/jobs/:job_id` (polling)
+- **Calls:** all 6 `GET /api/reports/*` endpoints (one per report tab), `GET /api/reports/:type/export/csv`, `POST /api/reports/:type/export/pdf` (direct PDF response; no job, polling or storage)
 - **Flow:**
   1. Tabbed UI, one tab per report; selecting a tab + filling filters (quarter/year/date range/customer) fetches that report's JSON and renders a table
   2. "Export CSV" button triggers a direct browser download from the CSV endpoint (no extra state needed)
-  3. "Export PDF" button calls the POST endpoint, receives `job_id`, shows a "Generating…" state, and polls `GET /api/reports/jobs/:job_id` every ~2s until `status: done`, then shows a download link (`file_url`, served from Cloudflare R2)
+  3. "Export PDF" button calls the POST endpoint with the same filters as the on-screen report and shows a "Generating PDF…" state while the request is in flight. The response is the PDF itself (`Content-Type: application/pdf`, `Content-Disposition: attachment`), so the page saves it as a download directly. There is no `job_id`, no polling and no stored file (`03_architecture.md` §11). A failure shows the error toast and the user can retry
 
 ## `/admin/users`
 - **Calls:** `GET /api/users`, `POST /api/users`, `PATCH /api/users/:id`

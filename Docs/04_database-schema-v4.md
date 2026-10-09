@@ -3,7 +3,7 @@
 > Status: Active
 > Authority: Supporting database specification
 > Primary source: `Docs/03_architecture.md`
-> Last reviewed: 2026-08-25
+> Last reviewed: 2026-10-08
 
 **Platform:** MySQL 8.0 on Aiven · **App layer:** Next.js · **Auth:** Manual (custom `users` table, bcrypt, JWT)
 
@@ -1148,6 +1148,12 @@ DELIMITER ;
 -- auth.uid() -> @current_user_id; to_jsonb() -> JSON_OBJECT().
 -- Tables: orders, order_items, truck_schedules, deliveries, train_bookings,
 --   customers, products, stores, employees, drivers, assistants, trucks, routes.
+-- Login accounts are audited by migration 25_audit_users.sql (not 15): `users` and
+--   `user_profiles`, INSERT and UPDATE only (accounts are deactivated, never deleted).
+--   audit_log.record_id is BIGINT but user ids are CHAR(36) UUIDs, so record_id is NULL and
+--   the UUID is stored in old_data / new_data as 'user_id'. password_hash is never logged.
+--   `users` UPDATE audits only an email change; is_active, app_role, employee link and
+--   display name are audited on `user_profiles`, so one deactivation writes one row.
 DELIMITER $$
 
 CREATE TRIGGER trg_audit_orders_ins AFTER INSERT ON orders FOR EACH ROW
@@ -1368,6 +1374,8 @@ DELIMITER ;
 ---
 
 ### 6.2 — `18_proc_remaining.sql`
+
+> **Superseded in part by migration `26_fix_complete_delivery_guard.sql` (2026-10-08).** `complete_delivery()` below only checks `status <> 'Completed'`. Migration `26` recreates it so only a `Scheduled` or `In Progress` delivery can be completed (`Failed` and `Cancelled` are rejected with "Delivery N is <status> and cannot be completed."); the role guard, "not found" and "already Completed" messages and the dispatch rows are unchanged. Migrations `21`–`24` likewise replace `place_order`, `schedule_truck_delivery`, `trg_validate_truck_schedule` and `trg_apply_inventory_transaction`; see `03_architecture.md` §19.
 
 ```sql
 -- make_interval() -> DATE_ADD(... INTERVAL ... SECOND)
@@ -1644,7 +1652,14 @@ await db.execute(
    18_proc_remaining.sql
    19_reports.sql
    20_delivery_status_cancelled.sql
+   21_fix_place_order_collation.sql
+   22_fix_place_order_temp_tables.sql
+   23_fix_truck_schedule_lock.sql
+   24_fix_inventory_apply_trigger.sql
+   25_audit_users.sql
+   26_fix_complete_delivery_guard.sql
    ```
+   *(Migrations 21–26 are corrections and additions made after the first release of this checklist; an applied migration is never edited, so each fix is a new numbered file. See `03_architecture.md` §19.)*
    *(Note: Database seeding is decoupled from schema migrations and executed separately via `npm run db:seed` / `scripts/seed.ts`)*
 
 5. Before any test, run on the same connection:
