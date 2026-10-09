@@ -106,13 +106,13 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [x] Open PR → review → merge — PR #17 merged to `development`
 
 ### Member 5 — Report Exports (needs Member 2's report queries merged first)
-> Status 2026-10-07: **not started.** Member 2's report queries are merged (PR #16), so this is unblocked. `lib/export.ts` (jsPDF renderer scaffold), `lib/rate-limit.ts` (a `POST /api/reports/:type/export/pdf` profile, 10 per 5 minutes per user) and the CSV route already exist; no `export/pdf` route does.
+> Status 2026-10-09: **in progress.** Route handler and 18-test test suite completed and verified on `desandu` branch (commits `48ba25b` and `4b9ca99`). Next: wire download button on `/reports` page and produce end-to-end PDF download.
 
-- [ ] `POST /api/reports/:type/export/pdf` (`app/api/reports/[type]/export/pdf/route.ts`) returns a direct PDF: `Content-Type: application/pdf`, `Content-Disposition: attachment`, no persistence (`03_architecture.md` §11, `05_api-and-pages.md` §A9). Reuse the report queries and role rules from the CSV route so both exports return the same data
-- [ ] Add PDF renderer wiring, report-size limits, permission checks and rate limiting (`applyRateLimit` with the existing profile, per user)
-- [ ] Add export tests: content type and headers, permissions per role, filters, empty result, and a representative output that is a valid PDF (`03_architecture.md` §16)
-- [ ] Confirm no `report_jobs` migration, polling endpoint, or report-file storage is needed for version one (the code shows none; tick this once confirmed in the PR)
-- [ ] Produce a downloadable PDF end to end at least once against the seeded data (this closes the last Phase 2 gate item)
+- [x] `POST /api/reports/:type/export/pdf` (`app/api/reports/[type]/export/pdf/route.ts`) returns a direct PDF: `Content-Type: application/pdf`, `Content-Disposition: attachment`, no persistence (`03_architecture.md` §11, `05_api-and-pages.md` §A9). Reuse the report queries and role rules from the CSV route so both exports return the same data
+- [x] Add PDF renderer wiring, report-size limits (`PDF_ROW_CAP = 1000`), permission checks and rate limiting (`applyRateLimit` with `REPORT_PDF_EXPORT` profile, per user)
+- [x] Add export tests: content type and headers, permissions per role, filters, empty result, and a representative output that is a valid PDF (`tests/api/report-pdf-export.test.ts` — 18/18 passing)
+- [x] Confirm no `report_jobs` migration, polling endpoint, or report-file storage is needed for version one (the code shows none; verified synchronous design)
+- [ ] Produce a downloadable PDF end to end at least once against the seeded data (wire `/reports` button and verify download to close Phase 2 gate)
 - [ ] Open PR → review → merge
 
 ### Member 1 — Phase 2 review follow-ups
