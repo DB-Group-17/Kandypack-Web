@@ -133,6 +133,7 @@ const _defaultDateRange = getDefaultDateRange();
  * - Displays loading skeletons, error alerts, and approved empty state copy from Docs/07_content-copy.md.
  * - Computes KPI cards and table footer totals dynamically.
  * - Triggers CSV exports directly via browser download from `/api/reports/:type/export/csv`.
+ * - Triggers synchronous PDF report downloads directly from `/api/reports/:type/export/pdf`.
  *
  * @returns {JSX.Element} The rendered Reports page component.
  */
@@ -211,6 +212,7 @@ export default function ReportsPage() {
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const [isExportingCsv, setIsExportingCsv] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   /**
    * Formats numeric currency values into standardized Sri Lankan Rupees (LKR).
@@ -431,23 +433,116 @@ export default function ReportsPage() {
 
     setTimeout(() => {
       setIsExportingCsv(false);
+      setToastType("success");
       setToastMessage(`CSV export for ${TABS.find((t) => t.id === activeTab)?.label} initiated.`);
       setTimeout(() => setToastMessage(null), 4000);
     }, 800);
   };
 
-
   /**
-   * Shows informational feedback regarding direct PDF report generation.
-   * Aligned with Docs/03_architecture.md §11 and Docs/07_content-copy.md §/reports.
+   * Handles immediate synchronous PDF report export download from the server.
+   * Dispatches a POST request to `/api/reports/${activeTab}/export/pdf` with the current
+   * report filter configuration, reads the binary PDF blob, and triggers a client-side download.
+   *
+   * Error Handling & Constraints:
+   * - Traps non-OK HTTP statuses (400 validation/cap, 401 unauthorized, 403 forbidden, 429 rate limit).
+   * - Surfaces clear error messaging via alert container and floating toast notification.
+   * - Disables export buttons while generation is in flight to prevent concurrent duplicative requests.
+   *
+   * Authority: Docs/03_architecture.md §11, Docs/05_api-and-pages.md §A9.
+   *
+   * @returns {Promise<void>} Resolves when download is initiated or error is displayed.
    */
-  const handleExportPdf = (): void => {
+  const handleExportPdf = async (): Promise<void> => {
     setIsExportingPdf(true);
-    setTimeout(() => {
-      setIsExportingPdf(false);
-      setToastMessage("Direct PDF export will be enabled in Phase 3.");
+    setErrorMessage(null);
+
+    // Consolidate current tab filter parameters into the JSON payload
+    const payload: Record<string, string | number> = {};
+    switch (activeTab) {
+      case "quarterly-sales":
+        payload.year = selectedYear;
+        // Omit quarter when "All quarters" is selected (selectedQuarter === null)
+        if (selectedQuarter !== null) {
+          payload.quarter = selectedQuarter;
+        }
+        break;
+      case "most-ordered-items":
+        payload.year = selectedYear;
+        payload.quarter = mostOrderedQuarter;
+        break;
+      case "city-route-sales":
+        if (dateFrom) payload.date_from = dateFrom;
+        if (dateTo) payload.date_to = dateTo;
+        break;
+      case "driver-assistant-hours":
+        payload.week_start = weekStart;
+        break;
+      case "truck-usage":
+        payload.year = selectedYear;
+        payload.month = selectedMonth;
+        break;
+      case "customer-history":
+        payload.customer_id = selectedCustomerId;
+        break;
+    }
+
+    try {
+      const response = await fetch(`/api/reports/${activeTab}/export/pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Export failed with HTTP ${response.status}`;
+        try {
+          const errData = await response.json();
+          if (errData?.error?.message) {
+            errorMsg = errData.error.message;
+          }
+        } catch {
+          // If response body is not JSON, use default status-based message
+        }
+        throw new Error(errorMsg);
+      }
+
+      // Extract filename from Content-Disposition header if available
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `kandypack-${activeTab}-${toLocalIsoDate(new Date())}.pdf`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";]+)"?/i);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+
+      // Create an object URL from the binary response blob and trigger browser download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      const tabLabel = TABS.find((t) => t.id === activeTab)?.label ?? "Report";
+      setToastType("success");
+      setToastMessage(`PDF report for ${tabLabel} generated successfully.`);
       setTimeout(() => setToastMessage(null), 4000);
-    }, 1000);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to generate PDF report.";
+      setErrorMessage(errorMsg);
+      setToastType("error");
+      setToastMessage(errorMsg);
+      setTimeout(() => setToastMessage(null), 5000);
+    } finally {
+      setIsExportingPdf(false);
+    }
   };
 
   // --- Computed Totals & Metrics for Tabs ---
@@ -512,14 +607,19 @@ export default function ReportsPage() {
           role="alert"
           className="fixed bottom-6 right-6 z-50 bg-[#121C2C] text-white px-5 py-3.5 rounded-xl shadow-lg flex items-center gap-3 transition-all transform animate-slide-up text-sm font-medium"
         >
-          <div className="w-5 h-5 rounded-full bg-[#00B69B] flex items-center justify-center text-white text-xs font-bold">
-            ✓
+          <div
+            className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+              toastType === "error" ? "bg-[#F93C65]" : "bg-[#00B69B]"
+            }`}
+          >
+            {toastType === "error" ? "!" : "✓"}
           </div>
           <span>{toastMessage}</span>
           <button
             type="button"
             onClick={() => setToastMessage(null)}
-            className="ml-3 text-white/60 hover:text-white"
+            className="ml-3 text-white/60 hover:text-white cursor-pointer"
+            aria-label="Dismiss notification"
           >
             ×
           </button>

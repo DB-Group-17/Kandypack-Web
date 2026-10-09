@@ -106,13 +106,13 @@ Status legend: `[ ]` not started · `⏳` in progress · `✅` done
 - [x] Open PR → review → merge — PR #17 merged to `development`
 
 ### Member 5 — Report Exports (needs Member 2's report queries merged first)
-> Status 2026-10-09: **in progress.** Route handler and 18-test test suite completed and verified on `desandu` branch (commits `48ba25b` and `4b9ca99`). Next: wire download button on `/reports` page and produce end-to-end PDF download.
+> Status 2026-10-09: **completed.** Route handler, API test suite (18/18 passing), frontend wiring in `app/(dashboard)/reports/page.tsx`, and end-to-end seeded data PDF verification in `tests/integration/report-pdf-e2e.test.ts` complete. Phase 2 Gate closed; ready for PR into `development`.
 
 - [x] `POST /api/reports/:type/export/pdf` (`app/api/reports/[type]/export/pdf/route.ts`) returns a direct PDF: `Content-Type: application/pdf`, `Content-Disposition: attachment`, no persistence (`03_architecture.md` §11, `05_api-and-pages.md` §A9). Reuse the report queries and role rules from the CSV route so both exports return the same data
 - [x] Add PDF renderer wiring, report-size limits (`PDF_ROW_CAP = 1000`), permission checks and rate limiting (`applyRateLimit` with `REPORT_PDF_EXPORT` profile, per user)
 - [x] Add export tests: content type and headers, permissions per role, filters, empty result, and a representative output that is a valid PDF (`tests/api/report-pdf-export.test.ts` — 18/18 passing)
 - [x] Confirm no `report_jobs` migration, polling endpoint, or report-file storage is needed for version one (the code shows none; verified synchronous design)
-- [ ] Produce a downloadable PDF end to end at least once against the seeded data (wire `/reports` button and verify download to close Phase 2 gate)
+- [x] Produce a downloadable PDF end to end at least once against the seeded data (wire `/reports` button and verify download to close Phase 2 gate)
 - [ ] Open PR → review → merge
 
 ### Member 1 — Phase 2 review follow-ups
@@ -131,8 +131,8 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 - [x] Deliveries merged — PR #18 (2026-10-07). `complete_delivery()` flipping the linked order to `Delivered` was verified through the real route: a normal completion set the order `Delivered` and wrote the dispatch; an insufficient-stock completion rolled everything back
 - [x] Reports data endpoints merged and returning correct numbers against the seeded baseline data — PR #16, checked against the seeded data at review
 - [x] Inventory + Admin Users merged — PR #17
-- [ ] PDF generation successfully produces a downloadable file end-to-end at least once — **open; owner Member 5**
-- **Status (2026-10-07):** 3 of 4 criteria met. Phase 3 does not start until the PDF item closes. Member 1's follow-ups above do not block the gate.
+- [x] PDF generation successfully produces a downloadable file end-to-end at least once — **closed (2026-10-09, Member 5)**; wired in `app/(dashboard)/reports/page.tsx` and verified end-to-end against live seeded data in `tests/integration/report-pdf-e2e.test.ts`
+- **Status (2026-10-09):** 4 of 4 criteria met. Phase 2 Gate is CLOSED. Phase 3 Integration is unblocked.
 
 ---
 
