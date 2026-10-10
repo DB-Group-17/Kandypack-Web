@@ -17,12 +17,12 @@ export interface AuditLogItem {
   log_id: number;
   /** Name of the database table that was modified (e.g., 'orders', 'inventory', 'users') */
   table_name: string;
-  /** Primary identifier of the affected record (e.g., 'ORD-2023-9942', 'INV-8831') */
-  record_id: string;
+  /** Primary identifier of the affected record, or null when not directly set */
+  record_id: string | null;
   /** Nature of the database mutation */
   action: AuditActionType;
-  /** User ID who triggered the action or 0/null for system triggers */
-  user_id: number;
+  /** User UUID who triggered the action or null for system triggers */
+  user_id: string | null;
   /** Human-readable display name of the actor */
   user_name: string;
   /** Two-letter initials for avatar badge display */
@@ -33,6 +33,22 @@ export interface AuditLogItem {
   old_data: Record<string, unknown> | null;
   /** Snapshot of the record after the mutation (null for delete/Deleted) */
   new_data: Record<string, unknown> | null;
+}
+
+/**
+ * Select option structure for filter dropdowns.
+ */
+export interface FilterOption {
+  value: string;
+  label: string;
+}
+
+/**
+ * Structure of the GET /api/audit-log JSON response payload.
+ */
+export interface AuditLogApiResponse {
+  items: AuditLogItem[];
+  total: number;
 }
 
 /**

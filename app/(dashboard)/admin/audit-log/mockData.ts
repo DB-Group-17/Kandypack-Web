@@ -4,7 +4,7 @@
  * Matches the reference mock data and structure in UI/audit_log/code.html and Docs/05_api-and-pages.md.
  */
 
-import { AuditLogItem } from './types';
+import { AuditLogItem, FilterOption } from './types';
 
 /**
  * Static baseline mock audit records matching the UI/audit_log reference dataset.
@@ -15,7 +15,7 @@ export const MOCK_AUDIT_LOGS: AuditLogItem[] = [
     table_name: 'orders',
     record_id: 'ORD-2023-9942',
     action: 'Updated',
-    user_id: 1,
+    user_id: '00000000-0000-0000-0000-000000000001',
     user_name: 'John Doe',
     user_initials: 'JD',
     changed_at: '2023-10-24T14:32:05Z',
@@ -33,7 +33,7 @@ export const MOCK_AUDIT_LOGS: AuditLogItem[] = [
     table_name: 'inventory',
     record_id: 'INV-8831',
     action: 'Created',
-    user_id: 0,
+    user_id: null,
     user_name: 'System',
     user_initials: 'SYS',
     changed_at: '2023-10-24T11:15:22Z',
@@ -50,7 +50,7 @@ export const MOCK_AUDIT_LOGS: AuditLogItem[] = [
     table_name: 'users',
     record_id: 'USR-0042',
     action: 'Deleted',
-    user_id: 1,
+    user_id: '00000000-0000-0000-0000-000000000001',
     user_name: 'John Doe',
     user_initials: 'JD',
     changed_at: '2023-10-23T16:45:01Z',
@@ -66,7 +66,7 @@ export const MOCK_AUDIT_LOGS: AuditLogItem[] = [
     table_name: 'truck_schedules',
     record_id: 'SCH-TRK-882',
     action: 'Updated',
-    user_id: 3,
+    user_id: '33333333-3333-3333-3333-333333333333',
     user_name: 'Alice Smith',
     user_initials: 'AS',
     changed_at: '2023-10-23T09:20:11Z',
@@ -84,7 +84,7 @@ export const MOCK_AUDIT_LOGS: AuditLogItem[] = [
 /**
  * List of available tracked database table options for the filter selector.
  */
-export const AVAILABLE_TABLES = [
+export const AVAILABLE_TABLES: FilterOption[] = [
   { value: '', label: 'All Tables' },
   { value: 'orders', label: 'Orders' },
   { value: 'inventory', label: 'Inventory' },
@@ -96,7 +96,7 @@ export const AVAILABLE_TABLES = [
 /**
  * List of available user options for the filter selector.
  */
-export const AVAILABLE_USERS = [
+export const AVAILABLE_USERS: FilterOption[] = [
   { value: '', label: 'All Users' },
   { value: 'John Doe', label: 'John Doe' },
   { value: 'Jane Smith', label: 'Jane Smith' },

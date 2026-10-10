@@ -15,7 +15,7 @@ import React, { useState, useMemo } from 'react';
 import { AuditLogFilterBar } from './components/AuditLogFilterBar';
 import { AuditLogTable } from './components/AuditLogTable';
 import { AuditLogPagination } from './components/AuditLogPagination';
-import { MOCK_AUDIT_LOGS } from './mockData';
+import { MOCK_AUDIT_LOGS, AVAILABLE_TABLES, AVAILABLE_USERS } from './mockData';
 import { AuditLogFilters, PaginationState } from './types';
 
 const INITIAL_FILTERS: AuditLogFilters = {
@@ -133,6 +133,8 @@ export default function AuditLogPage(): React.JSX.Element {
         filters={filters}
         onFilterChange={handleFilterChange}
         onResetFilters={handleResetFilters}
+        tableOptions={AVAILABLE_TABLES}
+        userOptions={AVAILABLE_USERS}
       />
 
       {/* Main Audit Log Table Card */}

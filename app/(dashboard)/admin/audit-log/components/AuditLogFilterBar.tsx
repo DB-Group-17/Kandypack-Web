@@ -8,16 +8,19 @@
  */
 
 import React from 'react';
-import { AuditLogFilters } from '../types';
-import { AVAILABLE_TABLES, AVAILABLE_USERS } from '../mockData';
+import { AuditLogFilters, FilterOption } from '../types';
 
-interface AuditLogFilterBarProps {
+export interface AuditLogFilterBarProps {
   /** Current active filter values */
   filters: AuditLogFilters;
   /** Callback triggered when any filter property changes */
   onFilterChange: (newFilters: AuditLogFilters) => void;
   /** Callback triggered to reset all filters to default values */
   onResetFilters: () => void;
+  /** Selectable table options for the dropdown */
+  tableOptions?: FilterOption[];
+  /** Selectable user options for the dropdown */
+  userOptions?: FilterOption[];
 }
 
 /**
@@ -29,6 +32,8 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
   filters,
   onFilterChange,
   onResetFilters,
+  tableOptions = [],
+  userOptions = [],
 }) => {
   /**
    * Handles table dropdown selection changes.
@@ -84,7 +89,10 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               onChange={handleTableChange}
               className="w-full appearance-none bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-4 py-2.5 text-[14px] text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
             >
-              {AVAILABLE_TABLES.map((table) => (
+              {!tableOptions.some((table) => table.value === '') && (
+                <option value="">All Tables</option>
+              )}
+              {tableOptions.map((table) => (
                 <option key={table.value} value={table.value}>
                   {table.label}
                 </option>
@@ -113,7 +121,10 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               onChange={handleUserChange}
               className="w-full appearance-none bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-4 py-2.5 text-[14px] text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
             >
-              {AVAILABLE_USERS.map((u) => (
+              {!userOptions.some((u) => u.value === '') && (
+                <option value="">All Users</option>
+              )}
+              {userOptions.map((u) => (
                 <option key={u.value} value={u.value}>
                   {u.label}
                 </option>
