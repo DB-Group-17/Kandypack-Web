@@ -161,7 +161,7 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 - [ ] Migration-check CI job confirmed working
 
 ### All members (stretch goal, time-permitting only)
-- [ ] Member 1: one test for `place_order` edge case (e.g. exact-capacity boundary)
+- [x] Member 1: one test for `place_order` edge case (e.g. exact-capacity boundary) — `tests/integration/place-order-capacity.test.ts` (exact fit, one unit over, full trip skipped). Uses synthetic far-future trips inside rolled-back transactions, so it does not depend on seed dates. Done early, before the Phase 3 gate closed
 - [ ] Member 2: one test for a reports query's numeric correctness
 - [ ] Member 3: one test for `schedule_truck_delivery` conflict rejection
 - [ ] Member 4: one test for `receive_goods_at_store` quantity math
