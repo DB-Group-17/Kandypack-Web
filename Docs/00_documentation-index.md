@@ -91,6 +91,7 @@ Each document must stay within its defined responsibility. Active documents shou
 - `UI/truck-schedule-new/` is the confirmed reference for the new truck-schedule page.
 - Canonical application layout is unified under `app/(dashboard)/layout.tsx` for all authenticated modules (`/inventory`, `/admin/*`, `/train-schedule`, `/truck-schedule`, `/deliveries`, `/reports`); redundant per-page shells are decommissioned.
 - Phase 0 Foundation completed and verified on 2026-09-02; all Phase 0 Gate criteria locked for Phase 1 kickoff.
+- Production runs on AWS EC2 as Docker containers (the app plus Caddy for HTTPS) at `https://dinethnimsara.dpdns.org`, deployed by GitHub Actions (`deploy.yml`) after CI passes on `main`. This replaces the planned Vercel deployment. Production shares the development database, Redis and `JWT_SECRET` (documented exception). See `03_architecture.md` §12 and §19 and `10_local-setup.md` §12.
 
 ### Approved architecture finalization scope
 
