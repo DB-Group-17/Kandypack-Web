@@ -1,0 +1,38 @@
+# Files excluded from the Docker build context (keeps the image small and, more importantly,
+# keeps secrets out of it: .env.local holds real credentials and must never be copied in).
+
+# Secrets and local configuration
+.env*
+!.env.example
+*.pem
+
+# Dependencies and build output (rebuilt inside the image)
+node_modules
+.next
+out
+build
+coverage
+*.tsbuildinfo
+
+# Version control, CI and editor/agent tooling
+.git
+.gitignore
+.github
+.idea
+.claude
+.agents
+graphify-out
+memory.md
+
+# Documentation, design references and tests are not needed to build or run the app
+Docs
+Archive
+UI
+context
+tests
+
+# Deployment files are not part of the application itself
+Dockerfile
+.dockerignore
+docker-compose*.yml
+Caddyfile
