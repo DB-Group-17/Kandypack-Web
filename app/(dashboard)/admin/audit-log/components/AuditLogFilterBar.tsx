@@ -21,6 +21,8 @@ export interface AuditLogFilterBarProps {
   tableOptions?: FilterOption[];
   /** Selectable user options for the dropdown */
   userOptions?: FilterOption[];
+  /** Callback triggered to explicitly apply current filters */
+  onApplyFilters?: () => void;
 }
 
 /**
@@ -34,6 +36,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
   onResetFilters,
   tableOptions = [],
   userOptions = [],
+  onApplyFilters,
 }) => {
   /**
    * Handles table dropdown selection changes.
@@ -184,6 +187,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
 
           <button
             type="button"
+            onClick={onApplyFilters}
             className="h-[44px] px-6 rounded-full text-[14px] font-semibold bg-[#F0F3FF] text-[#4132C7] hover:bg-[#DEE8FF] transition-all duration-150 flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
