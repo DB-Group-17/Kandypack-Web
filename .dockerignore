@@ -24,11 +24,13 @@ coverage
 graphify-out
 memory.md
 
-# Documentation, design references and tests are not needed to build or run the app
+# Documentation, design references and tests are not needed to build or run the app.
+# NOTE: do NOT exclude `context/`. Despite the name it is application source code
+# (context/AuthContext.tsx, imported as "@/context/AuthContext" by the pages); excluding it breaks
+# `next build` with "Module not found".
 Docs
 Archive
 UI
-context
 tests
 
 # Deployment files are not part of the application itself
