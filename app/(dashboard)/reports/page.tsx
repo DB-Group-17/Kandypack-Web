@@ -392,6 +392,14 @@ export default function ReportsPage() {
    * Handles immediate synchronous CSV export download from the server.
    */
   const handleExportCsv = (): void => {
+    // Preflight check: Customer History requires a valid customer_id selection
+    if (activeTab === "customer-history" && (!selectedCustomerId || selectedCustomerId <= 0)) {
+      setToastType("error");
+      setToastMessage("Please select a customer before exporting customer history.");
+      setTimeout(() => setToastMessage(null), 4000);
+      return;
+    }
+
     setIsExportingCsv(true);
 
     const params = new URLSearchParams();
@@ -454,6 +462,16 @@ export default function ReportsPage() {
    * @returns {Promise<void>} Resolves when download is initiated or error is displayed.
    */
   const handleExportPdf = async (): Promise<void> => {
+    // Preflight check: Customer History requires a valid customer_id selection
+    if (activeTab === "customer-history" && (!selectedCustomerId || selectedCustomerId <= 0)) {
+      const msg = "Please select a customer before exporting customer history.";
+      setErrorMessage(msg);
+      setToastType("error");
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(null), 4000);
+      return;
+    }
+
     setIsExportingPdf(true);
     setErrorMessage(null);
 
@@ -498,13 +516,17 @@ export default function ReportsPage() {
 
       if (!response.ok) {
         let errorMsg = `Export failed with HTTP ${response.status}`;
-        try {
-          const errData = await response.json();
-          if (errData?.error?.message) {
-            errorMsg = errData.error.message;
+        if (response.status === 429) {
+          errorMsg = "Export rate limit reached (max 10 PDF requests per 5 minutes). Please wait and try again.";
+        } else {
+          try {
+            const errData = await response.json();
+            if (errData?.error?.message) {
+              errorMsg = errData.error.message;
+            }
+          } catch {
+            // If response body is not JSON, use default status-based message
           }
-        } catch {
-          // If response body is not JSON, use default status-based message
         }
         throw new Error(errorMsg);
       }
@@ -648,9 +670,16 @@ export default function ReportsPage() {
               disabled={isExportingCsv || isLoading}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-[#C8C4D7] text-xs font-semibold text-[#121C2C] hover:bg-[#F0F3FF] transition-all shadow-xs disabled:opacity-50 cursor-pointer"
             >
-              <svg className="w-4 h-4 text-[#474554]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              {isExportingCsv ? (
+                <svg className="w-4 h-4 animate-spin text-[#474554]" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-[#474554]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )}
               <span>{isExportingCsv ? "Exporting CSV…" : "Export CSV"}</span>
             </button>
 
@@ -661,9 +690,16 @@ export default function ReportsPage() {
               disabled={isExportingPdf || isLoading}
               className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#4132C7] text-white text-xs font-semibold hover:bg-[#3427A8] transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
+              {isExportingPdf ? (
+                <svg className="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              )}
               <span>{isExportingPdf ? "Generating PDF…" : "Export PDF"}</span>
             </button>
           </div>
