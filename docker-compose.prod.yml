@@ -1,0 +1,66 @@
+# Kandypack production stack: the Next.js app plus Caddy (reverse proxy and automatic HTTPS).
+#
+# Lives in /opt/kandypack on the EC2 server. The deploy workflow (.github/workflows/deploy.yml)
+# copies this file and the Caddyfile there on every release, then runs:
+#   docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
+#
+# Two separate env files live next to this file on the server and are NEVER committed:
+#   .env     - Compose variables only (APP_IMAGE, written by the deploy job).
+#   app.env  - Runtime secrets for the app (DATABASE_URL, JWT_SECRET, UPSTASH_REDIS_REST_URL,
+#              UPSTASH_REDIS_REST_TOKEN, NODE_ENV=production). Created once by hand, chmod 600.
+#
+# MySQL (Aiven) and Redis (Upstash) are external managed services and are not part of this stack.
+# Authority: Docs/03_architecture.md §4, §12, §15.
+
+services:
+  app:
+    # Full image reference including the release tag, supplied by the deploy job via .env,
+    # e.g. ghcr.io/db-group-17/kandypack-web:<git-sha>. Compose refuses to start without it.
+    image: ${APP_IMAGE:?APP_IMAGE must be set, e.g. ghcr.io/db-group-17/kandypack-web:latest}
+    restart: unless-stopped
+    env_file:
+      - ./app.env
+    # No `ports:` on purpose: the app is reachable only from Caddy over the compose network, so
+    # it cannot collide with the old app that already uses host port 3000.
+    expose:
+      - "3000"
+    # Keep the app from starving the old PM2 app and the OS on this 2 GB host.
+    mem_limit: 768m
+    # Rotate container logs so they cannot fill the disk.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    # Caddy is the only service that publishes ports. 443/udp enables HTTP/3.
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and the ACME account live in caddy_data. Keep this volume: losing it forces
+      # a new certificate request on every redeploy and can hit Let's Encrypt rate limits.
+      - caddy_data:/data
+      - caddy_config:/config
+    # Lets the Caddyfile reach the old, non-Docker Next.js app on the host (host port 3000).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # `service_started` (not `service_healthy`): if a new app release fails its health check,
+    # Caddy must still start so the old app stays reachable by IP.
+    depends_on:
+      app:
+        condition: service_started
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  caddy_data:
+  caddy_config:
