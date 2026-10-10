@@ -125,9 +125,21 @@ describe('Integration / SQL: place_order() Stored Procedure & Triggers', () => {
 
         const itemsJson = JSON.stringify([{ product_id: productId, quantity: 10 }]);
 
-        // 1. Call place_order with valid 10-day lead time
+        // 0. Create a synthetic Scheduled trip for the city inside this transaction. Seeded trips
+        //    are fixed at the first seed run and eventually all depart, which made this test fail
+        //    with "no trip with capacity". A fixed far-future order date (2040) means only this
+        //    trip can be selected, so the test no longer depends on seed dates or other members'
+        //    orders. The trip is rolled back with everything else.
         await conn.query(
-          `CALL place_order(?, ?, ?, ?, CURDATE() + INTERVAL 10 DAY, CAST(? AS JSON), ?, NOW(), @placed_order_id)`,
+          `INSERT INTO train_trips
+             (destination_city_id, departure_datetime, arrival_datetime, total_capacity, status)
+           VALUES (?, '2040-01-02 08:00:00', '2040-01-02 16:00:00', 500, 'Scheduled')`,
+          [cityId]
+        );
+
+        // 1. Call place_order with a valid lead time (order 2040-01-01, delivery 2040-01-20)
+        await conn.query(
+          `CALL place_order(?, ?, ?, ?, '2040-01-20', CAST(? AS JSON), ?, '2040-01-01 08:00:00', @placed_order_id)`,
           [customerId, 'Test Delivery Address', areaName, cityId, itemsJson, TEST_ADMIN.user_id]
         );
 
