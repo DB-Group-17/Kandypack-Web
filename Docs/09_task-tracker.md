@@ -139,7 +139,7 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 ## 🔗 PHASE 3 — Integration (Days 13–14)
 
 - [ ] Member 5: `/dashboard` page built and wired (last, since it pulls from every other module)
-- [ ] Member 2: PDF export button on `/reports` wired to Member 5's direct PDF endpoint
+- [x] Member 2: PDF export button on `/reports` wired to Member 5's direct PDF endpoint — direct binary stream download, client-side validation, 429 rate-limiting handling, and active generation spinners verified
 - [ ] Member 4: `/admin/audit-log` page wired
 - [ ] **Full cross-module smoke test** (everyone, together): place an order → confirm train booking → receive goods at destination store → schedule a truck → mark delivery complete → confirm it appears correctly in Reports and Dashboard
 - [ ] Fix any integration issues found during the smoke test before moving on
