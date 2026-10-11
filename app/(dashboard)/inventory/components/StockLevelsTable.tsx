@@ -103,7 +103,7 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
 
     if (item.status === 'critical') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF0F0] text-[#F93C65] text-[12px] font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF0F0] text-[#F93C65] text-xs font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-[#F93C65]" />
           {formatted} Critical
         </span>
@@ -112,7 +112,7 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
 
     if (item.status === 'low_stock') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF9E6] text-[#FFB800] text-[12px] font-semibold">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF9E6] text-[#FFB800] text-xs font-semibold">
           <span className="w-1.5 h-1.5 rounded-full bg-[#FFB800]" />
           {formatted} Low stock
         </span>
@@ -128,21 +128,21 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-[#D9E3F9] bg-[#E7EEFF]/30">
-              <th className="py-4 px-6 text-[12px] font-semibold text-[#474554] uppercase tracking-wider">
+              <th className="py-4 px-6 text-xs font-semibold text-[#474554] uppercase tracking-wider">
                 Product
               </th>
-              <th className="py-4 px-6 text-[12px] font-semibold text-[#474554] uppercase tracking-wider">
+              <th className="py-4 px-6 text-xs font-semibold text-[#474554] uppercase tracking-wider">
                 SKU
               </th>
-              <th className="py-4 px-6 text-[12px] font-semibold text-[#474554] uppercase tracking-wider text-right">
+              <th className="py-4 px-6 text-xs font-semibold text-[#474554] uppercase tracking-wider text-right">
                 Qty on Hand
               </th>
-              <th className="py-4 px-6 text-[12px] font-semibold text-[#474554] uppercase tracking-wider text-right">
+              <th className="py-4 px-6 text-xs font-semibold text-[#474554] uppercase tracking-wider text-right">
                 Last Updated
               </th>
             </tr>
           </thead>
-          <tbody className="text-[14px] text-[#121C2C]">
+          <tbody className="text-sm text-[#121C2C]">
             {isLoading ? (
               /* Loading Skeleton Rows */
               Array.from({ length: pageSize }).map((_, index) => (
@@ -171,16 +171,16 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </div>
-                    <p className="text-[15px] font-semibold text-[#121C2C] mb-1">
+                    <p className="text-base font-semibold text-[#121C2C] mb-1">
                       Unable to load inventory data
                     </p>
-                    <p className="text-[13px] text-[#474554] mb-4">
+                    <p className="text-sm text-[#474554] mb-4">
                       {error}
                     </p>
                     {onRetry && (
                       <button
                         onClick={onRetry}
-                        className="px-5 py-2 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3928C0] transition-colors cursor-pointer"
+                        className="px-5 py-2 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3928C0] transition-colors cursor-pointer"
                       >
                         Try Again
                       </button>
@@ -199,7 +199,7 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
                     {item.product_name}
                   </td>
                   <td className="py-4 px-6">
-                    <span className="font-mono text-[12px] text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
+                    <span className="font-mono text-xs text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
                       {item.sku}
                     </span>
                   </td>
@@ -221,10 +221,10 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                       </svg>
                     </div>
-                    <p className="text-[15px] font-medium text-[#121C2C] mb-1">
+                    <p className="text-base font-medium text-[#121C2C] mb-1">
                       {searchQuery ? 'No products match your search' : 'No inventory records for this store yet.'}
                     </p>
-                    <p className="text-[13px] text-[#474554] mb-4">
+                    <p className="text-sm text-[#474554] mb-4">
                       {searchQuery
                         ? `No items match "${searchQuery}". Clear your search term to see all store stock.`
                         : 'No stock items are currently registered for this store.'}
@@ -232,14 +232,14 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
                     {searchQuery && onClearSearch ? (
                       <button
                         onClick={onClearSearch}
-                        className="px-5 py-2 rounded-full bg-[#DEE8FF] text-[#4132C7] text-[13px] font-semibold hover:bg-[#4132C7] hover:text-white transition-colors cursor-pointer"
+                        className="px-5 py-2 rounded-full bg-[#DEE8FF] text-[#4132C7] text-sm font-semibold hover:bg-[#4132C7] hover:text-white transition-colors cursor-pointer"
                       >
                         Clear Search
                       </button>
                     ) : canReceiveGoods ? (
                       <button
                         onClick={onOpenReceiveModal}
-                        className="px-5 py-2 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3928C0] transition-colors cursor-pointer"
+                        className="px-5 py-2 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3928C0] transition-colors cursor-pointer"
                       >
                         Receive Goods
                       </button>
@@ -254,7 +254,7 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
 
       {/* Pagination Footer matching screen.png */}
       <div className="px-6 py-4 flex items-center justify-between border-t border-[#D9E3F9] bg-[#E7EEFF]/10">
-        <span className="text-[14px] text-[#474554]">
+        <span className="text-sm text-[#474554]">
           Showing {startIndex} to {endIndex} of {totalCount} entries
         </span>
         <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <span className="text-[13px] font-medium text-[#121C2C] px-2">
+          <span className="text-sm font-medium text-[#121C2C] px-2">
             Page {currentPage} of {totalPages}
           </span>
           <button

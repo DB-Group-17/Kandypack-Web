@@ -733,7 +733,7 @@ export default function ReportsPage() {
       <div className="bg-white p-5 rounded-2xl border border-[#C8C4D7]/50 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-base font-bold text-[#121C2C]">
+            <h2 className="text-base font-semibold text-[#121C2C]">
               {TABS.find((t) => t.id === activeTab)?.label}
             </h2>
             <p className="text-xs text-[#474554] mt-0.5">
@@ -1156,7 +1156,7 @@ export default function ReportsPage() {
             {/* Drivers Table */}
             <div className="bg-white rounded-2xl border border-[#C8C4D7]/50 shadow-xs overflow-hidden">
               <div className="px-6 py-4 border-b border-[#F0F3FF] flex items-center justify-between">
-                <h3 className="text-sm font-bold text-[#121C2C]">Drivers (Weekly Limit: 40h)</h3>
+                <h3 className="text-base font-semibold text-[#121C2C]">Drivers (Weekly Limit: 40h)</h3>
                 <span className="text-xs text-[#474554]">{driversList.length} Scheduled</span>
               </div>
               <div className="overflow-x-auto">
@@ -1192,11 +1192,11 @@ export default function ReportsPage() {
                             <td className="px-5 py-3.5 text-right font-mono font-medium">{d.remaining_hours.toFixed(1)}h</td>
                             <td className="px-5 py-3.5 text-center">
                               {nearCap ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
                                   Near Cap
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
                                   Healthy
                                 </span>
                               )}
@@ -1213,7 +1213,7 @@ export default function ReportsPage() {
             {/* Assistants Table */}
             <div className="bg-white rounded-2xl border border-[#C8C4D7]/50 shadow-xs overflow-hidden">
               <div className="px-6 py-4 border-b border-[#F0F3FF] flex items-center justify-between">
-                <h3 className="text-sm font-bold text-[#121C2C]">Assistants (Weekly Limit: 60h)</h3>
+                <h3 className="text-base font-semibold text-[#121C2C]">Assistants (Weekly Limit: 60h)</h3>
                 <span className="text-xs text-[#474554]">{assistantsList.length} Scheduled</span>
               </div>
               <div className="overflow-x-auto">
@@ -1249,11 +1249,11 @@ export default function ReportsPage() {
                             <td className="px-5 py-3.5 text-right font-mono font-medium">{a.remaining_hours.toFixed(1)}h</td>
                             <td className="px-5 py-3.5 text-center">
                               {nearCap ? (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
                                   Near Cap
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
                                   Healthy
                                 </span>
                               )}

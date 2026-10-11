@@ -237,7 +237,7 @@ export default function DeliveriesPage(): React.JSX.Element {
     return (
       <div className="flex items-center justify-center py-16" role="status">
         <Loader2 className="w-6 h-6 text-[#4132C7] animate-spin" aria-hidden="true" />
-        <span className="ml-3 text-[14px] text-[#474554]">Loading…</span>
+        <span className="ml-3 text-sm text-[#474554]">Loading…</span>
       </div>
     );
   }
@@ -246,7 +246,7 @@ export default function DeliveriesPage(): React.JSX.Element {
     return (
       <div className="bg-white rounded-[16px] p-8 border border-[#C8C4D7]/40 shadow-[0_4px_20px_rgba(0,0,0,0.04)] max-w-lg mx-auto text-center mt-12">
         <AlertCircle className="w-10 h-10 text-[#F93C65] mx-auto mb-3" aria-hidden="true" />
-        <p className="text-[14px] text-[#474554]">
+        <p className="text-sm text-[#474554]">
           You don&apos;t have permission to view this page.
         </p>
       </div>
@@ -260,7 +260,7 @@ export default function DeliveriesPage(): React.JSX.Element {
       {/* ── Success toast ── */}
       {toast && (
         <div
-          className="fixed top-6 right-6 z-50 bg-[#00B69B] text-white px-5 py-3 rounded-[12px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex items-center gap-2 text-[14px] font-medium"
+          className="fixed top-6 right-6 z-50 bg-[#00B69B] text-white px-5 py-3 rounded-[12px] shadow-[0_8px_30px_rgba(0,0,0,0.08)] flex items-center gap-2 text-sm font-medium"
           role="status"
         >
           <CheckCircle2 className="w-5 h-5 shrink-0" aria-hidden="true" />
@@ -270,10 +270,10 @@ export default function DeliveriesPage(): React.JSX.Element {
 
       {/* ── Page header ── */}
       <div>
-        <h1 className="text-[30px] font-bold leading-[38px] tracking-[-0.02em] text-[#121C2C]">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#121C2C]">
           Deliveries
         </h1>
-        <p className="text-[14px] text-[#474554] mt-1">Track and complete last-mile deliveries</p>
+        <p className="text-sm text-[#474554] mt-1">Track and complete last-mile deliveries</p>
       </div>
 
       {/* ── Filter bar ── */}
@@ -287,7 +287,7 @@ export default function DeliveriesPage(): React.JSX.Element {
                 type="button"
                 onClick={() => setStatusFilter(opt.value)}
                 aria-pressed={statusFilter === opt.value}
-                className={`px-4 h-10 rounded-full text-[13px] font-medium transition-colors cursor-pointer ${
+                className={`px-4 h-10 rounded-full text-sm font-medium transition-colors cursor-pointer ${
                   statusFilter === opt.value
                     ? 'bg-[#4132C7] text-white shadow-sm'
                     : 'bg-[#F5F5FA] text-[#474554] hover:bg-[#ECEAF8]'
@@ -307,9 +307,9 @@ export default function DeliveriesPage(): React.JSX.Element {
               value={dateFrom}
               max={dateTo || undefined}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-[#C8C4D7] bg-white text-[13px] text-[#474554] focus:outline-none focus:border-[#4132C7] focus:ring-2 focus:ring-[#4132C7]/20"
+              className="h-10 px-3 rounded-lg border border-[#C8C4D7] bg-white text-sm text-[#474554] focus:outline-none focus:border-[#4132C7] focus:ring-2 focus:ring-[#4132C7]/20"
             />
-            <span className="text-[13px] text-[#777586]">to</span>
+            <span className="text-sm text-[#777586]">to</span>
             <label className="sr-only" htmlFor="deliveries-date-to">To date</label>
             <input
               id="deliveries-date-to"
@@ -317,7 +317,7 @@ export default function DeliveriesPage(): React.JSX.Element {
               value={dateTo}
               min={dateFrom || undefined}
               onChange={(e) => setDateTo(e.target.value)}
-              className="h-10 px-3 rounded-lg border border-[#C8C4D7] bg-white text-[13px] text-[#474554] focus:outline-none focus:border-[#4132C7] focus:ring-2 focus:ring-[#4132C7]/20"
+              className="h-10 px-3 rounded-lg border border-[#C8C4D7] bg-white text-sm text-[#474554] focus:outline-none focus:border-[#4132C7] focus:ring-2 focus:ring-[#4132C7]/20"
             />
           </div>
         </div>
@@ -329,7 +329,7 @@ export default function DeliveriesPage(): React.JSX.Element {
         {loading && (
           <div className="flex items-center justify-center py-16" role="status">
             <Loader2 className="w-6 h-6 text-[#4132C7] animate-spin" aria-hidden="true" />
-            <span className="ml-3 text-[14px] text-[#474554]">Loading deliveries…</span>
+            <span className="ml-3 text-sm text-[#474554]">Loading deliveries…</span>
           </div>
         )}
 
@@ -337,12 +337,12 @@ export default function DeliveriesPage(): React.JSX.Element {
         {!loading && error && (
           <div className="py-12 px-6 text-center" role="alert">
             <AlertCircle className="w-10 h-10 text-[#F93C65] mx-auto mb-3" aria-hidden="true" />
-            <p className="text-[14px] font-semibold text-[#121C2C]">Something went wrong.</p>
-            <p className="text-[13px] text-[#777586] mt-1">{error}</p>
+            <p className="text-sm font-semibold text-[#121C2C]">Something went wrong.</p>
+            <p className="text-sm text-[#777586] mt-1">{error}</p>
             <button
               type="button"
               onClick={() => setRefreshTick((t) => t + 1)}
-              className="mt-4 h-10 px-6 rounded-full bg-[#4132C7] text-white text-[14px] font-medium hover:bg-[#3527A8] transition-colors cursor-pointer"
+              className="mt-4 h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-medium hover:bg-[#3527A8] transition-colors cursor-pointer"
             >
               Retry
             </button>
@@ -353,7 +353,7 @@ export default function DeliveriesPage(): React.JSX.Element {
         {!loading && !error && items.length === 0 && (
           <div className="py-16 text-center">
             <Truck className="w-10 h-10 text-[#C8C4D7] mx-auto mb-3" aria-hidden="true" />
-            <p className="text-[14px] text-[#474554]">No deliveries match this filter.</p>
+            <p className="text-sm text-[#474554]">No deliveries match this filter.</p>
           </div>
         )}
 
@@ -380,19 +380,19 @@ export default function DeliveriesPage(): React.JSX.Element {
                 <tbody>
                   {items.map((d) => (
                     <tr key={d.delivery_id} className="border-b border-[#C8C4D7]/30 last:border-0 min-h-14">
-                      <td className="px-6 py-4 text-[14px] font-semibold text-[#4132C7]">#{d.order_id}</td>
+                      <td className="px-6 py-4 text-sm font-semibold text-[#4132C7]">#{d.order_id}</td>
                       <td className="px-6 py-4">
-                        <p className="text-[14px] font-semibold text-[#121C2C]">{d.customer_name}</p>
+                        <p className="text-sm font-semibold text-[#121C2C]">{d.customer_name}</p>
                         {d.notes && (
-                          <p className="mt-1 flex items-start gap-1.5 text-[12px] text-[#777586]">
+                          <p className="mt-1 flex items-start gap-1.5 text-xs text-[#777586]">
                             <MessageSquare className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                             {d.notes}
                           </p>
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-[14px] text-[#121C2C]">{d.truck_plate}</p>
-                        <p className="text-[12px] text-[#777586]">Driver: {d.driver_name}</p>
+                        <p className="text-sm text-[#121C2C]">{d.truck_plate}</p>
+                        <p className="text-xs text-[#777586]">Driver: {d.driver_name}</p>
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -401,7 +401,7 @@ export default function DeliveriesPage(): React.JSX.Element {
                           {d.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-[14px] text-[#474554]">
+                      <td className="px-6 py-4 text-sm text-[#474554]">
                         {formatDeliveredAt(d.delivered_at)}
                       </td>
                       <td className="px-6 py-4">
@@ -409,12 +409,12 @@ export default function DeliveriesPage(): React.JSX.Element {
                           <button
                             type="button"
                             onClick={() => setDialogDelivery(d)}
-                            className="h-10 px-5 rounded-full bg-[#4132C7] text-white text-[13px] font-medium hover:bg-[#3527A8] transition-colors cursor-pointer whitespace-nowrap"
+                            className="h-10 px-5 rounded-full bg-[#4132C7] text-white text-sm font-medium hover:bg-[#3527A8] transition-colors cursor-pointer whitespace-nowrap"
                           >
                             Mark complete
                           </button>
                         ) : (
-                          <span className="text-[13px] text-[#777586]">—</span>
+                          <span className="text-sm text-[#777586]">—</span>
                         )}
                       </td>
                     </tr>
@@ -428,22 +428,22 @@ export default function DeliveriesPage(): React.JSX.Element {
               {items.map((d) => (
                 <li key={d.delivery_id} className="p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[14px] font-semibold text-[#4132C7]">Order #{d.order_id}</span>
+                    <span className="text-sm font-semibold text-[#4132C7]">Order #{d.order_id}</span>
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${getDeliveryBadgeClass(d.status)}`}
                     >
                       {d.status}
                     </span>
                   </div>
-                  <p className="text-[16px] font-semibold text-[#121C2C]">{d.customer_name}</p>
-                  <p className="text-[13px] text-[#474554]">
+                  <p className="text-base font-semibold text-[#121C2C]">{d.customer_name}</p>
+                  <p className="text-sm text-[#474554]">
                     {d.truck_plate} · Driver: {d.driver_name}
                   </p>
-                  <p className="text-[13px] text-[#777586]">
+                  <p className="text-sm text-[#777586]">
                     Delivered on: {formatDeliveredAt(d.delivered_at)}
                   </p>
                   {d.notes && (
-                    <p className="flex items-start gap-1.5 text-[12px] text-[#777586]">
+                    <p className="flex items-start gap-1.5 text-xs text-[#777586]">
                       <MessageSquare className="w-3.5 h-3.5 shrink-0 mt-0.5" aria-hidden="true" />
                       {d.notes}
                     </p>
@@ -452,7 +452,7 @@ export default function DeliveriesPage(): React.JSX.Element {
                     <button
                       type="button"
                       onClick={() => setDialogDelivery(d)}
-                      className="w-full h-12 rounded-full bg-[#4132C7] text-white text-[14px] font-medium hover:bg-[#3527A8] transition-colors cursor-pointer"
+                      className="w-full h-12 rounded-full bg-[#4132C7] text-white text-sm font-medium hover:bg-[#3527A8] transition-colors cursor-pointer"
                     >
                       Mark complete
                     </button>
@@ -462,7 +462,7 @@ export default function DeliveriesPage(): React.JSX.Element {
             </ul>
 
             {/* Footer count (Docs/07 style: "Showing … of …") */}
-            <p className="px-6 py-4 text-[13px] text-[#777586] border-t border-[#C8C4D7]/30">
+            <p className="px-6 py-4 text-sm text-[#777586] border-t border-[#C8C4D7]/30">
               Showing {items.length} {items.length === 1 ? 'delivery' : 'deliveries'}
             </p>
           </>
@@ -587,10 +587,10 @@ function CompleteDeliveryDialog({
       <div className="relative z-10 w-full max-w-md bg-white rounded-[16px] shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-[#C8C4D7]/40">
         <div className="flex items-start justify-between gap-4 px-6 pt-6">
           <div>
-            <h2 id="complete-delivery-title" className="text-[20px] font-semibold leading-7 text-[#121C2C]">
+            <h2 id="complete-delivery-title" className="text-lg font-bold text-[#121C2C]">
               Complete delivery for Order #{delivery.order_id}?
             </h2>
-            <p className="text-[13px] text-[#474554] mt-1">
+            <p className="text-sm text-[#474554] mt-1">
               {delivery.customer_name} · {delivery.truck_plate}
             </p>
           </div>
@@ -610,7 +610,7 @@ function CompleteDeliveryDialog({
           {errorMessage && (
             <div
               role="alert"
-              className="flex items-start gap-2 rounded-xl bg-[#FFF0F0] border border-[#F93C65]/30 text-[#F93C65] p-3 text-[13px]"
+              className="flex items-start gap-2 rounded-xl bg-[#FFF0F0] border border-[#F93C65]/30 text-[#F93C65] p-3 text-sm"
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
               <span>{errorMessage}</span>
@@ -619,7 +619,7 @@ function CompleteDeliveryDialog({
 
           {/* Optional notes — persistent label above the field (Docs/11_ui-rules.md §4) */}
           <div>
-            <label htmlFor="complete-delivery-notes" className="block text-[12px] font-semibold text-[#474554] mb-1.5">
+            <label htmlFor="complete-delivery-notes" className="block text-xs font-semibold text-[#474554] mb-1.5">
               Notes (optional)
             </label>
             <textarea
@@ -631,7 +631,7 @@ function CompleteDeliveryDialog({
               onChange={(e) => setNotes(e.target.value)}
               disabled={submitting}
               placeholder="e.g. Delivered to receptionist"
-              className="w-full px-3 py-2.5 rounded-lg border border-[#C8C4D7] bg-white text-[14px] text-[#121C2C] placeholder-[#777586] focus:outline-none focus:border-[#4132C7] focus:ring-2 focus:ring-[#4132C7]/20 disabled:opacity-60 resize-none"
+              className="w-full px-3 py-2.5 rounded-lg border border-[#C8C4D7] bg-white text-sm text-[#121C2C] placeholder-[#777586] focus:outline-none focus:border-[#4132C7] focus:ring-2 focus:ring-[#4132C7]/20 disabled:opacity-60 resize-none"
             />
           </div>
         </div>
@@ -641,7 +641,7 @@ function CompleteDeliveryDialog({
             type="button"
             onClick={requestClose}
             disabled={submitting}
-            className="h-10 px-5 rounded-full border border-[#4132C7] text-[#4132C7] text-[14px] font-medium hover:bg-[#F5F5FA] disabled:opacity-50 transition-colors cursor-pointer"
+            className="h-10 px-5 rounded-full border border-[#4132C7] text-[#4132C7] text-sm font-medium hover:bg-[#F5F5FA] disabled:opacity-50 transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -649,7 +649,7 @@ function CompleteDeliveryDialog({
             type="button"
             onClick={handleConfirm}
             disabled={submitting}
-            className="h-10 px-6 rounded-full bg-[#4132C7] text-white text-[14px] font-medium hover:bg-[#3527A8] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2 cursor-pointer"
+            className="h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-medium hover:bg-[#3527A8] disabled:opacity-60 disabled:cursor-not-allowed transition-colors flex items-center gap-2 cursor-pointer"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
             {submitting ? 'Completing…' : 'Confirm completion'}

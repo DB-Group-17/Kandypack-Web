@@ -863,7 +863,7 @@ export default function TrainSchedulePage() {
           <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-xl border border-[#C8C4D7]/50 p-6 md:p-8 z-10 animate-scale-up">
             <div className="flex items-center justify-between pb-4 border-b border-[#F0F3FF]">
               <div>
-                <h2 id="modal-title" className="text-xl font-bold text-[#121C2C]">
+                <h2 id="modal-title" className="text-lg font-bold text-[#121C2C]">
                   Add Trip
                 </h2>
                 <p className="text-xs text-[#474554] mt-0.5">

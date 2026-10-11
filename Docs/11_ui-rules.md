@@ -107,3 +107,19 @@ Visual tokens live in the root [`DESIGN.md`](../DESIGN.md). Component decisions 
 1. `train_schedule` uses the main Kandypack violet theme.
 2. `reports` and `audit_log` may use the deeper violet accent variant.
 3. Responsive dense tables use card-layout transformations on narrow screens.
+
+## 12. Typography scale
+
+Every page uses Plus Jakarta Sans (loaded in `app/layout.tsx`, mapped to `font-sans` in `app/globals.css`) and the named Tailwind sizes below, taken from `app/(dashboard)/orders/new/page.tsx`. Do not use arbitrary pixel sizes such as `text-[13px]`, except the 11px caption size.
+
+| Role | Classes |
+|---|---|
+| Page title | `text-2xl md:text-3xl font-bold tracking-tight` |
+| Subtitle, body, inputs, table cells | `text-sm` |
+| Card or section title | `text-base font-semibold` |
+| Modal title | `text-lg font-bold` |
+| Labels, helper text, badges | `text-xs` |
+| Table header, captions | `text-[11px] font-semibold` |
+
+`font-mono` is for identifiers and technical values only.
+

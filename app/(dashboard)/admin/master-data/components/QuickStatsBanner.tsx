@@ -199,11 +199,11 @@ const StatCard: React.FC<{ item: MasterDataStatItem }> = ({ item }) => {
         <p className="text-[11px] font-bold text-[#474554] tracking-wider uppercase">
           {item.title}
         </p>
-        <p className="text-[26px] font-bold text-[#121C2C] leading-none mt-1">
+        <p className="text-2xl font-bold text-[#121C2C] leading-none mt-1">
           {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
         </p>
         {item.subtitle && (
-          <p className="text-[12px] text-[#474554] mt-0.5">{item.subtitle}</p>
+          <p className="text-xs text-[#474554] mt-0.5">{item.subtitle}</p>
         )}
       </div>
     </div>

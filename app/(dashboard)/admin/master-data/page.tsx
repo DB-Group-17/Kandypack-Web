@@ -597,7 +597,7 @@ export default function MasterDataPage(): React.JSX.Element {
       {/* Toast Feedback Notification Banner */}
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 duration-200">
-          <div className="bg-[#121C2C] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-[13px] border border-white/10">
+          <div className="bg-[#121C2C] text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-sm border border-white/10">
             <span className="w-2.5 h-2.5 rounded-full bg-[#00B69B]" />
             <span className="font-medium">{toast.message}</span>
           </div>
@@ -607,10 +607,10 @@ export default function MasterDataPage(): React.JSX.Element {
       {/* Page Header Area */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-[28px] lg:text-[32px] font-bold text-[#121C2C] tracking-tight leading-none">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#121C2C]">
             Master Data
           </h1>
-          <p className="text-[14px] text-[#474554] font-normal mt-1.5">
+          <p className="text-sm text-[#474554] font-normal mt-1.5">
             Manage reference data used across the system
           </p>
         </div>
@@ -619,7 +619,7 @@ export default function MasterDataPage(): React.JSX.Element {
         {activeTab !== 'cities' ? (
           <button
             onClick={handleMainAddClick}
-            className="h-11 px-6 rounded-full bg-[#4132C7] hover:bg-[#3527a8] text-white font-semibold text-[13px] flex items-center justify-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.98] whitespace-nowrap cursor-pointer"
+            className="h-11 px-6 rounded-full bg-[#4132C7] hover:bg-[#3527a8] text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.98] whitespace-nowrap cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -627,7 +627,7 @@ export default function MasterDataPage(): React.JSX.Element {
             <span>{addBtnLabel.replace('+ ', '')}</span>
           </button>
         ) : (
-          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F1F1F5] text-[12px] font-semibold text-[#474554]">
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#F1F1F5] text-xs font-semibold text-[#474554]">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0 0v2m0-2h2m-2 0H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -638,7 +638,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
       {/* Error Alert Banner */}
       {fetchError && (
-        <div className="p-4 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center justify-between gap-3 text-[13px] text-[#F93C65]">
+        <div className="p-4 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center justify-between gap-3 text-sm text-[#F93C65]">
           <div className="flex items-center gap-2.5">
             <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -651,7 +651,7 @@ export default function MasterDataPage(): React.JSX.Element {
               setFetchError(null);
               void fetchMasterData();
             }}
-            className="px-4 py-1.5 rounded-full bg-[#F93C65] text-white font-semibold text-[12px] hover:bg-[#d6284e] transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-full bg-[#F93C65] text-white font-semibold text-xs hover:bg-[#d6284e] transition-colors cursor-pointer"
           >
             Retry
           </button>
@@ -663,7 +663,7 @@ export default function MasterDataPage(): React.JSX.Element {
         <nav aria-label="Master Data Tabs" className="flex gap-6 overflow-x-auto pb-px">
           <button
             onClick={() => handleTabChange('products')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
+            className={`pb-3 px-1 text-sm font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'products'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -674,7 +674,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('routes')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
+            className={`pb-3 px-1 text-sm font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'routes'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -685,7 +685,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('cities')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
+            className={`pb-3 px-1 text-sm font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'cities'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -696,7 +696,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('employees')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
+            className={`pb-3 px-1 text-sm font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'employees'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -707,7 +707,7 @@ export default function MasterDataPage(): React.JSX.Element {
 
           <button
             onClick={() => handleTabChange('customers')}
-            className={`pb-3 px-1 text-[14px] font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
+            className={`pb-3 px-1 text-sm font-semibold transition-colors whitespace-nowrap border-b-2 cursor-pointer ${
               activeTab === 'customers'
                 ? 'border-[#4132C7] text-[#4132C7]'
                 : 'border-transparent text-[#474554] hover:text-[#121C2C]'
@@ -744,14 +744,14 @@ export default function MasterDataPage(): React.JSX.Element {
                 setPageByTab((prev) => ({ ...prev, [activeTab]: 1 }));
               }}
               placeholder={searchPlaceholder}
-              className="w-full h-10 pl-9 pr-4 text-[13px] bg-[#F5F5FA] border border-[#C8C4D7]/50 rounded-lg focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] transition-all text-[#121C2C] placeholder-[#777586]"
+              className="w-full h-10 pl-9 pr-4 text-sm bg-[#F5F5FA] border border-[#C8C4D7]/50 rounded-lg focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] transition-all text-[#121C2C] placeholder-[#777586]"
             />
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => showToast('Filter options are active for this view.', 'info')}
-              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-[12px] font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-xs font-semibold transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -765,7 +765,7 @@ export default function MasterDataPage(): React.JSX.Element {
             </button>
             <button
               onClick={() => showToast('Export generated (CSV/PDF ready).', 'info')}
-              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-[12px] font-semibold transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#C8C4D7]/50 rounded-lg text-[#474554] hover:bg-[#F5F5FA] hover:text-[#121C2C] text-xs font-semibold transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -784,7 +784,7 @@ export default function MasterDataPage(): React.JSX.Element {
         {isLoading ? (
           <div className="py-24 text-center">
             <div className="w-8 h-8 border-3 border-[#4132C7] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-[13px] text-[#474554] font-medium">Loading reference records...</p>
+            <p className="text-sm text-[#474554] font-medium">Loading reference records...</p>
           </div>
         ) : (
           <>

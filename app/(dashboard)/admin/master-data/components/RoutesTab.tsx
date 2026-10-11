@@ -40,15 +40,15 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+        <h3 className="text-base font-semibold text-[#121C2C] mb-1">
           No records yet.
         </h3>
-        <p className="text-[13px] text-[#474554] max-w-sm mx-auto mb-5">
+        <p className="text-sm text-[#474554] max-w-sm mx-auto mb-5">
           No delivery routes match your search filters or have been configured for store stations.
         </p>
         <button
           onClick={onAddClick}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -72,7 +72,7 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
             <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#C8C4D7]/20 text-[13px] text-[#121C2C]">
+        <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
           {items.map((route) => (
             <tr
               key={route.route_id}
@@ -104,7 +104,7 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
 
               {/* Assigned Store */}
               <td className="py-4 px-5">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#E0F2FF] text-[12px] font-medium text-[#0047CC]">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#E0F2FF] text-xs font-medium text-[#0047CC]">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       strokeLinecap="round"

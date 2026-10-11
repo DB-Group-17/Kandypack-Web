@@ -97,21 +97,21 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
     switch (type) {
       case 'receive':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E6F6F4] text-[#00B69B] text-[12px] font-bold uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E6F6F4] text-[#00B69B] text-xs font-bold uppercase tracking-wider">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00B69B]" />
             Receive
           </span>
         );
       case 'dispatch':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF9E6] text-[#B87C00] text-[12px] font-bold uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFF9E6] text-[#B87C00] text-xs font-bold uppercase tracking-wider">
             <span className="w-1.5 h-1.5 rounded-full bg-[#FFB800]" />
             Dispatch
           </span>
         );
       case 'adjustment':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E0F2FF] text-[#0047CC] text-[12px] font-bold uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#E0F2FF] text-[#0047CC] text-xs font-bold uppercase tracking-wider">
             <span className="w-1.5 h-1.5 rounded-full bg-[#0047CC]" />
             Adjustment
           </span>
@@ -141,7 +141,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
             value={filters.searchQuery}
             onChange={(e) => onFilterChange({ ...filters, searchQuery: e.target.value })}
             placeholder="Search product, SKU, reference..."
-            className="w-full pl-10 pr-4 py-2 bg-[#F9F9FF] rounded-lg border border-[#C8C4D7]/60 text-[14px] text-[#121C2C] placeholder-[#777586] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7] focus:border-transparent transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-[#F9F9FF] rounded-lg border border-[#C8C4D7]/60 text-sm text-[#121C2C] placeholder-[#777586] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7] focus:border-transparent transition-all"
           />
         </div>
 
@@ -162,7 +162,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                 <button
                   key={tab.id}
                   onClick={() => onFilterChange({ ...filters, typeFilter: tab.id })}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-semibold transition-all shrink-0 cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer ${
                     isActive
                       ? 'bg-[#4132C7] text-white shadow-xs'
                       : 'bg-[#F0F3FF] text-[#474554] hover:bg-[#DEE8FF] hover:text-[#121C2C]'
@@ -175,12 +175,12 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
           </div>
 
           {/* Date range pickers */}
-          <div className="flex items-center gap-2 text-[13px] text-[#474554]">
+          <div className="flex items-center gap-2 text-sm text-[#474554]">
             <input
               type="date"
               value={filters.dateFrom}
               onChange={(e) => onFilterChange({ ...filters, dateFrom: e.target.value })}
-              className="px-2.5 py-1.5 rounded-lg border border-[#C8C4D7]/60 bg-[#F9F9FF] text-[13px] text-[#121C2C] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7]"
+              className="px-2.5 py-1.5 rounded-lg border border-[#C8C4D7]/60 bg-[#F9F9FF] text-sm text-[#121C2C] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7]"
               title="From date"
             />
             <span>to</span>
@@ -188,7 +188,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
               type="date"
               value={filters.dateTo}
               onChange={(e) => onFilterChange({ ...filters, dateTo: e.target.value })}
-              className="px-2.5 py-1.5 rounded-lg border border-[#C8C4D7]/60 bg-[#F9F9FF] text-[13px] text-[#121C2C] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7]"
+              className="px-2.5 py-1.5 rounded-lg border border-[#C8C4D7]/60 bg-[#F9F9FF] text-sm text-[#121C2C] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7]"
               title="To date"
             />
           </div>
@@ -203,7 +203,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                   dateTo: '',
                 })
               }
-              className="text-[12px] font-semibold text-[#4132C7] hover:underline px-2 py-1 cursor-pointer"
+              className="text-xs font-semibold text-[#4132C7] hover:underline px-2 py-1 cursor-pointer"
             >
               Reset
             </button>
@@ -272,16 +272,16 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <p className="text-[15px] font-semibold text-[#121C2C] mb-1">
+                      <p className="text-base font-semibold text-[#121C2C] mb-1">
                         Unable to load transaction history
                       </p>
-                      <p className="text-[13px] text-[#474554] mb-4">
+                      <p className="text-sm text-[#474554] mb-4">
                         {error}
                       </p>
                       {onRetry && (
                         <button
                           onClick={onRetry}
-                          className="px-5 py-2 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3928C0] transition-colors cursor-pointer"
+                          className="px-5 py-2 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3928C0] transition-colors cursor-pointer"
                         >
                           Try Again
                         </button>
@@ -299,18 +299,18 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                       className="hover:bg-[#F0F3FF]/40 transition-colors"
                     >
                       {/* Timestamp */}
-                      <td className="py-4 px-6 text-[13px] text-[#474554] whitespace-nowrap">
+                      <td className="py-4 px-6 text-sm text-[#474554] whitespace-nowrap">
                         {formatDisplayDateTime(txn.created_at)}
                       </td>
 
                       {/* Product Name */}
-                      <td className="py-4 px-6 font-semibold text-[14px] text-[#121C2C]">
+                      <td className="py-4 px-6 font-semibold text-sm text-[#121C2C]">
                         {txn.product_name}
                       </td>
 
                       {/* SKU */}
                       <td className="py-4 px-6">
-                        <span className="font-mono text-[12px] text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
+                        <span className="font-mono text-xs text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
                           {txn.sku}
                         </span>
                       </td>
@@ -321,7 +321,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                       {/* Quantity Change */}
                       <td className="py-4 px-6 text-right whitespace-nowrap">
                         <span
-                          className={`font-bold text-[14px] ${
+                          className={`font-bold text-sm ${
                             isPositive ? 'text-[#00B69B]' : 'text-[#F93C65]'
                           }`}
                         >
@@ -331,7 +331,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
 
                       {/* Reference Document */}
                       <td className="py-4 px-6 whitespace-nowrap">
-                        <span className="font-mono text-[12px] font-semibold text-[#4132C7] bg-[#DEE8FF] px-2.5 py-1 rounded-md">
+                        <span className="font-mono text-xs font-semibold text-[#4132C7] bg-[#DEE8FF] px-2.5 py-1 rounded-md">
                           {txn.reference_code}
                         </span>
                       </td>
@@ -348,10 +348,10 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+                      <h3 className="text-base font-semibold text-[#121C2C] mb-1">
                         No transactions recorded yet
                       </h3>
-                      <p className="text-[13px] text-[#474554] mb-4">
+                      <p className="text-sm text-[#474554] mb-4">
                         {hasActiveFilters
                           ? 'No transaction logs match your active filter criteria.'
                           : 'Transactions will appear here when goods are received or dispatched.'}
@@ -366,7 +366,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                               dateTo: '',
                             })
                           }
-                          className="px-4 py-2 rounded-full bg-[#DEE8FF] text-[#4132C7] text-[13px] font-semibold hover:bg-[#4132C7] hover:text-white transition-colors cursor-pointer"
+                          className="px-4 py-2 rounded-full bg-[#DEE8FF] text-[#4132C7] text-sm font-semibold hover:bg-[#4132C7] hover:text-white transition-colors cursor-pointer"
                         >
                           Clear Filters
                         </button>
@@ -381,7 +381,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
 
         {/* Pagination Footer */}
         <div className="px-6 py-4 bg-[#F9F9FF]/80 border-t border-[#E7EEFF] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span className="text-[13px] text-[#474554]">
+          <span className="text-sm text-[#474554]">
             Showing <strong className="font-semibold text-[#121C2C]">{startIndex}</strong> to{' '}
             <strong className="font-semibold text-[#121C2C]">{endIndex}</strong> of{' '}
             <strong className="font-semibold text-[#121C2C]">{totalCount}</strong> entries
@@ -398,7 +398,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <span className="text-[13px] font-medium text-[#121C2C] px-2">
+            <span className="text-sm font-medium text-[#121C2C] px-2">
               Page {currentPage} of {totalPages}
             </span>
             <button

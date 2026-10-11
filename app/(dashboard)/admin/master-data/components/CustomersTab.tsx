@@ -40,15 +40,15 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+        <h3 className="text-base font-semibold text-[#121C2C] mb-1">
           No records yet.
         </h3>
-        <p className="text-[13px] text-[#474554] max-w-sm mx-auto mb-5">
+        <p className="text-sm text-[#474554] max-w-sm mx-auto mb-5">
           No customer accounts match your search filters or have been created in this store network.
         </p>
         <button
           onClick={onAddClick}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -73,7 +73,7 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
             <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#C8C4D7]/20 text-[13px] text-[#121C2C]">
+        <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
           {items.map((cust) => (
             <tr
               key={cust.customer_id}
@@ -130,14 +130,14 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
 
               {/* Registered City */}
               <td className="py-4 px-5">
-                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-[12px] font-medium text-[#121C2C]">
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-xs font-medium text-[#121C2C]">
                   {cust.registered_city_name}
                 </span>
               </td>
 
               {/* Address */}
               <td className="py-4 px-5 text-[#474554] max-w-xs">
-                <p className="line-clamp-2 text-[12px]">{cust.address_line}</p>
+                <p className="line-clamp-2 text-xs">{cust.address_line}</p>
               </td>
 
               {/* Status */}

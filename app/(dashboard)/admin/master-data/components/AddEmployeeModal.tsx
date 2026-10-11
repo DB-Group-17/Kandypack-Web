@@ -140,8 +140,8 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-[17px] font-bold text-[#121C2C]">Add Employee</h3>
-              <p className="text-[12px] text-[#474554]">
+              <h3 className="text-lg font-bold text-[#121C2C]">Add Employee</h3>
+              <p className="text-xs text-[#474554]">
                 Register staff member and assign operational role
               </p>
             </div>
@@ -159,7 +159,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center gap-2 text-[13px] text-[#F93C65]">
+          <div className="mx-6 mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center gap-2 text-sm text-[#F93C65]">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -176,7 +176,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Full Name */}
           <div>
-            <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
               Full Name <span className="text-[#F93C65]">*</span>
             </label>
             <input
@@ -185,14 +185,14 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Kasun Bandara"
               required
-              className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+              className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* NIC */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 NIC Number <span className="text-[#F93C65]">*</span>
               </label>
               <input
@@ -201,13 +201,13 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 onChange={(e) => setNicNumber(e.target.value)}
                 placeholder="e.g. 199416003322"
                 required
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
 
             {/* Phone */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Phone <span className="text-[#F93C65]">*</span>
               </label>
               <input
@@ -216,14 +216,14 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. 077-1234567"
                 required
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
               Email (Optional)
             </label>
             <input
@@ -231,20 +231,20 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. k.bandara@kandypack.lk"
-              className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+              className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Employee Type */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Employee Type <span className="text-[#F93C65]">*</span>
               </label>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as EmployeeRole)}
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
                 {ROLE_OPTIONS.map((r) => (
                   <option key={r.value} value={r.value}>
@@ -256,13 +256,13 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
 
             {/* Home Store */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Home Store
               </label>
               <select
                 value={storeId}
                 onChange={(e) => setStoreId(e.target.value)}
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
                 <option value="">Central HQ / Unassigned</option>
                 {stores.map((s) => (
@@ -277,7 +277,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
           {/* Conditional Driver License Fields */}
           {role === 'driver' && (
             <div className="p-4 bg-[#F0F3FF]/70 border border-[#4132C7]/20 rounded-xl space-y-3 animate-in fade-in duration-150">
-              <p className="text-[12px] font-bold text-[#4132C7] uppercase tracking-wider">
+              <p className="text-xs font-bold text-[#4132C7] uppercase tracking-wider">
                 Driver License Specification
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -291,7 +291,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     onChange={(e) => setLicenseNumber(e.target.value)}
                     placeholder="e.g. B-8839201"
                     required
-                    className="w-full h-10 px-3 bg-white border border-[#C8C4D7]/50 rounded-lg text-[12px] text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
+                    className="w-full h-10 px-3 bg-white border border-[#C8C4D7]/50 rounded-lg text-xs text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
                   />
                 </div>
                 <div>
@@ -302,7 +302,7 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
                     type="date"
                     value={licenseExpiry}
                     onChange={(e) => setLicenseExpiry(e.target.value)}
-                    className="w-full h-10 px-3 bg-white border border-[#C8C4D7]/50 rounded-lg text-[12px] text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
+                    className="w-full h-10 px-3 bg-white border border-[#C8C4D7]/50 rounded-lg text-xs text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
                   />
                 </div>
               </div>
@@ -314,14 +314,14 @@ export const AddEmployeeModal: React.FC<AddEmployeeModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[#474554] font-semibold text-[13px] hover:bg-[#F5F5FA] transition-colors"
+              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[#474554] font-semibold text-sm hover:bg-[#F5F5FA] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-sm hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>

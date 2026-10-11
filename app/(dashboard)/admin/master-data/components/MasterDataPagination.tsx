@@ -38,7 +38,7 @@ export const MasterDataPagination: React.FC<MasterDataPaginationProps> = ({
   }
 
   return (
-    <div className="p-4 border-t border-[#C8C4D7]/20 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white text-[13px] text-[#474554] rounded-b-2xl">
+    <div className="p-4 border-t border-[#C8C4D7]/20 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white text-sm text-[#474554] rounded-b-2xl">
       {/* Result Range Information */}
       <p>
         Showing <span className="font-semibold text-[#121C2C]">{startItem}</span> to{' '}
@@ -65,7 +65,7 @@ export const MasterDataPagination: React.FC<MasterDataPaginationProps> = ({
           <button
             key={page}
             onClick={() => onPageChange(page)}
-            className={`w-8 h-8 rounded-lg font-medium text-[13px] flex items-center justify-center transition-colors ${
+            className={`w-8 h-8 rounded-lg font-medium text-sm flex items-center justify-center transition-colors ${
               page === currentPage
                 ? 'bg-[#EBE9FE] text-[#4132C7] font-bold shadow-xs'
                 : 'text-[#474554] hover:bg-[#F5F5FA]'

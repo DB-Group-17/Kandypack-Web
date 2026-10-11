@@ -109,7 +109,7 @@ export default async function TruckSchedulesPage({
       {/* ── Page header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[30px] font-bold leading-[38px] tracking-[-0.02em] text-[#121C2C]">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#121C2C]">
             Truck schedules
           </h1>
           <p className="text-sm text-[#474554] mt-1">
@@ -142,7 +142,7 @@ export default async function TruckSchedulesPage({
 
       {/* ── Error notice ── */}
       {error && (
-        <div className="bg-[#FFF0F0] border border-[#F93C65]/20 rounded-[16px] p-4 text-[14px] text-[#F93C65]">
+        <div className="bg-[#FFF0F0] border border-[#F93C65]/20 rounded-[16px] p-4 text-sm text-[#F93C65]">
           {error}
         </div>
       )}
@@ -150,7 +150,7 @@ export default async function TruckSchedulesPage({
       {/* ── Schedule table ── */}
       <div className="bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden border border-[#C8C4D7]/40">
         {items.length === 0 && !error ? (
-          <div className="py-16 text-center text-[14px] text-[#474554]">
+          <div className="py-16 text-center text-sm text-[#474554]">
             No truck schedules for this period.
           </div>
         ) : (
@@ -178,27 +178,27 @@ export default async function TruckSchedulesPage({
                     key={schedule.schedule_id}
                     className="hover:bg-[#F0F3FF]/50 transition-colors h-[56px]"
                   >
-                    <td className="px-6 py-4 text-[14px] text-[#121C2C] font-mono">
+                    <td className="px-6 py-4 text-sm text-[#121C2C] font-mono">
                       {schedule.truck_plate}
                     </td>
-                    <td className="px-6 py-4 text-[14px] text-[#121C2C]">
+                    <td className="px-6 py-4 text-sm text-[#121C2C]">
                       {schedule.driver_name}
                     </td>
-                    <td className="px-6 py-4 text-[14px] text-[#121C2C]">
+                    <td className="px-6 py-4 text-sm text-[#121C2C]">
                       {schedule.assistant_name}
                     </td>
-                    <td className="px-6 py-4 text-[14px] font-medium text-[#121C2C]">
+                    <td className="px-6 py-4 text-sm font-medium text-[#121C2C]">
                       {schedule.route_name}
                     </td>
-                    <td className="px-6 py-4 text-[13px] text-[#474554]">
+                    <td className="px-6 py-4 text-sm text-[#474554]">
                       {datePart} {startTime}
                     </td>
-                    <td className="px-6 py-4 text-[13px] text-[#474554]">
+                    <td className="px-6 py-4 text-sm text-[#474554]">
                       {datePart} {endTime}
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold ${getStatusBadgeClass(schedule.status)}`}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadgeClass(schedule.status)}`}
                       >
                         {schedule.status}
                       </span>

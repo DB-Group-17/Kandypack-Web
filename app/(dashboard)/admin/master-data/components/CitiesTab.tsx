@@ -22,7 +22,7 @@ export const CitiesTab: React.FC<CitiesTabProps> = ({ items }) => {
   return (
     <div className="space-y-4">
       {/* Informative Note Banner */}
-      <div className="bg-[#E0F2FF]/60 border border-[#0047CC]/20 rounded-xl p-4 flex items-start gap-3 text-[13px] text-[#0047CC]">
+      <div className="bg-[#E0F2FF]/60 border border-[#0047CC]/20 rounded-xl p-4 flex items-start gap-3 text-sm text-[#0047CC]">
         <svg className="w-5 h-5 text-[#0047CC] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
@@ -48,10 +48,10 @@ export const CitiesTab: React.FC<CitiesTabProps> = ({ items }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+          <h3 className="text-base font-semibold text-[#121C2C] mb-1">
             No records yet.
           </h3>
-          <p className="text-[13px] text-[#474554] max-w-sm mx-auto">
+          <p className="text-sm text-[#474554] max-w-sm mx-auto">
             No cities match your search filters or have been registered in the system reference database.
           </p>
         </div>
@@ -67,14 +67,14 @@ export const CitiesTab: React.FC<CitiesTabProps> = ({ items }) => {
               <th className="py-3.5 px-5 text-center">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#C8C4D7]/20 text-[13px] text-[#121C2C]">
+          <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
             {items.map((city) => (
               <tr
                 key={city.city_id}
                 className="hover:bg-[#F9F9FF] transition-colors group"
               >
                 {/* ID */}
-                <td className="py-4 px-5 font-mono text-[12px] text-[#474554]">
+                <td className="py-4 px-5 font-mono text-xs text-[#474554]">
                   #{city.city_id}
                 </td>
 
@@ -91,7 +91,7 @@ export const CitiesTab: React.FC<CitiesTabProps> = ({ items }) => {
                         />
                       </svg>
                     </div>
-                    <span className="font-semibold text-[#121C2C] text-[14px]">
+                    <span className="font-semibold text-[#121C2C] text-sm">
                       {city.city_name}
                     </span>
                   </div>

@@ -542,7 +542,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
         </svg>
-        <p className="text-[14px] font-medium text-[#474554]">Loading session...</p>
+        <p className="text-sm font-medium text-[#474554]">Loading session...</p>
       </div>
     );
   }
@@ -556,8 +556,8 @@ export default function StoreInventoryPage(): React.JSX.Element {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h2 className="text-[18px] font-bold text-[#121C2C] mb-2">Access restricted</h2>
-        <p className="text-[14px] text-[#474554] leading-relaxed">
+        <h2 className="text-lg font-bold text-[#121C2C] mb-2">Access restricted</h2>
+        <p className="text-sm text-[#474554] leading-relaxed">
           Your active account role (<strong className="text-[#121C2C]">{role || 'Unassigned'}</strong>) is not authorized
           to inspect or manage physical store inventory.
         </p>
@@ -574,8 +574,8 @@ export default function StoreInventoryPage(): React.JSX.Element {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-[18px] font-bold text-[#121C2C] mb-2">No store assigned</h2>
-        <p className="text-[14px] text-[#474554] leading-relaxed">
+        <h2 className="text-lg font-bold text-[#121C2C] mb-2">No store assigned</h2>
+        <p className="text-sm text-[#474554] leading-relaxed">
           Your store manager account does not have a physical store assigned in the system registry. Please
           contact a System Administrator to link your profile to a home store.
         </p>
@@ -600,7 +600,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
                 toastType === 'error' ? 'bg-[#F93C65]' : 'bg-[#00B69B]'
               }`}
             />
-            <span className="text-[14px] font-medium">{toastMessage}</span>
+            <span className="text-sm font-medium">{toastMessage}</span>
             <button
               onClick={() => setToastMessage(null)}
               className={`${
@@ -619,10 +619,10 @@ export default function StoreInventoryPage(): React.JSX.Element {
       {/* Page Header & Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-[30px] font-bold text-[#121C2C] leading-[38px] tracking-[-0.02em]">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#121C2C]">
             Store Inventory
           </h1>
-          <p className="text-[14px] text-[#474554] mt-1">
+          <p className="text-sm text-[#474554] mt-1">
             {currentStore.store_name} stock levels
           </p>
         </div>
@@ -640,7 +640,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
                   setGlobalSearch(e.target.value);
                   setStockPage(1);
                 }}
-                className="w-44 sm:w-56 h-10 pl-9 pr-3 rounded-lg border border-[#C8C4D7] text-[13px] outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] bg-white shadow-xs transition-all"
+                className="w-44 sm:w-56 h-10 pl-9 pr-3 rounded-lg border border-[#C8C4D7] text-sm outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] bg-white shadow-xs transition-all"
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#777586] pointer-events-none">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -657,7 +657,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
                 value={activeStoreId ?? ''}
                 onChange={(e) => handleStoreChange(Number(e.target.value))}
                 disabled={storesLoading}
-                className="appearance-none bg-white border border-[#C8C4D7] text-[#121C2C] font-medium text-[14px] rounded-lg pl-4 pr-10 py-2.5 focus:ring-2 focus:ring-[#4132C7] focus:border-[#4132C7] shadow-xs outline-none cursor-pointer disabled:opacity-60"
+                className="appearance-none bg-white border border-[#C8C4D7] text-[#121C2C] font-medium text-sm rounded-lg pl-4 pr-10 py-2.5 focus:ring-2 focus:ring-[#4132C7] focus:border-[#4132C7] shadow-xs outline-none cursor-pointer disabled:opacity-60"
                 title="Select Store"
               >
                 {stores.map((s) => (
@@ -673,7 +673,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
               </span>
             </div>
           ) : (
-            <div className="bg-[#F0F3FF] border border-[#DEE8FF] text-[#4132C7] text-[13px] font-semibold px-4 py-2 rounded-lg flex items-center gap-2">
+            <div className="bg-[#F0F3FF] border border-[#DEE8FF] text-[#4132C7] text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
@@ -685,7 +685,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
           {canReceiveGoods && (
             <button
               onClick={() => setReceiveModalOpen(true)}
-              className="bg-[#4132C7] text-white font-semibold text-[14px] rounded-full px-6 py-2.5 shadow-md hover:bg-[#4132C7]/90 active:scale-98 transition-all flex items-center gap-2 cursor-pointer"
+              className="bg-[#4132C7] text-white font-semibold text-sm rounded-full px-6 py-2.5 shadow-md hover:bg-[#4132C7]/90 active:scale-98 transition-all flex items-center gap-2 cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -700,7 +700,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
       <div className="flex border-b border-[#C8C4D7] mb-6">
         <button
           onClick={() => setActiveTab('stock')}
-          className={`px-6 py-3 font-semibold text-[14px] cursor-pointer transition-colors ${
+          className={`px-6 py-3 font-semibold text-sm cursor-pointer transition-colors ${
             activeTab === 'stock'
               ? 'text-[#4132C7] border-b-2 border-[#4132C7] -mb-[1px]'
               : 'text-[#474554] hover:text-[#4132C7] hover:bg-[#F0F3FF] rounded-t-lg'
@@ -710,7 +710,7 @@ export default function StoreInventoryPage(): React.JSX.Element {
         </button>
         <button
           onClick={() => setActiveTab('transactions')}
-          className={`px-6 py-3 font-semibold text-[14px] cursor-pointer transition-colors ${
+          className={`px-6 py-3 font-semibold text-sm cursor-pointer transition-colors ${
             activeTab === 'transactions'
               ? 'text-[#4132C7] border-b-2 border-[#4132C7] -mb-[1px]'
               : 'text-[#474554] hover:text-[#4132C7] hover:bg-[#F0F3FF] rounded-t-lg'

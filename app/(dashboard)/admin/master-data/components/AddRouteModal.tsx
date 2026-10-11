@@ -174,8 +174,8 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
               </svg>
             </div>
             <div>
-              <h3 className="text-[17px] font-bold text-[#121C2C]">Add Route</h3>
-              <p className="text-[12px] text-[#474554]">
+              <h3 className="text-lg font-bold text-[#121C2C]">Add Route</h3>
+              <p className="text-xs text-[#474554]">
                 Create a delivery route and assign coverage areas
               </p>
             </div>
@@ -193,7 +193,7 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center gap-2 text-[13px] text-[#F93C65]">
+          <div className="mx-6 mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center gap-2 text-sm text-[#F93C65]">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -211,7 +211,7 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Route Name */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Route Name <span className="text-[#F93C65]">*</span>
               </label>
               <input
@@ -220,19 +220,19 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
                 onChange={(e) => setRouteName(e.target.value)}
                 placeholder="e.g. Colombo Central Express"
                 required
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
 
             {/* Assigned Store */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Assigned Store <span className="text-[#F93C65]">*</span>
               </label>
               <select
                 value={storeId}
                 onChange={(e) => setStoreId(Number(e.target.value))}
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
                 {stores.length === 0 ? (
                   <option value={0}>No stores available</option>
@@ -250,7 +250,7 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Max delivery time */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Max Delivery Time (Hours) <span className="text-[#F93C65]">*</span>
               </label>
               <input
@@ -262,13 +262,13 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
                 onChange={(e) => setMaxHours(e.target.value)}
                 placeholder="4.0"
                 required
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Coverage Summary (Optional)
               </label>
               <input
@@ -276,7 +276,7 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
                 value={coverageDesc}
                 onChange={(e) => setCoverageDesc(e.target.value)}
                 placeholder="e.g. Covers Colombo Fort and Commercial Zone"
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
           </div>
@@ -284,13 +284,13 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
           {/* Dynamic Coverage Areas List */}
           <div className="pt-2 border-t border-[#C8C4D7]/20">
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider">
                 Coverage Areas (City + Area Name)
               </label>
               <button
                 type="button"
                 onClick={handleAddAreaRow}
-                className="text-[12px] font-semibold text-[#4132C7] hover:text-[#3527a8] flex items-center gap-1"
+                className="text-xs font-semibold text-[#4132C7] hover:text-[#3527a8] flex items-center gap-1"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -307,7 +307,7 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
                     onChange={(e) =>
                       handleUpdateAreaRow(row.id, { city_id: Number(e.target.value) })
                     }
-                    className="w-1/3 h-10 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[12px] text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
+                    className="w-1/3 h-10 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-xs text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
                   >
                     {cities.length === 0 ? (
                       <option value={0}>No cities</option>
@@ -329,7 +329,7 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
                     }
                     placeholder="e.g. Fort Sector A"
                     required
-                    className="flex-1 h-10 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[12px] text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
+                    className="flex-1 h-10 px-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-xs text-[#121C2C] focus:outline-none focus:border-[#4132C7]"
                   />
                   {coverageAreas.length > 1 && (
                     <button
@@ -353,14 +353,14 @@ const AddRouteModalContent: React.FC<Omit<AddRouteModalProps, 'isOpen'>> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[#474554] font-semibold text-[13px] hover:bg-[#F5F5FA] transition-colors"
+              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[#474554] font-semibold text-sm hover:bg-[#F5F5FA] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-sm hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>

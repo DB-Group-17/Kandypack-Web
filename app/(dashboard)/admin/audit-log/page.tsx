@@ -280,10 +280,10 @@ export default function AuditLogPage(): React.JSX.Element {
     <div className="space-y-6">
       {/* Page Header Area */}
       <div className="mb-6">
-        <h1 className="text-[28px] lg:text-[32px] font-bold text-[#121C2C] tracking-tight mb-1">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#121C2C] mb-1">
           Audit Log
         </h1>
-        <p className="text-[15px] text-[#474554]">
+        <p className="text-base text-[#474554]">
           Full history of data changes across the system
         </p>
       </div>
@@ -303,7 +303,7 @@ export default function AuditLogPage(): React.JSX.Element {
         /* Loading state per Docs/07_content-copy.md ("Loading…") */
         <div className="bg-white rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)] p-12 text-center my-6">
           <div className="w-8 h-8 border-3 border-[#4132C7] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-[14px] text-[#474554]">Loading…</p>
+          <p className="text-sm text-[#474554]">Loading…</p>
         </div>
       ) : fetchError ? (
         /* Error state with Retry trigger per Docs/07_content-copy.md ("Something went wrong." — Button: Retry) */
@@ -318,12 +318,12 @@ export default function AuditLogPage(): React.JSX.Element {
               />
             </svg>
           </div>
-          <p className="text-[16px] font-semibold text-[#121C2C]">Something went wrong.</p>
-          <p className="text-[13px] text-[#777586] mt-1">{fetchError}</p>
+          <p className="text-base font-semibold text-[#121C2C]">Something went wrong.</p>
+          <p className="text-sm text-[#777586] mt-1">{fetchError}</p>
           <button
             type="button"
             onClick={handleRetry}
-            className="mt-4 h-10 px-6 rounded-full bg-[#4132C7] text-white text-[14px] font-medium hover:bg-[#3527A8] transition-colors cursor-pointer"
+            className="mt-4 h-10 px-6 rounded-full bg-[#4132C7] text-white text-sm font-medium hover:bg-[#3527A8] transition-colors cursor-pointer"
           >
             Retry
           </button>

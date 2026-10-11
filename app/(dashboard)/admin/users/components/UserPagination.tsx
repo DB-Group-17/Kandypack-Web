@@ -38,7 +38,7 @@ export const UserPagination: React.FC<UserPaginationProps> = ({
   // If there's only 1 page and no items or few items, keep it compact
   if (totalItems <= pageSize && currentPage === 1) {
     return (
-      <div className="flex items-center justify-between px-2 py-3 text-[13px] text-[#474554]">
+      <div className="flex items-center justify-between px-2 py-3 text-sm text-[#474554]">
         <p>
           Showing <span className="font-semibold text-[#121C2C]">{startItem}</span> to{' '}
           <span className="font-semibold text-[#121C2C]">{endItem}</span> of{' '}
@@ -55,7 +55,7 @@ export const UserPagination: React.FC<UserPaginationProps> = ({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2 py-3 text-[13px] text-[#474554]">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-2 py-3 text-sm text-[#474554]">
       {/* Range text */}
       <p>
         Showing <span className="font-semibold text-[#121C2C]">{startItem}</span> to{' '}
@@ -82,7 +82,7 @@ export const UserPagination: React.FC<UserPaginationProps> = ({
           <button
             key={page}
             onClick={() => onPageChange(page)}
-            className={`w-8 h-8 flex items-center justify-center rounded-lg text-[13px] font-semibold transition-all ${
+            className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-semibold transition-all ${
               page === currentPage
                 ? 'bg-[#5A4FE0] text-white shadow-xs'
                 : 'border border-[#C8C4D7]/50 text-[#474554] hover:bg-[#EDE9FE] hover:text-[#4132C7]'

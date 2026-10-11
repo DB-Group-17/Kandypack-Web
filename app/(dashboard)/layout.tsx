@@ -223,7 +223,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Navigation Items List grouped by operational domain */}
-        <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+        <nav className="sidebar-scroll flex-1 overflow-y-auto px-4 py-4 space-y-1">
           {visibleNavItems.map((item, index) => {
             const active = isItemActive(item.href);
             const showSectionHeading =
@@ -249,7 +249,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   </span>
                   <span className="flex-1 truncate">{item.label}</span>
                   {item.badge && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white">
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white">
                       {item.badge}
                     </span>
                   )}
@@ -386,7 +386,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </button>
               </div>
 
-              <nav className="mt-4 flex-1 overflow-y-auto space-y-1">
+              <nav className="sidebar-scroll mt-4 flex-1 overflow-y-auto space-y-1">
                 {visibleNavItems.map((item, index) => {
                   const active = isItemActive(item.href);
                   const showSectionHeading =
@@ -395,7 +395,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   return (
                     <React.Fragment key={item.href}>
                       {showSectionHeading && item.section && (
-                        <div className="px-3 pt-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/60">
+                        <div className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/60">
                           {item.section}
                         </div>
                       )}
