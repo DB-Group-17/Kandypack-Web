@@ -682,20 +682,12 @@ export default function TrainSchedulePage() {
                   )
                 : 0;
             const isFull = trip.remaining_capacity <= 0;
-            const isOverflowTest = trip.total_capacity === 50;
 
             return (
               <div
                 key={trip.trip_id}
                 className="bg-white rounded-2xl border border-[#C8C4D7]/50 p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between relative overflow-hidden"
               >
-                {/* Visual badge for 50-unit capacity test trips per seed spec §8 */}
-                {isOverflowTest && (
-                  <div className="absolute top-0 right-0 bg-[#FFB800]/15 text-[#835400] text-[10px] font-bold px-3 py-0.5 rounded-bl-lg border-l border-b border-[#FFB800]/30">
-                    Test Capacity (50u)
-                  </div>
-                )}
-
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
