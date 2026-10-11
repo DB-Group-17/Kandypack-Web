@@ -279,6 +279,25 @@ describe('API Route: GET /api/audit-log', () => {
       );
     });
 
+    it('normalizes near-midnight ISO timestamp using UTC date without shifting across local timezones', async () => {
+      // 2026-10-10T23:30:00Z is 2026-10-10 in UTC, but would shift to 2026-10-11 in ahead timezones (e.g. UTC+05:30)
+      const reqFrom = createGetRequest('date_from=2026-10-10T23:30:00Z');
+      await GET(reqFrom);
+
+      expect(queryOne).toHaveBeenCalledWith(
+        expect.stringContaining('al.created_at >= ?'),
+        expect.arrayContaining(['2026-10-10 00:00:00'])
+      );
+
+      const reqTo = createGetRequest('date_to=2026-10-10T23:30:00Z');
+      await GET(reqTo);
+
+      expect(queryOne).toHaveBeenCalledWith(
+        expect.stringContaining('al.created_at <= ?'),
+        expect.arrayContaining(['2026-10-10 23:59:59'])
+      );
+    });
+
     it('combines multiple filter parameters cleanly', async () => {
       const req = createGetRequest('table_name=customers&date_from=2026-10-01&date_to=2026-10-05');
       await GET(req);

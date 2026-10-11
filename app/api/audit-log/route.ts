@@ -93,6 +93,8 @@ function isValidDateString(dateStr: string): boolean {
 
 /**
  * Normalizes a validated date string into a MySQL DATETIME boundary string ('YYYY-MM-DD HH:MM:SS').
+ * Uses UTC date getters for ISO timestamps so boundaries align with UTC database timestamps
+ * without shifting across calendar days due to the runtime machine's local timezone.
  *
  * @param dateStr - Validated date string
  * @param isEndOfDay - If true, sets time boundary to 23:59:59; otherwise sets to 00:00:00
@@ -104,7 +106,7 @@ function toMysqlDateTimeBoundary(dateStr: string, isEndOfDay: boolean): string {
   }
   const dateObj = new Date(dateStr);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const datePart = `${dateObj.getFullYear()}-${pad(dateObj.getMonth() + 1)}-${pad(dateObj.getDate())}`;
+  const datePart = `${dateObj.getUTCFullYear()}-${pad(dateObj.getUTCMonth() + 1)}-${pad(dateObj.getUTCDate())}`;
   const timePart = isEndOfDay ? '23:59:59' : '00:00:00';
   return `${datePart} ${timePart}`;
 }
