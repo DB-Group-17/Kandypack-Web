@@ -17,8 +17,9 @@
  *    - System / NULL actor filtering (`user_id=system`, `'null'`, `'0'`).
  *    - Date range filtering (`date_from`, `date_to`).
  * 5. Pagination & validation:
+ *    - Defaults limit to 50 when omitted.
  *    - Valid limit, page + limit, offset + limit.
- *    - Rejects page without limit with HTTP 400 VALIDATION_ERROR ("limit must be specified when using page.").
+ *    - Page without explicit limit uses default limit of 50.
  *    - Rejects invalid limit, page, and offset values.
  *    - Rejects invalid date format and inverted date ranges (date_from > date_to).
  * 6. Row data transformations:
@@ -293,6 +294,16 @@ describe('API Route: GET /api/audit-log', () => {
   // 5. Pagination & Parameter Validation
   // =========================================================================
   describe('Pagination & Validation', () => {
+    it('applies default limit of 50 and offset 0 when limit is omitted', async () => {
+      const req = createGetRequest();
+      await GET(req);
+
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('LIMIT ? OFFSET ?'),
+        expect.arrayContaining([50, 0])
+      );
+    });
+
     it('applies pagination with valid limit parameter', async () => {
       const req = createGetRequest('limit=25');
       await GET(req);
@@ -314,6 +325,17 @@ describe('API Route: GET /api/audit-log', () => {
       );
     });
 
+    it('applies pagination with page parameter using default limit of 50', async () => {
+      const req = createGetRequest('page=3');
+      await GET(req);
+
+      // Page 3 with default limit 50 => offset = (3 - 1) * 50 = 100
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('LIMIT ? OFFSET ?'),
+        expect.arrayContaining([50, 100])
+      );
+    });
+
     it('applies pagination with valid offset and limit parameters', async () => {
       const req = createGetRequest('offset=15&limit=5');
       await GET(req);
@@ -324,15 +346,14 @@ describe('API Route: GET /api/audit-log', () => {
       );
     });
 
-    it('rejects page without limit with HTTP 400 VALIDATION_ERROR', async () => {
-      const req = createGetRequest('page=2');
-      const res = await GET(req);
+    it('applies pagination with offset parameter using default limit of 50', async () => {
+      const req = createGetRequest('offset=15');
+      await GET(req);
 
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.error.code).toBe('VALIDATION_ERROR');
-      expect(body.error.message).toBe('limit must be specified when using page.');
-      expect(body.error.field).toBe('limit');
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('LIMIT ? OFFSET ?'),
+        expect.arrayContaining([50, 15])
+      );
     });
 
     it('rejects invalid limit values (< 1, > 100, non-integer) with HTTP 400', async () => {

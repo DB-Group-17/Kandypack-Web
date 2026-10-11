@@ -10,9 +10,9 @@
  * - user_id?: string (filter by acting user UUID or 'system' / 'null' for system trigger records)
  * - date_from?: string (start creation timestamp boundary, YYYY-MM-DD or ISO 8601 string)
  * - date_to?: string (end creation timestamp boundary, YYYY-MM-DD or ISO 8601 string)
- * - limit?: number (pagination record limit, positive integer 1-100)
- * - offset?: number (pagination record offset, non-negative integer)
- * - page?: number (pagination 1-indexed page, combined with limit)
+ * - limit?: number (pagination record limit, positive integer 1-100, defaults to 50)
+ * - offset?: number (pagination record offset, non-negative integer, defaults to 0)
+ * - page?: number (pagination 1-indexed page, combined with explicit or default limit)
  *
  * Response shapes:
  * - 200: { items: AuditLogResponseItem[], total: number }
@@ -314,16 +314,19 @@ export async function GET(req: Request): Promise<NextResponse> {
       queryParams.push(toMysqlDateTimeBoundary(dateToParam, true));
     }
 
-    // Validate pagination parameters if provided
-    let limit: number | null = null;
+    // Validate pagination parameters (defaults: limit = 50, max limit = 100)
+    const DEFAULT_LIMIT = 50;
+    const MAX_LIMIT = 100;
+    let limit = DEFAULT_LIMIT;
+
     if (limitParam !== undefined && limitParam !== null && limitParam !== '') {
       const parsedLimit = Number(limitParam);
-      if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > 100) {
+      if (!Number.isInteger(parsedLimit) || parsedLimit <= 0 || parsedLimit > MAX_LIMIT) {
         return NextResponse.json(
           {
             error: {
               code: 'VALIDATION_ERROR',
-              message: 'Limit must be a positive integer between 1 and 100.',
+              message: `Limit must be a positive integer between 1 and ${MAX_LIMIT}.`,
               field: 'limit'
             }
           },
@@ -348,18 +351,7 @@ export async function GET(req: Request): Promise<NextResponse> {
           { status: 400 }
         );
       }
-      if (limit === null) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'VALIDATION_ERROR',
-              message: 'limit must be specified when using page.',
-              field: 'limit'
-            }
-          },
-          { status: 400 }
-        );
-      }
+      // Calculate offset using explicit limit or default limit of 50
       offset = (parsedPage - 1) * limit;
     } else if (offsetParam !== undefined && offsetParam !== null && offsetParam !== '') {
       const parsedOffset = Number(offsetParam);
@@ -411,10 +403,8 @@ export async function GET(req: Request): Promise<NextResponse> {
     `;
 
     const selectParams: QueryParam[] = [...queryParams];
-    if (limit !== null) {
-      selectSql += ` LIMIT ? OFFSET ?`;
-      selectParams.push(limit, offset);
-    }
+    selectSql += ` LIMIT ? OFFSET ?`;
+    selectParams.push(limit, offset);
 
     const rows = await query<AuditLogDbRow[]>(selectSql, selectParams);
 
