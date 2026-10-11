@@ -339,10 +339,33 @@ All 6 report GET endpoints share the same pattern:
 - **Business logic:** `employee_type` must be one of the 7 allowed values (`chk_employee_type`); if `employee_type = 'driver'` or `'assistant'`, a matching row must also be created in `drivers`/`assistants` (enforced by `trg_validate_driver_subtype` / `trg_validate_assistant_subtype`) — the API does both inserts in one transaction.
 
 ### `GET /api/audit-log`
-- **Roles:** system_administrator only
-- **Query params:** `table_name?`, `user_id?`, `date_from?`, `date_to?`
-- **Response 200:** `{ "items": [{ log_id, table_name, record_id, action, user_id, changed_at, old_data, new_data }] }`
-- **Business logic:** read-only over `audit_log`, populated entirely by DB triggers — this endpoint never writes.
+- **Roles:** system_administrator only (`hasPermission(role, 'audit_log', 'read')`)
+- **Query params:**
+  - `table_name?`: string — filter by database table name (e.g. `orders`, `users`, `user_profiles`; case-insensitive; value `all` or empty string disables table filtering).
+  - `user_id?`: string — filter by acting user UUID. Values `system`, `null`, or `0` (case-insensitive) filter for system-generated records (`al.user_id IS NULL`). Value `all` or empty string disables user filtering.
+  - `date_from?`: string — lower creation timestamp boundary in `YYYY-MM-DD` or ISO 8601 format (evaluated from `00:00:00`). Invalid date format returns 400 `VALIDATION_ERROR` (`Valid date_from in YYYY-MM-DD format is required.`).
+  - `date_to?`: string — upper creation timestamp boundary in `YYYY-MM-DD` or ISO 8601 format (evaluated up to `23:59:59`). Invalid date format returns 400 `VALIDATION_ERROR` (`Valid date_to in YYYY-MM-DD format is required.`).
+  - Cross-date validation: if both `date_from` and `date_to` are provided and `date_from > date_to`, returns 400 `VALIDATION_ERROR` (`date_from cannot be after date_to.`).
+  - `limit?`: number — pagination record limit (positive integer between 1 and 100). Malformed or out-of-bounds limit returns 400 `VALIDATION_ERROR` (`Limit must be a positive integer between 1 and 100.`). Optional; when omitted, no default limit is currently enforced by the route.
+  - `page?`: number — 1-indexed page number (positive integer starting at 1). Malformed page returns 400 `VALIDATION_ERROR` (`Page must be a positive integer starting at 1.`). If `page` is provided without `limit`, returns 400 `VALIDATION_ERROR` (`limit must be specified when using page.`). Calculates `offset = (page - 1) * limit`.
+  - `offset?`: number — 0-indexed record offset (non-negative integer; evaluated when `page` is not provided). Malformed offset returns 400 `VALIDATION_ERROR` (`Offset must be a non-negative integer.`). Defaults to `0` when neither `page` nor `offset` is supplied.
+- **Response 200:** `{ "items": [{ log_id, table_name, record_id, action, user_id, user_name, user_initials, changed_at, old_data, new_data }], "total": number }`
+  - `log_id`: unique audit entry integer ID (`al.log_id`).
+  - `table_name`: string name of the audited database table.
+  - `record_id`: string-compatible value or `null`. For standard business tables, stores the table row ID cast to string. For account tables (`users`, `user_profiles`) where `audit_log.record_id` is `NULL` (since user IDs are UUIDs, per migration `25`), the API resolves the target account UUID from the audit JSON (`new_data.user_id ?? old_data.user_id`).
+  - `action`: user-facing action label returned as `Created`, `Updated`, or `Deleted`. Mapped from raw database trigger events (`INSERT` / `CREATED` → `Created`, `UPDATE` / `UPDATED` → `Updated`, `DELETE` / `DELETED` → `Deleted`). Raw trigger values (`INSERT`, `UPDATE`, `DELETE`) are never returned in the API response.
+  - `user_id`: acting user UUID string, or `null` for system-initiated triggers and bootstrap actions.
+  - `user_name`: display name of the acting user resolved by joining `user_profiles`, `employees`, and `users` (`employees.full_name` → `user_profiles.display_name_override` → `users.email`). If `user_id` is null, returns `System`; if profile resolution yields no name or email, falls back to `Staff Member`.
+  - `user_initials`: 1–2 uppercase avatar initials derived from `user_name` or email (`SYS` when `user_id` is null, `SM` for staff fallback).
+  - `changed_at`: ISO 8601 UTC timestamp string (`al.created_at`).
+  - `old_data`: parsed JSON object representing row data prior to update/deletion, or `null` for creations. Sensitive fields (such as `password_hash`) are omitted at trigger level.
+  - `new_data`: parsed JSON object representing row data after creation/update, or `null` for deletions.
+  - `total`: total count of matching audit log entries across the entire dataset satisfying the active filters.
+- **Response 400:** validation error on invalid query parameters (`code: 'VALIDATION_ERROR'`, `message`, `field`).
+- **Response 401:** unauthenticated session (`code: 'UNAUTHORIZED'`).
+- **Response 403:** caller lacks `system_administrator` role (`code: 'FORBIDDEN'`).
+- **Response 500:** unexpected database or server failure (`code: 'SERVER_ERROR'`).
+- **Business logic:** read-only over `audit_log`, populated entirely by DB triggers — this endpoint never writes. Deterministically ordered newest first by timestamp and log ID (`created_at DESC, log_id DESC`).
 
 ---
 
