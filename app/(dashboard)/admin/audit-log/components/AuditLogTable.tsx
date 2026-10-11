@@ -160,28 +160,46 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
 
               return (
                 <React.Fragment key={item.log_id}>
-                  {/* Main Row */}
+                  {/* Main Row: Row click kept as desktop convenience without fake keyboard semantics */}
                   <tr
                     onClick={() => toggleRow(item.log_id)}
                     className="hover:bg-[#F9F9FF] transition-colors cursor-pointer group select-none min-h-[56px]"
                   >
-                    {/* Expand Chevron Icon */}
+                    {/* Expand/Collapse Accessible Button Control */}
                     <td className="px-6 py-4 text-center">
-                      <svg
-                        className={`w-5 h-5 text-[#777586] transition-transform duration-200 inline-block ${
-                          isExpanded ? 'rotate-180 text-[#251297]' : ''
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          // Prevent event bubbling so activating the button does not trigger the row's onClick twice
+                          e.stopPropagation();
+                          toggleRow(item.log_id);
+                        }}
+                        aria-expanded={isExpanded}
+                        aria-controls={`audit-diff-${item.log_id}`}
+                        aria-label={
+                          isExpanded
+                            ? `Hide changes for log ${item.log_id}`
+                            : `Show changes for log ${item.log_id}`
+                        }
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[#777586] hover:text-[#251297] hover:bg-[#DEE8FF]/50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#4132C7] focus-visible:ring-offset-2 transition-all cursor-pointer"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
+                        <svg
+                          className={`w-5 h-5 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180 text-[#251297]' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
                     </td>
 
                     {/* Timestamp */}
@@ -211,9 +229,9 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
                     </td>
                   </tr>
 
-                  {/* Expanded Diff Row */}
+                  {/* Expanded Diff Row linked via aria-controls id */}
                   {isExpanded && (
-                    <tr className="bg-[#F9F9FF]">
+                    <tr id={`audit-diff-${item.log_id}`} className="bg-[#F9F9FF]">
                       <td colSpan={6} className="px-0 py-0 border-t-0">
                         <AuditLogRowDiff item={item} />
                       </td>
