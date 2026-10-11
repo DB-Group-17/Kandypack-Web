@@ -3,7 +3,7 @@
 > Status: Active
 > Authority: Supporting setup reference
 > Primary source: `Docs/03_architecture.md`
-> Last reviewed: 2026-10-08
+> Last reviewed: 2026-10-11
 
 Follow this exactly, in order. The stack depends on Aiven MySQL and, where enabled by the architecture, Upstash Redis — skipping a step here is the #1 source of "works on my machine" bugs.
 
@@ -151,15 +151,14 @@ If any of these fail, check §9 before asking in the team channel.
 
 ---
 
-## 10. Alternative: Docker Compose (Optional Whole-Project Setup)
+## 10. Docker
 
-If you'd rather not install Node/MySQL locally at all, the optional `docker-compose.yml` at the project root spins up the whole stack (web app + Redis; MySQL optional — you can still point at Aiven from inside the container):
+Docker is **not** needed for local development: use `npm run dev` (§6). The Docker files in the repository exist for the **production server** only (see §12 below and `03_architecture.md` §12):
 
-```bash
-docker compose up
-```
+- `Dockerfile` builds the production image (built by GitHub Actions, not on your machine).
+- `docker-compose.prod.yml` and `Caddyfile` define the production stack (the app plus Caddy) and are copied to the server by the deploy workflow.
 
-This is **not** the primary dev path for the team (per `03_architecture.md` §12 — Docker is an optional self-host alternative, not required for local dev), but it's there if your machine setup is giving you trouble.
+There is no separate "local Docker" setup. If you want to try the production image locally you need Docker installed and a `.env` file of your own; this is optional and not part of the team workflow.
 
 ---
 
@@ -168,3 +167,49 @@ This is **not** the primary dev path for the team (per `03_architecture.md` §12
 - `git pull` before starting work each day — shared-owned files (`lib/db.ts`, `lib/auth.ts`, `lib/rbac.ts`, `proxy.ts`, `lib/redis.ts`) change under you if you don't.
 - Never run `npm run db:migrate` or `npm run db:seed` against the shared dev DB without checking in the team channel first — it affects everyone at once. Migrations are the sharper edge: a stored-procedure change is live for every member the moment it lands, with no action on their part.
 - If `.env.example` gets a new variable added, you'll need to manually add it to your own `.env.local` — it isn't automatic.
+- **The live site shares the database with development.** Production uses the same Aiven MySQL and Upstash Redis as `.env.local` (a documented exception, `03_architecture.md` §19). Orders, seeds, migrations and test data you create are visible on the live site immediately, so treat the shared database as production data.
+- **Merging to `main` deploys.** A merge into `main` runs CI and, if it passes, deploys to the live server (§12). Merge `development` into `main` only with **Create a merge commit**, never Squash.
+
+---
+
+## 12. Production deployment (EC2)
+
+The live site is `https://dinethnimsara.dpdns.org`, served from one AWS EC2 instance. Architecture and decisions are in `03_architecture.md` §12 and §19; this section is the runbook.
+
+### 12.1 How a release happens
+1. Merge a PR into `development`, then merge `development` into `main` (merge commit).
+2. GitHub Actions runs **CI** on `main`. If it passes, **Deploy** builds the Docker image, pushes it to GHCR (tag = full commit SHA) and deploys it to the server over SSH.
+3. If the `production` Environment has required reviewers, the deploy waits for approval after the image is built (Actions → the run → *Review deployments*).
+4. The deploy waits for the container health check, rolls back automatically to the previous image if it fails, and finishes with a smoke test of `/login`.
+
+Database migrations and seeding are **never** run by a deploy. Run them yourself, deliberately, and coordinate in the team channel (§5).
+
+### 12.2 Roll back a bad release
+Actions → **Deploy** → *Run workflow* → set `image_tag` to the full commit SHA of the release you want back (visible on earlier Deploy runs and under the repository's Packages).
+
+### 12.3 One-time server setup (already done; kept for rebuilding the server)
+- Ubuntu EC2 instance with an Elastic IP, security group open on 80, 443/tcp, 443/udp and 22 (port 3000 closed), and 2 GB swap.
+- Docker installed from the Ubuntu packages (`docker.io`, `docker-compose-v2`); nginx stopped and disabled.
+- A `deploy` user in the `docker` group with the deploy public key in `authorized_keys`; password SSH login disabled.
+- `/opt/kandypack` owned by `deploy`, containing `app.env` (mode `600`; `DATABASE_URL`, `JWT_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NODE_ENV=production`; **no** `SEED_TEST_PASSWORD` or `BOOTSTRAP_ADMIN_PASSWORD`). The compose file, `Caddyfile` and `.env` are written by each deploy.
+- Cloudflare `A` record for the domain pointing at the Elastic IP, **DNS only** (grey cloud).
+- GitHub Environment `production` with secrets `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` (dedicated deploy key, never a personal `.pem`) and `EC2_HOST_KEY` (the server's `ssh-ed25519` host key as a `host key-type key` line).
+
+### 12.4 Everyday operations (SSH as `deploy`, in `/opt/kandypack`)
+
+| Task | Command |
+|---|---|
+| See the stack | `docker compose -f docker-compose.prod.yml ps` |
+| App logs | `docker compose -f docker-compose.prod.yml logs --tail 100 app` |
+| Caddy and certificate logs | `docker compose -f docker-compose.prod.yml logs --tail 100 caddy` |
+| Restart the app | `docker compose -f docker-compose.prod.yml restart app` |
+| Change a secret | edit `app.env`, then `docker compose -f docker-compose.prod.yml up -d` |
+| Free disk space | `docker image prune -f` |
+
+Changing `JWT_SECRET` signs every user out (existing tokens stop verifying).
+
+### 12.5 Known limitations and follow-ups
+- Production and development share the database, Redis and `JWT_SECRET` (§19). Revisit before real users.
+- The Caddy HSTS `max-age` is deliberately one day while HTTPS is new; raise it in `Caddyfile` once stable.
+- The seeded train trips have all departed, so `place_order` reports "no trip with capacity" until a logistics manager or administrator adds upcoming trips on `/train-schedule`.
+- Optional hardening: protect `main` with a required review, turn on the Cloudflare proxy (SSL mode *Full (strict)*), and use a separate production database.

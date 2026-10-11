@@ -1,0 +1,37 @@
+# Caddy configuration for the Kandypack EC2 server.
+#
+# Caddy replaces nginx and owns ports 80 and 443. It routes by hostname:
+#   - dinethnimsara.dpdns.org  -> the Kandypack app container, over HTTPS with a certificate that
+#                                 Caddy obtains and renews automatically (Let's Encrypt).
+#   - anything else on port 80 -> the old Next.js app running on the host (PM2, host port 3000),
+#                                 served over plain HTTP exactly as before (it has no domain).
+#
+# Caddy sets X-Forwarded-For to the real client IP, which lib/rate-limit.ts reads for per-IP limits.
+# Authority: Docs/03_architecture.md §12.
+
+# --- Kandypack (new app) -----------------------------------------------------------------------
+dinethnimsara.dpdns.org {
+	# Compress text responses.
+	encode zstd gzip
+
+	header {
+		# Short max-age while HTTPS is new, so a misconfiguration is recoverable in the browser.
+		# Raise it (for example to 31536000, one year) once HTTPS has been stable for a while.
+		Strict-Transport-Security "max-age=86400"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Do not advertise the server software.
+		-Server
+	}
+
+	# `app` is the compose service name; port 3000 is only exposed on the compose network.
+	reverse_proxy app:3000
+}
+
+# --- Old app (reached by IP address, plain HTTP) ------------------------------------------------
+# `http://:80` matches every request on port 80 that does not belong to the domain site above,
+# so requests to http://<elastic-ip> keep reaching the old app. The domain's own HTTP requests are
+# redirected to HTTPS by its automatic-HTTPS behaviour. WebSocket upgrades work without extra setup.
+http://:80 {
+	reverse_proxy host.docker.internal:3000
+}

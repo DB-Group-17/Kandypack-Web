@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Status:** Active and authoritative technical source of truth
 **Primary references:** `01_project-description.md`, `02_srs.md`, `04_database-schema-v4.md`
-**Last reviewed:** 2026-10-08
+**Last reviewed:** 2026-10-11
 
 When technical documents conflict, use this order: `AGENTS.md` → `DESIGN.md` → this document → other active `Docs/` files → `02_srs.md` → `Archive/`. The SRS remains unchanged as the original business-requirements reference. Intentional implementation deviations are recorded in §19.
 
@@ -44,7 +44,7 @@ When technical documents conflict, use this order: `AGENTS.md` → `DESIGN.md` �
 
 ## 3. Assumptions & Documented Deviations from SRS
 
-- **Deployment:** SRS assumes a self-hosted on-prem Linux server at Kandy. This project uses **Vercel** for the web app, with Redis (Upstash) and MySQL (Aiven) as external managed services. Self-hosting remains a future deployment option.
+- **Deployment:** SRS assumes a self-hosted on-prem Linux server at Kandy. Production runs on a single **AWS EC2** instance as Docker containers (the Next.js app plus Caddy for HTTPS), with Redis (Upstash) and MySQL (Aiven) as external managed services. The original plan was Vercel; it was replaced on 2026-10-11 (see §12.2 and the §19 decision log). The app stays portable: it is a standard Next.js build and could still run on Vercel or another host.
 - **Database:** SRS allows MySQL 8.0 or PostgreSQL 14+. This project uses **MySQL 8.0 on Aiven** (per Schema v4 migration).
 - **Auth:** Manual (`users` table + bcrypt + JWT), not a third-party auth provider — matches Schema v4 §8.
 - **Roles:** Only the 5 roles defined in `user_profiles.app_role` can log in. Drivers and customers are data rows only, never authenticate.
@@ -74,9 +74,11 @@ When technical documents conflict, use this order: `AGENTS.md` → `DESIGN.md` �
 - **CSV Export:** generated synchronously in the API route (fast, no queue needed)
 
 ### Deployment & Ops
-- **Web app:** Vercel or a compatible Next.js host
-- **CI/CD:** GitHub Actions
-- **Containerization:** Docker is **optional**, not required for production. One root-level `docker-compose.yml` can containerize the *entire* stack (web app + Redis, MySQL optional) as a self-hosting alternative to Vercel — no separate worker-only container.
+- **Web app:** AWS EC2 (Ubuntu), running the Next.js standalone build in a Docker container (`output: "standalone"` in `next.config.ts`)
+- **Reverse proxy / HTTPS:** Caddy in a container: automatic Let's Encrypt certificates for `dinethnimsara.dpdns.org`, HTTP→HTTPS redirect, and a plain-HTTP catch-all that proxies IP-address requests to the older, separate app that shares the server
+- **DNS:** Cloudflare (DNS only; the record is not proxied)
+- **CI/CD:** GitHub Actions. `ci.yml` runs the quality gates; `deploy.yml` builds the Docker image, pushes it to GitHub Container Registry (GHCR) and deploys it to EC2 over SSH (§12.2)
+- **Containerization:** the production stack is `Dockerfile` + `docker-compose.prod.yml` + `Caddyfile` (§12.1). MySQL and Redis are external services and are not containerized. No report-worker container exists because exports are synchronous.
 
 ---
 
@@ -120,8 +122,12 @@ kandypack/
 │   ├── integration/                # place_order, schedule_truck_delivery against test DB
 │   └── api/                        # auth login route test
 ├── .github/workflows/
-│   └── ci.yml                      # lint, typecheck, tests (w/ MySQL service container), migration check
-├── docker-compose.yml              # OPTIONAL: full self-hosted stack (web + redis, mysql optional)
+│   ├── ci.yml                      # lint, typecheck, tests (w/ MySQL service container), migration check
+│   └── deploy.yml                  # build image -> GHCR -> deploy to EC2 over SSH (runs after CI passes on main)
+├── Dockerfile                      # multi-stage production image (Next.js standalone output)
+├── .dockerignore                   # keeps secrets and non-runtime folders out of the image
+├── docker-compose.prod.yml         # production stack: app + Caddy (copied to the server by deploy.yml)
+├── Caddyfile                       # reverse-proxy and HTTPS configuration
 └── architecture.md
 ```
 
@@ -343,21 +349,47 @@ Version-one exports do not create a database record, do not use a `report_jobs` 
 
 ## 12. Docker & CI/CD
 
-### Docker — Optional, Whole-Project Only
-- No dedicated report-worker container is required for version one because exports are synchronous.
-- **Production default:** Vercel builds and runs the Next.js app natively, no Docker involved.
-- **Docker as an alternative:** one root-level `docker-compose.yml` that containerizes the **entire project** (web app + Redis, MySQL optional) for anyone who wants to self-host instead of using Vercel. This is offered as an *option*, not the primary deployment path.
+### 12.1 Production stack (Docker)
 
-### CI/CD (GitHub Actions) — where it applies
+Production is two containers on one EC2 instance, defined in `docker-compose.prod.yml`. MySQL (Aiven) and Redis (Upstash) are external and are not part of the stack. No report-worker container exists because exports are synchronous (§11).
 
-| Stage | Trigger | What it does |
+| Piece | Details |
+|---|---|
+| **`Dockerfile`** | Three stages (`deps`, `builder`, `runner`) on `node:22-bookworm-slim`. Node 22 is used because Node 20 reached end of life in April 2026 and Next.js 16 needs Node ≥ 20.9. The runner copies only the standalone server (`output: "standalone"`), `public/` and `.next/static`, runs as the unprivileged `node` user, sets `HOSTNAME=0.0.0.0` and has a health check that requests `/login`. The image contains **no secrets**. |
+| **Build-time placeholder** | `lib/db.ts` creates the MySQL pool on import and throws without `DATABASE_URL`, and `next build` imports every route. The builder stage therefore sets a throw-away `DATABASE_URL` that is never contacted and never reaches the final image. |
+| **`.dockerignore`** | Excludes `.env*`, `*.pem`, `.git`, `node_modules`, `.next`, `Docs`, `Archive`, `UI`, `tests` and the deployment files. **Do not exclude `context/`**: it holds `AuthContext.tsx`, which the pages import as `@/context/AuthContext`; excluding it broke the first image build with "Module not found". |
+| **`app` service** | Image from `${APP_IMAGE}` (set by the deploy job). Publishes **no host port**; it is reachable only from Caddy over the compose network. Secrets come from `app.env`. 768 MB memory limit; rotated logs; `restart: unless-stopped`. |
+| **`caddy` service** | `caddy:2-alpine`; the only service publishing ports (80, 443, 443/udp). Certificates live in the persistent `caddy_data` volume, which must be kept to avoid re-requesting certificates on every redeploy. Starts when the app has *started* (not when healthy), so a broken release cannot take the older app offline. |
+| **`Caddyfile`** | `dinethnimsara.dpdns.org` → `app:3000` with automatic HTTPS, compression and security headers (short HSTS `max-age` while HTTPS is new; raise it once stable). `http://:80` → the older, separate Next.js app on the host (PM2, host port 3000), over plain HTTP because it has no domain. Caddy sets `X-Forwarded-For` to the real client IP, which `lib/rate-limit.ts` reads. |
+
+**Server layout (`/opt/kandypack`, owned by the `deploy` user):**
+
+| File | Source |
+|---|---|
+| `docker-compose.prod.yml`, `Caddyfile` | Copied from the repository by every deploy |
+| `.env` | Compose variables only (`APP_IMAGE`); rewritten by every deploy |
+| `app.env` | Runtime secrets (`DATABASE_URL`, `JWT_SECRET`, `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, `NODE_ENV=production`); created once by hand, mode `600`, never committed |
+
+**Shared server.** The instance also runs an unrelated Next.js app under PM2 on host port 3000. Nginx used to proxy it and has been **stopped and disabled** (left installed so it can be re-enabled for a rollback); Caddy now owns ports 80 and 443. The EC2 instance has an Elastic IP, 2 GB of swap and Docker from the Ubuntu packages. Security group: 80, 443/tcp, 443/udp and 22 are open; port 3000 is not exposed.
+
+**DNS.** The Cloudflare record for `dinethnimsara.dpdns.org` is **DNS only** (not proxied) so Caddy can obtain its certificate directly. If the record is ever proxied, set Cloudflare SSL/TLS mode to *Full (strict)*, never *Flexible*.
+
+### 12.2 CI/CD (GitHub Actions)
+
+| Stage | Workflow / trigger | What it does |
 |---|---|---|
-| **Lint + typecheck** | Every PR | ESLint, `tsc --noEmit` — blocks merge on failure |
-| **Automated tests** | Every PR + push to `main` | Spins up a MySQL service container in the runner, applies migrations, runs the Vitest suite (unit + integration tests from §16) |
-| **Migration check** | Every PR touching `db/migrations` | Runs every migration in `db/migrations` (currently 01→26) against the same throwaway MySQL service container to catch SQL errors before merge |
-| **Vercel** | Push to `main`/PR | Handled automatically by Vercel's own Git integration — no custom workflow needed, but can add a required "Vercel Preview" check on PRs |
+| **Lint + typecheck** | `ci.yml`, every PR and push | ESLint, `tsc --noEmit` — blocks merge on failure |
+| **Automated tests** | `ci.yml`, every PR and push to `main`/`development` | Spins up a MySQL service container, applies migrations, seeds, runs the Vitest suite (unit + integration + API tests from §16) |
+| **Migration check** | `ci.yml` | Runs every migration in `db/migrations` (currently 01→26) against the throwaway MySQL container |
+| **Build and push image** | `deploy.yml`, after `CI` succeeds for a push to `main` | Checks out the exact commit CI approved, builds the Docker image and pushes it to GHCR tagged with the full commit SHA (the rollback handle) and `latest` |
+| **Deploy** | `deploy.yml`, after the build | Runs in the GitHub Environment `production`. Copies `docker-compose.prod.yml` and `Caddyfile` to the server over SSH, pulls the image with the job's short-lived `GITHUB_TOKEN` (no long-lived registry token is stored), runs `docker compose up -d`, waits up to about two minutes for the app health check, restores the previous image automatically if the new one is unhealthy, prunes old images, then smoke-tests `https://dinethnimsara.dpdns.org/login` |
 
-**Summary:** CI/CD covers code quality gates, migration checks, and the automated test suite. No report-worker build or deployment is required for version one.
+- **Secrets** (GitHub Environment `production`): `EC2_HOST`, `EC2_USER`, `EC2_SSH_KEY` (a dedicated deploy key for the `deploy` user, not a personal key) and `EC2_HOST_KEY` (the server's pinned host key; the job refuses to connect if it differs).
+- **Concurrency:** one deployment at a time; a running deployment is never cancelled midway.
+- **Optional approval gate:** the `production` Environment can require a reviewer, which makes every deploy wait for a manual approval after the image is built.
+- **Manual rollback:** Actions → Deploy → *Run workflow* with `image_tag` set to the full commit SHA of an earlier release.
+- **Not automated, on purpose:** database migrations and seeding (the production site shares its database with development, so each is a deliberate manual step; see §19) and any change to `app.env`.
+- **Release flow:** feature branch → PR into `development` → release PR `development` → `main`. The release PR must be merged with **Create a merge commit**, never *Squash*: a squash merge on `main` breaks the shared history and makes the next release PR list every commit again (this happened on 2026-10-09).
 
 ---
 
@@ -398,7 +430,9 @@ General principles:
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Caching, rate limiting, distributed locks |
 | `NODE_ENV` | Environment flag |
 
-All secrets stored in Vercel's environment variables — never committed (per REQ-NF-011). Since everything runs on Vercel now, there's a single secret store instead of two.
+Secrets are never committed (per REQ-NF-011). Local development uses `.env.local`. Production reads them from `app.env` on the EC2 server (mode `600`, outside the repository and outside the Docker image). The deployment credentials (`EC2_*`) live only in the GitHub Environment `production`. `SEED_TEST_PASSWORD` and `BOOTSTRAP_ADMIN_PASSWORD` are seed-script variables and must **not** be present on the production server.
+
+Production currently uses the **same `JWT_SECRET` as development** (a deliberate choice, see §19), so a token signed in one environment is accepted by the other.
 
 ---
 
@@ -464,6 +498,11 @@ Per SRS §6.5 minimum test data, seeded via `scripts/seed.ts` (`npm run db:seed`
 | Audit of login accounts | Migration `25` adds audit triggers on `users` (insert; update only on email change) and `user_profiles` (insert; update on role, active flag, employee link or display name). `record_id` is NULL and the account UUID is stored in the JSON; `password_hash` is never logged; no DELETE triggers because accounts are only deactivated | `audit_log.record_id` is `BIGINT` but user ids are UUIDs, so the UUID travels in the JSON and no schema change is needed. Deactivation and role changes write one row each because `is_active` is audited on `user_profiles` only. Satisfies `13_system-operation-guide.md` §11 and SRS REQ-NF-012 | `04_database-schema-v4.md` §5.5, `10_local-setup.md` | 2026-10-08 |
 | Sessions keep old access until expiry | Deactivating an account or changing its role takes effect at the user's next login; an existing JWT keeps its old role and active state until it expires (`TOKEN_EXPIRY`, 8 hours). The optional Redis deny-list and per-request profile re-check are not implemented in version one | Only `POST /api/auth/login` checks `is_active`; `proxy.ts` runs on the Edge runtime and cannot query the database. The limitation is documented rather than adding a lookup on every request | `05_api-and-pages.md` §A1 and §A10 | 2026-10-08 |
 | Report 5 and Report 6 differ from the SRS wording | Report 5 (`v_truck_usage_monthly`) counts all non-cancelled schedules and their hours, not only completed runs (REQ-FR-054). Report 6 (`v_customer_order_history`) has no product names or quantities (REQ-FR-055). Both are accepted for version one; no view migration | The project brief (`01_project-description.md`), this document, `04`, `05` and `07` define the reports as "truck usage per month" and "customer order history with delivery details", and `04` defines the views exactly as built, so the implementation matches every document above the SRS. Extending the views is optional future work (Report 6 first) | `02_srs.md` (unchanged), `04_database-schema-v4.md`, `05_api-and-pages.md` §A9 | 2026-10-08 |
+| Production hosting | AWS EC2 running Docker containers (the app plus Caddy), replacing the planned Vercel deployment. The older, separate app on the same instance is kept running | The team needed a host it controls with a custom domain and HTTPS; one small instance is enough because the database and Redis are external. The app stays a standard Next.js build, so Vercel or another host remains possible | `03_architecture.md` §3, §4, §12, `10_local-setup.md` §12 | 2026-10-11 |
+| Reverse proxy | Caddy replaces nginx and owns ports 80 and 443. Requests for the domain get automatic HTTPS; requests by IP address on port 80 are proxied to the older app on host port 3000 over plain HTTP. Nginx is stopped and disabled but left installed for rollback | One proxy with automatic certificate issuance and renewal; the old nginx config was a single proxy block that Caddy reproduces by default. Running both would conflict on ports 80/443 | `Caddyfile`, `docker-compose.prod.yml`, `03_architecture.md` §12.1 | 2026-10-11 |
+| Production shares the development data stores | Production uses the **same** Aiven MySQL database, Upstash Redis and `JWT_SECRET` as development. This is a deliberate exception to §21 ("separate credentials per environment") | Keeps the team on one dataset while the project is in development and avoids provisioning a second database. **Consequences:** anything run against the shared database (`db:migrate`, `db:seed`, teammates' tests and orders) is immediately live on the production site; a token signed with the shared secret is valid in both environments; the Aiven allow-list is open to all addresses so the team can connect. Revisit before real users or real data | `03_architecture.md` §15, §21, `10_local-setup.md` §12 | 2026-10-11 |
+| Automated deployment | A separate `deploy.yml` workflow runs after `ci.yml` succeeds on `main`: build image → push to GHCR → SSH deploy with automatic rollback to the previous image if the health check fails. Uses a dedicated deploy key, a pinned host key and the job's `GITHUB_TOKEN` for the registry. Migrations and seeding are never run automatically | Keeps `ci.yml` (Member 5's file) untouched, guarantees a failing CI never deploys, and avoids long-lived registry credentials. A second, unrelated reason to keep migrations manual: they change a database that development also uses | `.github/workflows/deploy.yml`, `03_architecture.md` §12.2 | 2026-10-11 |
+| Release merges use merge commits | `development` → `main` pull requests are merged with **Create a merge commit**, never Squash | A squash merge on 2026-10-09 gave `main` an unrelated copy of `development`'s changes, so the next release PR listed 170 commits and conflicted. One real merge on 2026-10-11 re-linked the branches | `03_architecture.md` §12.2 | 2026-10-11 |
 
 ### 19.1 `place_order` defects corrected on 2026-09-18
 

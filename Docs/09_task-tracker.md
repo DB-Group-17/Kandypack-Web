@@ -3,7 +3,7 @@
 > Status: Active
 > Authority: Supporting implementation tracker
 > Primary source: `Docs/03_architecture.md`
-> Last reviewed: 2026-10-07
+> Last reviewed: 2026-10-11
 
 Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
@@ -161,7 +161,7 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 - [ ] Migration-check CI job confirmed working
 
 ### All members (stretch goal, time-permitting only)
-- [ ] Member 1: one test for `place_order` edge case (e.g. exact-capacity boundary)
+- [x] Member 1: one test for `place_order` edge case (e.g. exact-capacity boundary) — `tests/integration/place-order-capacity.test.ts` (exact fit, one unit over, full trip skipped). Uses synthetic far-future trips inside rolled-back transactions, so it does not depend on seed dates. Done early, before the Phase 3 gate closed
 - [ ] Member 2: one test for a reports query's numeric correctness
 - [ ] Member 3: one test for `schedule_truck_delivery` conflict rejection
 - [ ] Member 4: one test for `receive_goods_at_store` quantity math
@@ -169,7 +169,25 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 ### Everyone
 - [ ] Run through the Schema v4 §10 manual Deployment Checklist together
 - [ ] Final review of `07_content-copy.md` against actual rendered pages — fix any copy drift
-- [ ] Confirm optional `docker-compose.yml` (whole-project self-host) still starts cleanly, if built
+- [x] ~~Confirm optional `docker-compose.yml` (whole-project self-host) still starts cleanly~~ — superseded: the repository now has `docker-compose.prod.yml` for the production server (see the deployment section below); there is no separate local Docker setup
+
+---
+
+## 🚀 Production deployment (outside the five-member phases)
+
+Owner: Member 1. Architecture and decisions: `03_architecture.md` §12 and §19; runbook: `10_local-setup.md` §12.
+
+- [x] `Dockerfile`, `.dockerignore`, `output: "standalone"` in `next.config.ts` (the first image build failed because `.dockerignore` excluded `context/`, which holds `AuthContext.tsx`; fixed)
+- [x] `docker-compose.prod.yml` and `Caddyfile` (Caddy replaces nginx; the older app on the same server is kept by IP over HTTP)
+- [x] `.github/workflows/deploy.yml`: build → GHCR → SSH deploy with automatic rollback, running after CI passes on `main`
+- [x] EC2 prepared (Elastic IP, security group, swap, Docker, `deploy` user and key), Cloudflare DNS (DNS only), GitHub Environment `production` secrets
+- [x] First release deployed; site live at `https://dinethnimsara.dpdns.org`
+- [x] `development` → `main` histories re-linked with one real merge commit (a squash merge had split them)
+- [ ] Protect `main` with a required pull-request review and passing CI checks
+- [ ] Add upcoming train trips (seeded trips have all departed, so orders cannot be placed yet)
+- [ ] Raise the Caddy HSTS `max-age` (currently one day) once HTTPS has been stable
+- [ ] Decide whether production keeps sharing the development database, Redis and `JWT_SECRET` (documented exception, `03_architecture.md` §19) or gets its own before real users
+- [ ] Optional: turn on the Cloudflare proxy (SSL mode *Full (strict)*); make the older PM2 app survive reboots (`pm2 startup` and `pm2 save`)
 
 ---
 
