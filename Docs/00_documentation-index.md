@@ -35,6 +35,7 @@ The SRS remains unchanged unless explicitly approved. Intentional implementation
 | 11 | `11_ui-rules.md` | Reusable UI rules and component conventions | Active | Follows `DESIGN.md` |
 | 12 | `12_documentation-final-report.md` | Final approved conflict–solution table and readiness baseline | Active | Documentation baseline |
 | 13 | `13_system-operation-guide.md` | End-to-end system workflow, roles, permissions, and business rules | Active | Follows architecture |
+| 14 | `14_smoke-test-guide.md` | Phase 3 cross-module smoke test: steps, expected results and the five-member split | Active | Supporting |
 
 ## Other project guidance
 
