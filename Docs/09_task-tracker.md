@@ -141,13 +141,21 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 - [ ] Member 5: `/dashboard` page built and wired (last, since it pulls from every other module)
 - [x] Member 2: PDF export button on `/reports` wired to Member 5's direct PDF endpoint — direct binary stream download, client-side validation, 429 rate-limiting handling, and active generation spinners verified
 - [x] Member 4: `/admin/audit-log` page wired
-- [ ] **Full cross-module smoke test** (everyone, together): place an order → confirm train booking → receive goods at destination store → schedule a truck → mark delivery complete → confirm it appears correctly in Reports and Dashboard
+- [ ] **Full cross-module smoke test** (everyone, together): place an order → confirm train booking → receive goods at destination store → schedule a truck → mark delivery complete → confirm it appears correctly in Reports and Dashboard Run it with `14_smoke-test-guide.md`, which gives the exact steps, expected results and the five-member split. Run order: Stage 0, orders, logistics, receive goods, fleet, reports, users and master data, audit and dashboard, production.
+  - [ ] **Stage 0 pre-flight** (P-01, P-02): everyone confirms they can sign in; Member 2 adds the two Colombo trips (50 units tomorrow, 500 units in 8 days) because every seeded trip has departed (G4)
+  - [ ] **Member 1**: order entry clerk (CLK-01 to CLK-09, including the add-customer popup that was never verified), authentication (AUTH-01 to AUTH-07) and the role access matrix
+  - [ ] **Member 2**: logistics manager (LOG-01 to LOG-13): train schedule, cancel an order, mark Trip A and Trip B departed then arrived (orders move to In Transit), read-only inventory, all 6 reports with CSV and PDF; records the Reports baseline before Member 3 completes the delivery
+  - [ ] **Member 3**: fleet supervisor (FLT-01 to FLT-13): create a schedule with order O2 attached, conflict and roster rules, complete O2's delivery, fleet reports
+  - [ ] **Member 4**: system administrator (ADM-01 to ADM-17): users, master data, then the audit log last so it sees the whole run
+  - [ ] **Member 5**: store manager (STO-01 to STO-08) receives O1 and O2 into Colombo; Dashboard for all five roles (DSH-01 to DSH-05, blocked until `/dashboard` is merged, G3); live-site checks (PRD-01 to PRD-08, the login lock-out test last)
+  - [ ] Every member posts a results log, defects are filed with the template in the guide (§12 to §13), and the exit criteria in §14 are met
 - [ ] Fix any integration issues found during the smoke test before moving on
+  - [x] Smoke-test gaps found while writing `14_smoke-test-guide.md` and fixed by Member 1 (2026-10-11): **G1**, orders can now be attached to a truck schedule (`order_ids` on `POST /api/truck-schedules`, "Orders to deliver" on `/truck-schedule/new`, one Scheduled delivery per order, atomic); **G2**, trips can be marked departed and arrived (`PATCH /api/train-trips/:id`, buttons on `/train-schedule`), and departure moves Pending orders to In Transit. Accepted gap: no audit trigger for `train_trips`. Open: **G3** (`/dashboard` not built) and **G4** (no upcoming trips: add some on `/train-schedule`)
 
 ---
 
 ### 🔒 PHASE 3 GATE — do not proceed to Phase 4 until ALL of these are true:
-- [ ] Smoke test passes end-to-end with no manual DB edits required
+- [ ] Smoke test passes end-to-end with no manual DB edits required (exit criteria: `14_smoke-test-guide.md` §14)
 - [ ] Dashboard shows correct live numbers
 - [ ] All 14 pages are reachable and functional for at least one role each
 
