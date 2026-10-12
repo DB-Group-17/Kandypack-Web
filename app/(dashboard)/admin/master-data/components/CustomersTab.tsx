@@ -3,7 +3,7 @@
 /**
  * @file CustomersTab.tsx
  * @description Tabular view of Retail & Wholesale Customer Accounts for the Master Data module.
- * Columns: Customer Name, Customer Type (Retail/Wholesale), Phone / Email, Registered City, Delivery Address, Status, and Actions.
+ * Columns: Customer Name, Customer Type (Retail/Wholesale), Phone / Email, Registered City, Delivery Address, Status.
  * Conforms to Docs/07_content-copy.md §391 and UI/master_data/code.html.
  */
 
@@ -15,8 +15,6 @@ interface CustomersTabProps {
   items: CustomerItem[];
   /** Callback to trigger opening the Add Customer modal */
   onAddClick: () => void;
-  /** Optional callback to edit a customer */
-  onEditClick?: (item: CustomerItem) => void;
 }
 
 /**
@@ -25,7 +23,6 @@ interface CustomersTabProps {
 export const CustomersTab: React.FC<CustomersTabProps> = ({
   items,
   onAddClick,
-  onEditClick,
 }) => {
   if (items.length === 0) {
     return (
@@ -70,7 +67,6 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
             <th className="py-3.5 px-5">Registered City</th>
             <th className="py-3.5 px-5">Delivery Address</th>
             <th className="py-3.5 px-5 text-center">Status</th>
-            <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
@@ -151,25 +147,6 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
                 >
                   {cust.status}
                 </span>
-              </td>
-
-              {/* Actions */}
-              <td className="py-4 px-5 text-right">
-                <button
-                  onClick={() => onEditClick?.(cust)}
-                  className="p-1.5 rounded-lg text-[#777586] hover:text-[#4132C7] hover:bg-[#EBE9FE]/50 transition-colors"
-                  title="Edit customer"
-                  aria-label={`Edit ${cust.customer_name}`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                </button>
               </td>
             </tr>
           ))}

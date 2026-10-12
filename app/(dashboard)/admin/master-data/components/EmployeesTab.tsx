@@ -3,7 +3,7 @@
 /**
  * @file EmployeesTab.tsx
  * @description Tabular view of Personnel & Staff for the Master Data module.
- * Columns: Name, NIC Number, Contact (Phone/Email), Role/Type, Home Store, Status, and Actions.
+ * Columns: Name, NIC Number, Contact (Phone/Email), Role/Type, Home Store, Status.
  * Conforms to Docs/07_content-copy.md §387 and UI/master_data/code.html.
  */
 
@@ -15,8 +15,6 @@ interface EmployeesTabProps {
   items: EmployeeItem[];
   /** Callback to trigger opening the Add Employee modal */
   onAddClick: () => void;
-  /** Optional callback to edit an employee */
-  onEditClick?: (item: EmployeeItem) => void;
 }
 
 /**
@@ -60,7 +58,6 @@ const getRoleBadgeClasses = (role: EmployeeItem['employee_type']): string => {
 export const EmployeesTab: React.FC<EmployeesTabProps> = ({
   items,
   onAddClick,
-  onEditClick,
 }) => {
   if (items.length === 0) {
     return (
@@ -105,7 +102,6 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
             <th className="py-3.5 px-5">Role / Type</th>
             <th className="py-3.5 px-5">Home Store</th>
             <th className="py-3.5 px-5 text-center">Status</th>
-            <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
@@ -178,25 +174,6 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                 >
                   {emp.status}
                 </span>
-              </td>
-
-              {/* Actions */}
-              <td className="py-4 px-5 text-right">
-                <button
-                  onClick={() => onEditClick?.(emp)}
-                  className="p-1.5 rounded-lg text-[#777586] hover:text-[#4132C7] hover:bg-[#EBE9FE]/50 transition-colors"
-                  title="Edit employee"
-                  aria-label={`Edit ${emp.full_name}`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                </button>
               </td>
             </tr>
           ))}

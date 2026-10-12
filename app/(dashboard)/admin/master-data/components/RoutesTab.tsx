@@ -3,7 +3,7 @@
 /**
  * @file RoutesTab.tsx
  * @description Tabular view of Delivery Routes and their coverage areas.
- * Columns: Route Name, Store Station, Coverage Areas, Max Delivery Time, Status, and Actions.
+ * Columns: Route Name, Store Station, Coverage Areas, Max Delivery Time, Status.
  * Conforms to Docs/07_content-copy.md §377 and UI/master_data/code.html.
  */
 
@@ -15,8 +15,6 @@ interface RoutesTabProps {
   items: RouteItem[];
   /** Callback to trigger opening the Add Route modal */
   onAddClick: () => void;
-  /** Optional callback to edit a route */
-  onEditClick?: (item: RouteItem) => void;
 }
 
 /**
@@ -25,7 +23,6 @@ interface RoutesTabProps {
 export const RoutesTab: React.FC<RoutesTabProps> = ({
   items,
   onAddClick,
-  onEditClick,
 }) => {
   if (items.length === 0) {
     return (
@@ -69,7 +66,6 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
             <th className="py-3.5 px-5">Coverage Areas</th>
             <th className="py-3.5 px-5 text-right">Max Delivery Time</th>
             <th className="py-3.5 px-5 text-center">Status</th>
-            <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
@@ -147,25 +143,6 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
                 >
                   {route.status}
                 </span>
-              </td>
-
-              {/* Actions */}
-              <td className="py-4 px-5 text-right">
-                <button
-                  onClick={() => onEditClick?.(route)}
-                  className="p-1.5 rounded-lg text-[#777586] hover:text-[#4132C7] hover:bg-[#EBE9FE]/50 transition-colors"
-                  title="Edit route"
-                  aria-label={`Edit ${route.route_name}`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                </button>
               </td>
             </tr>
           ))}
