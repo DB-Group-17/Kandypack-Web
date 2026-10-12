@@ -30,6 +30,15 @@ vi.mock('@/lib/auth', async (importOriginal) => {
   };
 });
 
+// Mock lib/redis so getOrSetCache bypasses Upstash network calls in CI
+vi.mock('@/lib/redis', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/redis')>();
+  return {
+    ...actual,
+    getOrSetCache: vi.fn().mockImplementation((_key: string, _ttl: number, fetcher: () => Promise<unknown>) => fetcher()),
+  };
+});
+
 /**
  * Builds a session for the given role.
  *
