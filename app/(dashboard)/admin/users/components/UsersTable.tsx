@@ -267,7 +267,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   {/* Role Pill Badge */}
                   <td className="py-4 px-6">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
+                      className={`inline-flex items-center whitespace-nowrap px-3 py-1 rounded-full text-xs font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
                     >
                       {getRoleDisplayLabel(user.app_role)}
                     </span>
