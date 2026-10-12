@@ -133,3 +133,25 @@ body {
     color: #4132c7;
   }
 }
+
+/*
+ * Cursor for clickable elements (Docs/11_ui-rules.md §2).
+ * Tailwind v4's base styles leave buttons on the default arrow cursor, so this rule gives every
+ * enabled clickable control a pointer and every disabled one a "not-allowed" cursor, in one place
+ * instead of a class on each button. Text inputs keep the browser's I-beam cursor.
+ */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+a[href],
+summary,
+label[for],
+select:not(:disabled),
+input:is([type="checkbox"], [type="radio"], [type="submit"], [type="button"], [type="file"], [type="date"], [type="datetime-local"], [type="time"]):not(:disabled) {
+  cursor: pointer;
+}
+button:disabled,
+[role="button"][aria-disabled="true"],
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+}

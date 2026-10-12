@@ -26,6 +26,7 @@ Visual tokens live in the root [`DESIGN.md`](../DESIGN.md). Component decisions 
 - **Padding:** 16px horizontal minimum for compact buttons; 24px for prominent actions.
 - **Icon buttons:** 40px square, circular when utility-only; provide an accessible label or tooltip.
 - **Interaction:** 150–200ms transition; optional `translateY(-1px)` or shadow lift on hover.
+- **Cursor:** `app/globals.css` gives every enabled button, link, summary, label, select, checkbox, radio and date input a pointer cursor, and disabled controls a not-allowed cursor. Do not add `cursor-pointer` per button. A non-button element that handles clicks (for example a table row) still needs its own `cursor-pointer`, and should have a keyboard-accessible control inside it.
 
 ## 3. Cards and Surfaces
 
