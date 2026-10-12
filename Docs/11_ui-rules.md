@@ -46,6 +46,7 @@ Visual tokens live in the root [`DESIGN.md`](../DESIGN.md). Component decisions 
 - Search fields may use pill radius when they are global or toolbar-level search controls.
 - Selects, date fields, text fields, and filters share the same border/focus vocabulary.
 - Group related fields in a responsive 2-column grid that collapses to one column on mobile.
+- **Dropdowns:** keep native `<select>` elements. `app/globals.css` themes the open option list with `appearance: base-select` (white panel, 12px radius, violet hover and selected state with a tick). Chrome and Edge 135+ show the themed list; other browsers fall back to their native list, with the same closed box. Do not build custom dropdown components or restyle the open list per page.
 
 ## 5. Status Badges and Icon Containers
 

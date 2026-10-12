@@ -46,3 +46,90 @@ body {
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
   background: rgb(255 255 255 / 0.5);
 }
+
+/*
+ * Themed native <select> (Docs/11_ui-rules.md §4).
+ * The open option list is drawn by the browser, so ordinary CSS cannot style it. Chromium
+ * (Chrome/Edge 135+) exposes it through `appearance: base-select` and ::picker(select). Other
+ * browsers ignore this whole block and keep their native list, so the selects stay real
+ * <select> elements with native keyboard, mobile and form-validation behaviour everywhere.
+ * These rules are unlayered on purpose: they win over Tailwind utilities such as
+ * `appearance-none` that individual pages still carry.
+ */
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+
+  /* Closed box: keep each page's own sizing classes, theme the picker arrow and focus ring. */
+  select {
+    font-family: inherit;
+    cursor: pointer;
+    /* base-select makes the box a flex container; centre the value and push the arrow right. */
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  select:disabled {
+    cursor: not-allowed;
+  }
+  select::picker-icon {
+    color: #777586;
+    transition: rotate 150ms ease-out;
+  }
+  select:open::picker-icon {
+    rotate: 180deg;
+  }
+  /* Pages that draw their own chevron next to an appearance-none select keep only that one. */
+  select.appearance-none::picker-icon {
+    display: none;
+  }
+
+  /* Open list panel. */
+  select::picker(select) {
+    box-sizing: border-box;
+    margin-top: 4px;
+    padding: 6px;
+    background: #ffffff;
+    border: 1px solid #c8c4d7;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgb(18 28 44 / 0.12);
+    font-family: inherit;
+    max-height: 18rem;
+    overflow-y: auto;
+  }
+
+  /* Options. */
+  select option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: #121c2c;
+    cursor: pointer;
+  }
+  select option:hover,
+  select option:focus-visible {
+    background: #f0f3ff;
+    outline: none;
+  }
+  select option:checked {
+    background: #f0f3ff;
+    color: #4132c7;
+    font-weight: 600;
+  }
+  select option:disabled {
+    color: #777586;
+    cursor: not-allowed;
+  }
+  /* Tick shown beside the selected option; hidden on the others. */
+  select option::checkmark {
+    order: 1;
+    margin-left: auto;
+    color: #4132c7;
+  }
+}
