@@ -154,6 +154,60 @@ The schema lives in `db/migrations/` as 26 numbered files that are applied once 
 
 Full detail is in [`Docs/04_database-schema-v4.md`](Docs/04_database-schema-v4.md).
 
+### Database objects by member
+
+Each object is listed under the module that relies on it. All migrations are in `db/migrations/` and were applied through Dineth's migration runner.
+
+**Dineth Nimsara: orders and accounts**
+
+| Type | Objects | Purpose |
+|---|---|---|
+| Procedure | `place_order` (`17`, fixed in `21` and `22`) | Matches the route, saves the order and items, and books train space with overflow to the next trip, all in one transaction |
+| Function | `calculate_order_space` | Train space an order needs (quantity times space rate) |
+| Triggers | `trg_validate_order_date` | Rejects an order placed less than 7 days ahead |
+| | `trg_snapshot_order_item_prices` | Copies price and space rate onto each item at order time |
+| | `trg_maintain_order_totals_ins`, `_upd`, `_del` | Keep the order's total value and total space correct |
+| | `trg_log_order_status_change` | Writes every status change to `order_status_history` |
+| | `trg_audit_orders_*`, `trg_audit_order_items_*` | Audit trail for orders and items |
+| | `trg_audit_users_*`, `trg_audit_user_profiles_*` (`25`) | Audit trail for accounts, without password hashes |
+| | `trg_touch_updated_at_orders`, `trg_prevent_hard_delete_customers` | Timestamp upkeep and no hard delete (`11`) |
+
+**Linari: train scheduling and reports**
+
+| Type | Objects | Purpose |
+|---|---|---|
+| Function | `get_available_capacity` | Free cargo space left on a trip |
+| Triggers | `trg_check_trip_capacity` | Rejects a booking that would exceed the trip's capacity |
+| | `trg_update_trip_booked_space_ins`, `_upd`, `_del` | Keep each trip's booked space in step with its bookings |
+| | `trg_audit_train_bookings_ins`, `_del`, `trg_touch_updated_at_train_trips` | Audit and timestamp upkeep |
+| Views (`19`) | `v_quarterly_sales`, `v_most_ordered_items`, `v_city_route_sales`, `v_driver_assistant_hours`, `v_truck_usage_monthly`, `v_customer_order_history` | The six management reports |
+
+**Monishka: truck scheduling and deliveries**
+
+| Type | Objects | Purpose |
+|---|---|---|
+| Procedures | `schedule_truck_delivery` (fixed in `23`), `complete_delivery` (fixed in `26`) | Creates a schedule with conflict locking, and completes a delivery with its order and stock updates |
+| Functions | `get_driver_weekly_hours`, `get_assistant_weekly_hours`, `fn_driver_chain_length`, `fn_assistant_chain_length`, `fn_week_start` | Weekly hour limits (40 and 60) and consecutive-trip rules |
+| Triggers | `trg_validate_truck_schedule` (`13`, replaced in `23`) | Rejects truck, driver and assistant overlaps and roster breaches |
+| | `trg_check_active_delivery_on_insert`, `trg_delivery_complete_order` (`14`) | One active delivery per order, and the order becomes Delivered when its delivery completes |
+| | `trg_audit_truck_schedules_*`, `trg_audit_deliveries_*`, `trg_touch_updated_at_*` | Audit and timestamp upkeep |
+| | `trg_validate_driver_subtype`, `trg_validate_assistant_subtype` (`16`) | Keep drivers and assistants consistent with their employee record |
+
+**Vidura: inventory, master data and administration**
+
+| Type | Objects | Purpose |
+|---|---|---|
+| Procedure | `receive_goods_at_store` | Receives an arrived train booking, adds stock and moves the order to At store |
+| Function | `get_user_display_name` | Resolves an account's display name for the admin and audit pages |
+| Triggers | `trg_check_inventory_before_dispatch` | Blocks a dispatch that would take stock below zero |
+| | `trg_apply_inventory_transaction` (`14`, fixed in `24`) | Applies each Receive or Dispatch to `store_inventory` |
+| | `trg_guard_employee_type_change` (`16`) | Blocks changing an employee's type while a driver or assistant record still exists |
+| | `trg_audit_*` for customers, products, stores, employees, drivers, assistants, trucks and routes, and `trg_prevent_hard_delete_*` | Audit log and soft delete for master data |
+
+**Desandu: Redis, exports and dashboard**
+
+Desandu's work sits in the application layer, so he owns no stored objects. His features read the objects above: the PDF and CSV exports run on Linari's report views, and the dashboard uses plain aggregate queries on `orders`, `train_trips`, `truck_schedules` and `store_inventory`, cached in Redis. Redis locks wrap `place_order`, `schedule_truck_delivery` and `complete_delivery`.
+
 ## Project structure
 
 | Path | Contents |
