@@ -93,7 +93,7 @@ Member 1's foundation. `/admin/users` specifically depends on Member 1's auth sy
 - Synchronous CSV/PDF export service: validate filters, render output, return direct downloads, and add export-level tests
 - Test suite: unit tests (7-day rule, space calc, roster hours), integration tests (`place_order`, `schedule_truck_delivery` against a throwaway MySQL instance), one API route test (`/auth/login`)
 - GitHub Actions CI: lint, typecheck, test job (MySQL service container), migration check
-- Optional `docker-compose.yml` (whole-project self-host option)
+- ~~Optional `docker-compose.yml` (whole-project self-host option)~~ — superseded: production deployment (Docker, Caddy, `deploy.yml`) was built by Member 1; see `03_architecture.md` §12
 
 ### Frontend
 - Dashboard page (summary cards — pulls from Orders/Train/Truck/Inventory once those APIs exist, cached via Redis)

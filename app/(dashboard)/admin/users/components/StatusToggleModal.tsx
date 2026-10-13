@@ -110,10 +110,10 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
 
           {/* Dialog Text */}
           <div className="flex-1">
-            <h3 className="text-[18px] font-bold text-[#121C2C]">
+            <h3 className="text-lg font-bold text-[#121C2C]">
               {isDeactivating ? 'Deactivate User Account' : 'Activate User Account'}
             </h3>
-            <p className="text-[14px] text-[#474554] mt-1.5 leading-relaxed">
+            <p className="text-sm text-[#474554] mt-1.5 leading-relaxed">
               {isDeactivating ? (
                 <>
                   Deactivate <strong className="text-[#121C2C]">{user.email}</strong>? They
@@ -130,14 +130,14 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
         </div>
 
         {/* User Summary Pill */}
-        <div className="mt-4 p-3 bg-[#F5F5FA] rounded-xl border border-[#C8C4D7]/30 text-[13px] flex items-center justify-between">
+        <div className="mt-4 p-3 bg-[#F5F5FA] rounded-xl border border-[#C8C4D7]/30 text-sm flex items-center justify-between">
           <span className="font-semibold text-[#121C2C]">{user.display_name}</span>
           <span className="text-[#474554]">{user.department_or_title}</span>
         </div>
 
         {/* Backend Error Banner */}
         {errorMessage && (
-          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-[12px] text-[#F93C65] flex items-start gap-2">
+          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-xs text-[#F93C65] flex items-start gap-2">
             <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -147,7 +147,7 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
 
         {/* Self Deactivation Warning */}
         {cannotDeactivate && (
-          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-[12px] text-[#F93C65] flex items-start gap-2">
+          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-xs text-[#F93C65] flex items-start gap-2">
             <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -161,7 +161,7 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 text-[13px] font-semibold text-[#474554] hover:bg-[#F5F5FA] rounded-full transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-sm font-semibold text-[#474554] hover:bg-[#F5F5FA] rounded-full transition-colors disabled:opacity-50"
           >
             Cancel
           </button>
@@ -169,7 +169,7 @@ export const StatusToggleModal: React.FC<StatusToggleModalProps> = ({
             type="button"
             onClick={handleConfirm}
             disabled={isSubmitting || cannotDeactivate}
-            className={`px-5 py-2 text-[13px] font-bold text-white rounded-full transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 ${
+            className={`px-5 py-2 text-sm font-bold text-white rounded-full transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2 ${
               isDeactivating
                 ? 'bg-[#F93C65] hover:bg-[#E02852]'
                 : 'bg-[#00B69B] hover:bg-[#009E86]'

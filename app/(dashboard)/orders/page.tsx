@@ -28,6 +28,7 @@ import React, { Suspense, useState, useEffect, useCallback, useId, useMemo, useR
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/rbac";
+import { formatDate } from "@/lib/format";
 
 /**
  * Canonical order status values, matching the `orders.status` enum in the database
@@ -89,24 +90,6 @@ const STATUS_OPTIONS: OrderStatus[] = [
   "Delivered",
   "Cancelled",
 ];
-
-/**
- * Formats an ISO/SQL datetime string into a short human-readable date, e.g. "Oct 24, 2023".
- * Falls back to the raw string if parsing fails, so malformed data never crashes the row.
- *
- * @param {string} value - Date or datetime string from the API.
- * @returns {string} Formatted calendar date.
- */
-function formatDate(value: string): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-}
 
 /**
  * Formats a numeric string total value as Sri Lankan Rupees, e.g. "Rs. 145,000".
@@ -576,7 +559,7 @@ function OrdersPageContent() {
                     onClick={() => handleRowClick(order.order_id)}
                     className="hover:bg-[#F9F9FF] transition-colors cursor-pointer"
                   >
-                    <td className="px-5 py-4 font-mono font-semibold text-[#4132C7]">
+                    <td className="px-5 py-4 tabular-nums font-semibold text-[#4132C7]">
                       #ORD-{order.order_id}
                     </td>
                     <td className="px-5 py-4">

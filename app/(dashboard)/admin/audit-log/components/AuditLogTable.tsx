@@ -9,34 +9,11 @@
 import React, { useState } from 'react';
 import { AuditLogItem, AuditActionType } from '../types';
 import { AuditLogRowDiff } from './AuditLogRowDiff';
+import { formatDateTime } from '@/lib/format';
 
 interface AuditLogTableProps {
   /** Array of audit log records to display in the table */
   items: AuditLogItem[];
-}
-
-/**
- * Helper function to format an ISO 8601 date string into a user-friendly timestamp.
- * Example: "2023-10-24T14:32:05Z" -> "Oct 24, 14:32:05"
- *
- * @param dateStr ISO timestamp string
- * @returns Formatted date string
- */
-function formatTimestamp(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-
-    const month = date.toLocaleString('en-US', { month: 'short' });
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-
-    return `${month} ${day}, ${hours}:${minutes}:${seconds}`;
-  } catch {
-    return dateStr;
-  }
 }
 
 /**
@@ -50,25 +27,25 @@ function renderActionBadge(action: AuditActionType): React.JSX.Element {
   switch (action) {
     case 'Created':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#e6f4ea] text-[#137333]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e6f4ea] text-[#137333]">
           Created
         </span>
       );
     case 'Updated':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#e7f0ff] text-[#0047cc]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e7f0ff] text-[#0047cc]">
           Updated
         </span>
       );
     case 'Deleted':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#fce8e6] text-[#c5221f]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#fce8e6] text-[#c5221f]">
           Deleted
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#f1f1f5] text-[#474553]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#f1f1f5] text-[#474553]">
           {action}
         </span>
       );
@@ -130,10 +107,10 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
             />
           </svg>
         </div>
-        <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+        <h3 className="text-base font-semibold text-[#121C2C] mb-1">
           No audit records match these filters.
         </h3>
-        <p className="text-[14px] text-[#777586]">
+        <p className="text-sm text-[#777586]">
           Try adjusting or clearing your table, user, or date range filters to view records.
         </p>
       </div>
@@ -142,10 +119,11 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
 
   return (
     <div className="bg-white rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.05)] overflow-hidden">
-      <div className="overflow-x-auto">
+      {/* Desktop Table View (hidden on small/medium screens to prevent min-w-[700px] overflow; mirrors /deliveries pattern) */}
+      <div className="hidden xl:block overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
-            <tr className="bg-[#F0F3FF] border-b border-[#DEE8FF] text-[#474553] text-[12px] font-semibold tracking-normal">
+            <tr className="bg-[#F0F3FF] border-b border-[#DEE8FF] text-[#474553] text-xs font-semibold tracking-normal">
               <th className="px-6 py-4 w-12 text-center" aria-label="Expand column"></th>
               <th className="px-6 py-4 font-semibold">Timestamp</th>
               <th className="px-6 py-4 font-semibold">Table</th>
@@ -154,46 +132,64 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
               <th className="px-6 py-4 font-semibold">Changed By</th>
             </tr>
           </thead>
-          <tbody className="text-[14px] text-[#121C2C] divide-y divide-[#DEE8FF]">
+          <tbody className="text-sm text-[#121C2C] divide-y divide-[#DEE8FF]">
             {items.map((item) => {
               const isExpanded = expandedRowIds.has(item.log_id);
 
               return (
                 <React.Fragment key={item.log_id}>
-                  {/* Main Row */}
+                  {/* Main Row: Row click kept as desktop convenience without fake keyboard semantics */}
                   <tr
                     onClick={() => toggleRow(item.log_id)}
                     className="hover:bg-[#F9F9FF] transition-colors cursor-pointer group select-none min-h-[56px]"
                   >
-                    {/* Expand Chevron Icon */}
+                    {/* Expand/Collapse Accessible Button Control */}
                     <td className="px-6 py-4 text-center">
-                      <svg
-                        className={`w-5 h-5 text-[#777586] transition-transform duration-200 inline-block ${
-                          isExpanded ? 'rotate-180 text-[#251297]' : ''
-                        }`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          // Prevent event bubbling so activating the button does not trigger the row's onClick twice
+                          e.stopPropagation();
+                          toggleRow(item.log_id);
+                        }}
+                        aria-expanded={isExpanded}
+                        aria-controls={`audit-diff-${item.log_id}`}
+                        aria-label={
+                          isExpanded
+                            ? `Hide changes for log ${item.log_id}`
+                            : `Show changes for log ${item.log_id}`
+                        }
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-full text-[#777586] hover:text-[#251297] hover:bg-[#DEE8FF]/50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#4132C7] focus-visible:ring-offset-2 transition-all cursor-pointer"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M19 9l-7 7-7-7"
-                        />
-                      </svg>
+                        <svg
+                          className={`w-5 h-5 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180 text-[#251297]' : ''
+                          }`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
                     </td>
 
                     {/* Timestamp */}
                     <td className="px-6 py-4 whitespace-nowrap text-[#474553]">
-                      {formatTimestamp(item.changed_at)}
+                      {formatDateTime(item.changed_at)}
                     </td>
 
                     {/* Table Name */}
                     <td className="px-6 py-4 text-[#121C2C]">{formatTableName(item.table_name)}</td>
 
                     {/* Record ID */}
-                    <td className="px-6 py-4 font-mono text-[13px] text-[#474553]">
+                    <td className="px-6 py-4 tabular-nums text-sm text-[#474553]">
                       {item.record_id}
                     </td>
 
@@ -203,7 +199,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
                     {/* Changed By User */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-[#DEE8FF] text-[#251297] flex items-center justify-center text-[10px] font-bold tracking-tight">
+                        <div className="w-6 h-6 rounded-full bg-[#DEE8FF] text-[#251297] flex items-center justify-center text-[11px] font-bold tracking-tight">
                           {item.user_initials}
                         </div>
                         <span className="text-[#121C2C]">{item.user_name}</span>
@@ -211,9 +207,9 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
                     </td>
                   </tr>
 
-                  {/* Expanded Diff Row */}
+                  {/* Expanded Diff Row linked via aria-controls id */}
                   {isExpanded && (
-                    <tr className="bg-[#F9F9FF]">
+                    <tr id={`audit-diff-${item.log_id}`} className="bg-[#F9F9FF]">
                       <td colSpan={6} className="px-0 py-0 border-t-0">
                         <AuditLogRowDiff item={item} />
                       </td>
@@ -224,6 +220,89 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile Stacked Card View (visible on < xl screens per Docs/11_ui-rules.md §6 and /deliveries reference) */}
+      <div className="xl:hidden divide-y divide-[#DEE8FF]">
+        {items.map((item) => {
+          const isExpanded = expandedRowIds.has(item.log_id);
+
+          return (
+            <div key={item.log_id} className="p-4 space-y-3">
+              {/* Header: Timestamp and Action Status Badge */}
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-medium text-[#474553]">
+                  {formatDateTime(item.changed_at)}
+                </span>
+                {renderActionBadge(item.action)}
+              </div>
+
+              {/* Table / Resource Name & Optional Record ID */}
+              <div className="flex items-baseline justify-between gap-2">
+                <h4 className="text-base font-semibold text-[#121C2C]">
+                  {formatTableName(item.table_name)}
+                </h4>
+                {item.record_id && (
+                  <span className="tabular-nums text-xs text-[#474553] bg-[#F0F3FF] px-2 py-0.5 rounded">
+                    ID: {item.record_id}
+                  </span>
+                )}
+              </div>
+
+              {/* Changed By User Metadata */}
+              <div className="flex items-center gap-2 pt-0.5">
+                <div className="w-6 h-6 rounded-full bg-[#DEE8FF] text-[#251297] flex items-center justify-center text-[11px] font-bold tracking-tight shrink-0">
+                  {item.user_initials}
+                </div>
+                <span className="text-sm text-[#121C2C]">{item.user_name}</span>
+              </div>
+
+              {/* Accessible Expand/Collapse Button for Mobile */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => toggleRow(item.log_id)}
+                  aria-expanded={isExpanded}
+                  aria-controls={`audit-mobile-diff-${item.log_id}`}
+                  aria-label={
+                    isExpanded
+                      ? `Hide changes for log ${item.log_id}`
+                      : `Show changes for log ${item.log_id}`
+                  }
+                  className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg bg-[#F0F3FF] hover:bg-[#DEE8FF]/60 text-[#251297] text-sm font-medium transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#4132C7] focus-visible:ring-offset-2 cursor-pointer"
+                >
+                  <span>{isExpanded ? 'Hide changes' : 'Show changes'}</span>
+                  <svg
+                    className={`w-4 h-4 transition-transform duration-200 ${
+                      isExpanded ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Mobile Expanded Diff Container */}
+              {isExpanded && (
+                <div
+                  id={`audit-mobile-diff-${item.log_id}`}
+                  className="pt-2"
+                >
+                  <AuditLogRowDiff item={item} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

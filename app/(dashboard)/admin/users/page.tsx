@@ -467,7 +467,7 @@ export default function UserAccountsPage(): React.JSX.Element {
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="flex flex-col items-center gap-3 text-[#474554]">
           <div className="w-8 h-8 border-3 border-[#4132C7] border-t-transparent rounded-full animate-spin" />
-          <p className="text-[14px] font-medium">Verifying administrator authorization...</p>
+          <p className="text-sm font-medium">Verifying administrator authorization...</p>
         </div>
       </div>
     );
@@ -477,8 +477,8 @@ export default function UserAccountsPage(): React.JSX.Element {
   if (!authUser) {
     return (
       <div className="bg-white rounded-2xl p-12 border border-[#C8C4D7]/40 text-center shadow-xs">
-        <h3 className="text-[18px] font-bold text-[#121C2C] mb-2">Authentication Required</h3>
-        <p className="text-[14px] text-[#474554] max-w-md mx-auto mb-6">
+        <h3 className="text-lg font-bold text-[#121C2C] mb-2">Authentication Required</h3>
+        <p className="text-sm text-[#474554] max-w-md mx-auto mb-6">
           Please log in with a System Administrator account to access the user management console.
         </p>
       </div>
@@ -499,12 +499,12 @@ export default function UserAccountsPage(): React.JSX.Element {
             />
           </svg>
         </div>
-        <h3 className="text-[20px] font-bold text-[#121C2C] mb-1">Access Denied</h3>
-        <p className="text-[14px] text-[#474554] max-w-md mx-auto mb-2">
+        <h3 className="text-lg font-bold text-[#121C2C] mb-1">Access Denied</h3>
+        <p className="text-sm text-[#474554] max-w-md mx-auto mb-2">
           Your current role (<strong className="text-[#121C2C]">{authRole}</strong>) is not
           authorized to manage user accounts.
         </p>
-        <p className="text-[13px] text-[#777586]">
+        <p className="text-sm text-[#777586]">
           User accounts administration is strictly restricted to System Administrators.
         </p>
       </div>
@@ -517,7 +517,7 @@ export default function UserAccountsPage(): React.JSX.Element {
       {toast && (
         <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
           <div
-            className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl border text-[13px] font-semibold text-white ${
+            className={`flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl border text-sm font-semibold text-white ${
               toast.type === 'error'
                 ? 'bg-[#F93C65] border-[#F93C65]'
                 : toast.type === 'info'
@@ -547,10 +547,10 @@ export default function UserAccountsPage(): React.JSX.Element {
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-[30px] font-bold text-[#121C2C] leading-[38px] tracking-[-0.02em]">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#121C2C]">
               User Accounts
             </h1>
-            <p className="text-[14px] text-[#474554] mt-0.5 font-normal">
+            <p className="text-sm text-[#474554] mt-0.5 font-normal">
               Manage staff logins and roles
             </p>
           </div>
@@ -559,7 +559,7 @@ export default function UserAccountsPage(): React.JSX.Element {
             {/* New User Primary Action */}
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="px-6 py-2.5 bg-[#5A4FE0] hover:bg-[#4132C7] text-white font-bold text-[13px] rounded-full flex items-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.98]"
+              className="px-6 py-2.5 bg-[#5A4FE0] hover:bg-[#4132C7] text-white font-bold text-sm rounded-full flex items-center gap-2 shadow-sm transition-all duration-150 active:scale-[0.98]"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -588,11 +588,11 @@ export default function UserAccountsPage(): React.JSX.Element {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-[13px] font-medium text-[#F93C65]">{fetchError}</p>
+              <p className="text-sm font-medium text-[#F93C65]">{fetchError}</p>
             </div>
             <button
               onClick={() => setRefreshTrigger((prev) => prev + 1)}
-              className="px-4 py-1.5 text-[12px] font-bold text-[#F93C65] hover:bg-[#F93C65]/10 border border-[#F93C65]/40 rounded-full transition-colors self-start sm:self-auto"
+              className="px-4 py-1.5 text-xs font-bold text-[#F93C65] hover:bg-[#F93C65]/10 border border-[#F93C65]/40 rounded-full transition-colors self-start sm:self-auto"
             >
               Retry
             </button>

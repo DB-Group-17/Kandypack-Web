@@ -69,15 +69,15 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+        <h3 className="text-base font-semibold text-[#121C2C] mb-1">
           No records yet.
         </h3>
-        <p className="text-[13px] text-[#474554] max-w-sm mx-auto mb-5">
+        <p className="text-sm text-[#474554] max-w-sm mx-auto mb-5">
           No products match your search query or have been registered in the system catalog.
         </p>
         <button
           onClick={onAddClick}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -102,14 +102,14 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
             <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#C8C4D7]/20 text-[13px] text-[#121C2C]">
+        <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
           {items.map((product) => (
             <tr
               key={product.product_id}
               className="hover:bg-[#F9F9FF] transition-colors group"
             >
               {/* SKU */}
-              <td className="py-4 px-5 font-mono text-[12px] font-medium text-[#4132C7]">
+              <td className="py-4 px-5 tabular-nums text-xs font-medium text-[#4132C7]">
                 {product.sku}
               </td>
 
@@ -137,7 +137,7 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
 
               {/* Category */}
               <td className="py-4 px-5 text-[#474554]">
-                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-[12px] font-medium text-[#121C2C]">
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-xs font-medium text-[#121C2C]">
                   {product.category}
                 </span>
               </td>

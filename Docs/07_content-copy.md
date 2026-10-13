@@ -231,6 +231,15 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 
 **Success toast:** *Trip to {destination_city} added.*
 
+**Trip status actions** *(added 2026-10-11, smoke-test gap G2)*:
+- Button on a Scheduled trip: `Mark departed`. Button on a Departed trip: `Mark arrived`. No button for Arrived or Cancelled trips.
+- Confirmation dialog (Departed): title *Mark trip #{trip_id} as departed?* · body *Kandy → {destination_city}. Orders booked on this trip that are still Pending will move to In Transit. This cannot be undone.*
+- Confirmation dialog (Arrived): title *Mark trip #{trip_id} as arrived?* · body *Kandy → {destination_city}. The goods can then be received at the store. This cannot be undone.*
+- Dialog buttons: `Confirm` · `Cancel` · button (saving): `Saving…`
+- Success toast (departed): *Trip #{trip_id} marked as departed. {n} order(s) moved to In Transit.* (“order” when n is 1, “orders” otherwise)
+- Success toast (arrived): *Trip #{trip_id} marked as arrived.*
+- Failure: the server's own message inside the dialog, otherwise *Couldn't change the trip status. Please try again.*
+
 ---
 
 ## `/truck-schedule` (List)
@@ -267,6 +276,13 @@ Companion to `03_architecture.md` and `05_api-and-pages.md`. Full UI text for ev
 - *"⚠ This driver would exceed the 40-hour weekly limit."*
 - *"⚠ This assistant would exceed the 60-hour weekly limit."*
 - *"⚠ {truck_plate} is already assigned to another route during this time."*
+
+**Orders to deliver (optional)** *(added 2026-10-11, smoke-test gap G1; a section above the buttons)*:
+- Legend: `Orders to deliver (optional)` · helper: *Orders that have reached the store and are on this route. Leave all unticked to create the schedule without orders.*
+- Each row (checkbox): `Order #{order_id} · {customer_name}`, then `{delivery_area} · {delivery_address}`, then `Needed by {date} · {space} space units`.
+- Counter: *{n} of {total} selected*
+- States: *Select a route to see the orders that are ready for delivery.* · *Loading orders…* · *No orders at the store are waiting for this route.* · failure: *Couldn't load the orders for this route.*
+- A rejected order (server, nothing is saved) shows the server's message, for example *Order #31 is Pending; only orders that are At Store can be assigned to a delivery.*
 
 **Buttons:** Create Schedule (primary, disabled while a conflict is showing) · Cancel
 

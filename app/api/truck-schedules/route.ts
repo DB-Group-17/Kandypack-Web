@@ -21,11 +21,16 @@
  *
  * ── POST /api/truck-schedules ─────────────────────────────────────────────────
  * Auth: fleet_supervisor, system_administrator only.
- * Request body: { truck_id, driver_id, assistant_id, route_id, start_time }
+ * Request body: { truck_id, driver_id, assistant_id, route_id, start_time, order_ids? }
  *   NOTE: end_time is NOT accepted — the procedure derives it from
  *         routes.max_delivery_time_hours (see db/migrations/18_proc_remaining.sql).
- * Response 201: { schedule_id: number }
- * Response 400: business-rule violation from trigger/procedure (SIGNAL SQLSTATE '45000')
+ *   `order_ids` (optional) attaches orders to the new schedule: one `Scheduled` delivery is created
+ *   per order, in the SAME transaction as the schedule, so either everything is saved or nothing is
+ *   (smoke-test gap G1, Docs/14_smoke-test-guide.md §3). Each order must be `At Store`, on this
+ *   route, and have no active delivery. Without `order_ids` the schedule is created on its own.
+ * Response 201: { schedule_id: number, delivery_ids: number[] }
+ * Response 400: business-rule violation from trigger/procedure (SIGNAL SQLSTATE '45000'),
+ *               or an order that cannot be attached (code INVALID_ORDER)
  * Response 423: Redis lock could not be acquired — another concurrent request is in progress
  *
  * Concurrency strategy (Docs/03_architecture.md §13):
@@ -50,7 +55,12 @@ import { withLock, REDIS_KEYS } from '@/lib/redis';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-import { fetchTruckSchedulesFromDB } from './service';
+import {
+  fetchTruckSchedulesFromDB,
+  attachOrdersToSchedule,
+  OrderAssignmentError,
+  MAX_ORDERS_PER_SCHEDULE,
+} from './service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -157,15 +167,20 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
  *   driver_id:    number,
  *   assistant_id: number,
  *   route_id:     number,
- *   start_time:   string  // ISO 8601 or 'YYYY-MM-DD HH:MM'
+ *   start_time:   string  // 'YYYY-MM-DD HH:MM[:SS]'
+ *   order_ids?:   number[] // optional: attach these At Store orders as Scheduled deliveries
  * }
  *
  * NOTE: end_time is NOT accepted. The procedure derives it from
  *       routes.max_delivery_time_hours internally.
  *
+ * When `order_ids` is non-empty the procedure call and the delivery inserts run in ONE explicit
+ * transaction, so a rejected order leaves no schedule behind. Without it the behaviour is unchanged.
+ *
  * @param request - Incoming Next.js request
- * @returns 201 { schedule_id: number } on success
- * @returns 400 on validation error or business-rule violation from the DB trigger
+ * @returns 201 { schedule_id: number, delivery_ids: number[] } on success
+ * @returns 400 on validation error, an order that cannot be attached, or a business-rule
+ *          violation from the DB trigger
  * @returns 401/403 on auth failure
  * @returns 423 if a Redis lock could not be acquired (concurrent request in progress)
  * @returns 500 on unexpected error
@@ -187,7 +202,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const { truck_id, driver_id, assistant_id, route_id, start_time } =
+    const { truck_id, driver_id, assistant_id, route_id, start_time, order_ids } =
       body as Record<string, unknown>;
 
     // Required field validation
@@ -241,6 +256,29 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
+    // Optional order_ids: must be an array of distinct positive integers, bounded in size.
+    // Duplicates are collapsed so the same order is never attached twice in one request.
+    let orderIds: number[] = [];
+    if (order_ids !== undefined && order_ids !== null) {
+      if (
+        !Array.isArray(order_ids) ||
+        order_ids.length > MAX_ORDERS_PER_SCHEDULE ||
+        order_ids.some((v) => !Number.isInteger(Number(v)) || Number(v) <= 0)
+      ) {
+        return NextResponse.json(
+          {
+            error: {
+              code: 'BAD_REQUEST',
+              message: `order_ids must be an array of at most ${MAX_ORDERS_PER_SCHEDULE} positive integers.`,
+              field: 'order_ids',
+            },
+          },
+          { status: 400 }
+        );
+      }
+      orderIds = [...new Set(order_ids.map((v) => Number(v)))];
+    }
+
     // Step 3 — Acquire Redis locks on truck, driver, and assistant via withLock.
     // Nested withLock calls guarantee that every lock is released in its own
     // finally block, so a Redis throw or a DB error mid-way can never leak a lock.
@@ -250,6 +288,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Nesting order: truck → driver → assistant (consistent order prevents
     // deadlocks if two concurrent requests happen to target the same resources).
     let scheduleId: number;
+    let deliveryIds: number[] = [];
     try {
       scheduleId = await withLock(
         REDIS_KEYS.LOCK_TRUCK_SCHEDULE(truckIdN),
@@ -266,15 +305,35 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
                     session.user_id,
                     session.role,
                     async (conn) => {
-                      // Pass the validated datetime string straight through
-                      await conn.execute(
-                        'CALL schedule_truck_delivery(?, ?, ?, ?, ?, @out_schedule_id)',
-                        [truckIdN, driverIdN, assistantIdN, routeIdN, startTimeStr] as Parameters<typeof conn.execute>[1]
-                      );
+                      // When orders are attached, the schedule and its deliveries must succeed or
+                      // fail together, so they share one explicit transaction. Without orders the
+                      // single INSERT inside the procedure stays autocommit, exactly as before.
+                      const attachOrders = orderIds.length > 0;
+                      if (attachOrders) await conn.beginTransaction();
+                      try {
+                        // Pass the validated datetime string straight through
+                        await conn.execute(
+                          'CALL schedule_truck_delivery(?, ?, ?, ?, ?, @out_schedule_id)',
+                          [truckIdN, driverIdN, assistantIdN, routeIdN, startTimeStr] as Parameters<typeof conn.execute>[1]
+                        );
 
-                      // Retrieve the OUT parameter value from the session variable.
-                      const [resultRows] = await conn.execute('SELECT @out_schedule_id AS schedule_id') as unknown as [Array<{ schedule_id: number | string | null }>];
-                      return Number(resultRows[0]?.schedule_id ?? 0);
+                        // Retrieve the OUT parameter value from the session variable.
+                        const [resultRows] = await conn.execute('SELECT @out_schedule_id AS schedule_id') as unknown as [Array<{ schedule_id: number | string | null }>];
+                        const newScheduleId = Number(resultRows[0]?.schedule_id ?? 0);
+
+                        if (attachOrders) {
+                          if (!newScheduleId) {
+                            throw new Error('schedule_truck_delivery() returned no schedule id.');
+                          }
+                          deliveryIds = await attachOrdersToSchedule(conn, newScheduleId, routeIdN, orderIds);
+                          await conn.commit();
+                        }
+                        return newScheduleId;
+                      } catch (txError) {
+                        // Undo the schedule too, so a rejected order never leaves one behind.
+                        if (attachOrders) await conn.rollback();
+                        throw txError;
+                      }
                     }
                   );
                 },
@@ -298,6 +357,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             },
           },
           { status: 423 }
+        );
+      }
+
+      // ── 400: an order that cannot be attached (already rolled back above) ──
+      if (dbErr instanceof OrderAssignmentError) {
+        return NextResponse.json(
+          { error: { code: 'INVALID_ORDER', message: dbErr.message, field: 'order_ids' } },
+          { status: 400 }
         );
       }
 
@@ -326,7 +393,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    return NextResponse.json({ schedule_id: scheduleId }, { status: 201 });
+    return NextResponse.json({ schedule_id: scheduleId, delivery_ids: deliveryIds }, { status: 201 });
   } catch (err) {
     if (err instanceof Error && 'status' in err) {
       return NextResponse.json(

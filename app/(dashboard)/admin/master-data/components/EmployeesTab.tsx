@@ -3,7 +3,7 @@
 /**
  * @file EmployeesTab.tsx
  * @description Tabular view of Personnel & Staff for the Master Data module.
- * Columns: Name, NIC Number, Contact (Phone/Email), Role/Type, Home Store, Status, and Actions.
+ * Columns: Name, NIC Number, Contact (Phone/Email), Role/Type, Home Store, Status.
  * Conforms to Docs/07_content-copy.md §387 and UI/master_data/code.html.
  */
 
@@ -15,8 +15,6 @@ interface EmployeesTabProps {
   items: EmployeeItem[];
   /** Callback to trigger opening the Add Employee modal */
   onAddClick: () => void;
-  /** Optional callback to edit an employee */
-  onEditClick?: (item: EmployeeItem) => void;
 }
 
 /**
@@ -60,7 +58,6 @@ const getRoleBadgeClasses = (role: EmployeeItem['employee_type']): string => {
 export const EmployeesTab: React.FC<EmployeesTabProps> = ({
   items,
   onAddClick,
-  onEditClick,
 }) => {
   if (items.length === 0) {
     return (
@@ -75,15 +72,15 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+        <h3 className="text-base font-semibold text-[#121C2C] mb-1">
           No records yet.
         </h3>
-        <p className="text-[13px] text-[#474554] max-w-sm mx-auto mb-5">
+        <p className="text-sm text-[#474554] max-w-sm mx-auto mb-5">
           No employee records match your search query or have been registered in the system.
         </p>
         <button
           onClick={onAddClick}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -105,10 +102,9 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
             <th className="py-3.5 px-5">Role / Type</th>
             <th className="py-3.5 px-5">Home Store</th>
             <th className="py-3.5 px-5 text-center">Status</th>
-            <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#C8C4D7]/20 text-[13px] text-[#121C2C]">
+        <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
           {items.map((emp) => (
             <tr
               key={emp.employee_id}
@@ -117,12 +113,12 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
               {/* Name with Initials Avatar */}
               <td className="py-4 px-5">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[#DEE8FF] text-[#4132C7] font-bold text-[12px] flex items-center justify-center shrink-0 shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-[#DEE8FF] text-[#4132C7] font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
                     {getInitials(emp.full_name)}
                   </div>
                   <div>
                     <p className="font-semibold text-[#121C2C]">{emp.full_name}</p>
-                    <p className="text-[11px] font-mono text-[#777586]">
+                    <p className="text-[11px] tabular-nums text-[#777586]">
                       EMP-{String(emp.employee_id).padStart(3, '0')}
                     </p>
                   </div>
@@ -130,7 +126,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
               </td>
 
               {/* NIC */}
-              <td className="py-4 px-5 font-mono text-[12px] text-[#474554]">
+              <td className="py-4 px-5 tabular-nums text-xs text-[#474554]">
                 {emp.nic_number}
               </td>
 
@@ -152,7 +148,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                   {emp.employee_type_label}
                 </span>
                 {emp.license_number && (
-                  <p className="text-[11px] font-mono text-[#777586] mt-0.5">
+                  <p className="text-[11px] tabular-nums text-[#777586] mt-0.5">
                     Lic: {emp.license_number}
                   </p>
                 )}
@@ -160,7 +156,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
 
               {/* Home Store */}
               <td className="py-4 px-5 text-[#474554]">
-                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-[12px] font-medium text-[#121C2C]">
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-xs font-medium text-[#121C2C]">
                   {emp.home_store_name || 'Central HQ'}
                 </span>
               </td>
@@ -178,25 +174,6 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                 >
                   {emp.status}
                 </span>
-              </td>
-
-              {/* Actions */}
-              <td className="py-4 px-5 text-right">
-                <button
-                  onClick={() => onEditClick?.(emp)}
-                  className="p-1.5 rounded-lg text-[#777586] hover:text-[#4132C7] hover:bg-[#EBE9FE]/50 transition-colors"
-                  title="Edit employee"
-                  aria-label={`Edit ${emp.full_name}`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                </button>
               </td>
             </tr>
           ))}

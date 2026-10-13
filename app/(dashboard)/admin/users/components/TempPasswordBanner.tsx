@@ -71,12 +71,12 @@ export const TempPasswordBanner: React.FC<TempPasswordBannerProps> = ({
             </svg>
           </div>
           <div>
-            <p className="text-[14px] font-bold text-[#121C2C]">
+            <p className="text-sm font-bold text-[#121C2C]">
               Account created for <span className="text-[#4132C7]">{email}</span>
             </p>
-            <p className="text-[13px] text-[#474554] mt-0.5">
+            <p className="text-sm text-[#474554] mt-0.5">
               Temporary password:{' '}
-              <span className="font-mono font-bold text-[14px] text-[#121C2C] bg-white px-2 py-0.5 rounded-md border border-[#FFB800]/50 select-all">
+              <span className="font-mono font-bold text-sm text-[#121C2C] bg-white px-2 py-0.5 rounded-md border border-[#FFB800]/50 select-all">
                 {tempPassword}
               </span>{' '}
               — make sure to share this now, it won&apos;t be displayed again.
@@ -88,7 +88,7 @@ export const TempPasswordBanner: React.FC<TempPasswordBannerProps> = ({
         <div className="flex items-center gap-2.5 shrink-0 self-end md:self-center">
           <button
             onClick={handleCopy}
-            className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all flex items-center gap-1.5 shadow-xs ${
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-1.5 shadow-xs ${
               copied
                 ? 'bg-[#00B69B] text-white'
                 : 'bg-[#121C2C] hover:bg-[#251297] text-white'
@@ -118,7 +118,7 @@ export const TempPasswordBanner: React.FC<TempPasswordBannerProps> = ({
 
           <button
             onClick={onDismiss}
-            className="px-4 py-2 bg-white hover:bg-[#F5F5FA] text-[#474554] border border-[#C8C4D7]/60 rounded-full text-[13px] font-semibold transition-colors"
+            className="px-4 py-2 bg-white hover:bg-[#F5F5FA] text-[#474554] border border-[#C8C4D7]/60 rounded-full text-sm font-semibold transition-colors"
           >
             Dismiss
           </button>

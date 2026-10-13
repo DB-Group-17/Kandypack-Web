@@ -3,7 +3,7 @@
 > Status: Active
 > Authority: Supporting implementation tracker
 > Primary source: `Docs/03_architecture.md`
-> Last reviewed: 2026-10-07
+> Last reviewed: 2026-10-12
 
 Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
@@ -138,16 +138,24 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 
 ## 🔗 PHASE 3 — Integration (Days 13–14)
 
-- [ ] Member 5: `/dashboard` page built and wired (last, since it pulls from every other module)
+- [x] Member 5: `/dashboard` page built and wired (last, since it pulls from every other module) — `GET /api/dashboard/summary` (Redis-cached, store-scoped, 7/7 API tests passing) and `app/(dashboard)/dashboard/page.tsx` (four KPI cards, two lists, loading/error states, 60-second refresh). Not yet verified: live numbers against the full smoke test, which closes the Phase 3 gate item "Dashboard shows correct live numbers"
 - [x] Member 2: PDF export button on `/reports` wired to Member 5's direct PDF endpoint — direct binary stream download, client-side validation, 429 rate-limiting handling, and active generation spinners verified
-- [ ] Member 4: `/admin/audit-log` page wired
-- [ ] **Full cross-module smoke test** (everyone, together): place an order → confirm train booking → receive goods at destination store → schedule a truck → mark delivery complete → confirm it appears correctly in Reports and Dashboard
+- [x] Member 4: `/admin/audit-log` page wired
+- [ ] **Full cross-module smoke test** (everyone, together): place an order → confirm train booking → receive goods at destination store → schedule a truck → mark delivery complete → confirm it appears correctly in Reports and Dashboard Run it with `14_smoke-test-guide.md`, which gives the exact steps, expected results and the five-member split. Run order: Stage 0, orders, logistics, receive goods, fleet, reports, users and master data, audit and dashboard, production.
+  - [ ] **Stage 0 pre-flight** (P-01, P-02): everyone confirms they can sign in; Member 2 adds the two Colombo trips (50 units tomorrow, 500 units in 8 days) because every seeded trip has departed (G4)
+  - [ ] **Member 1**: order entry clerk (CLK-01 to CLK-09, including the add-customer popup that was never verified), authentication (AUTH-01 to AUTH-07) and the role access matrix
+  - [ ] **Member 2**: logistics manager (LOG-01 to LOG-13): train schedule, cancel an order, mark Trip A and Trip B departed then arrived (orders move to In Transit), read-only inventory, all 6 reports with CSV and PDF; records the Reports baseline before Member 3 completes the delivery
+  - [ ] **Member 3**: fleet supervisor (FLT-01 to FLT-13): create a schedule with order O2 attached, conflict and roster rules, complete O2's delivery, fleet reports
+  - [ ] **Member 4**: system administrator (ADM-01 to ADM-17): users, master data, then the audit log last so it sees the whole run
+  - [ ] **Member 5**: store manager (STO-01 to STO-08) receives O1 and O2 into Colombo; Dashboard for all five roles (DSH-01 to DSH-05, blocked until `/dashboard` is merged, G3); live-site checks (PRD-01 to PRD-08, the login lock-out test last)
+  - [ ] Every member posts a results log, defects are filed with the template in the guide (§12 to §13), and the exit criteria in §14 are met
 - [ ] Fix any integration issues found during the smoke test before moving on
+  - [x] Smoke-test gaps found while writing `14_smoke-test-guide.md` and fixed by Member 1 (2026-10-11): **G1**, orders can now be attached to a truck schedule (`order_ids` on `POST /api/truck-schedules`, "Orders to deliver" on `/truck-schedule/new`, one Scheduled delivery per order, atomic); **G2**, trips can be marked departed and arrived (`PATCH /api/train-trips/:id`, buttons on `/train-schedule`), and departure moves Pending orders to In Transit. Accepted gap: no audit trigger for `train_trips`. Open: **G3** (`/dashboard` not built) and **G4** (no upcoming trips: add some on `/train-schedule`)
 
 ---
 
 ### 🔒 PHASE 3 GATE — do not proceed to Phase 4 until ALL of these are true:
-- [ ] Smoke test passes end-to-end with no manual DB edits required
+- [ ] Smoke test passes end-to-end with no manual DB edits required (exit criteria: `14_smoke-test-guide.md` §14)
 - [ ] Dashboard shows correct live numbers
 - [ ] All 14 pages are reachable and functional for at least one role each
 
@@ -161,7 +169,7 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 - [ ] Migration-check CI job confirmed working
 
 ### All members (stretch goal, time-permitting only)
-- [ ] Member 1: one test for `place_order` edge case (e.g. exact-capacity boundary)
+- [x] Member 1: one test for `place_order` edge case (e.g. exact-capacity boundary) — `tests/integration/place-order-capacity.test.ts` (exact fit, one unit over, full trip skipped). Uses synthetic far-future trips inside rolled-back transactions, so it does not depend on seed dates. Done early, before the Phase 3 gate closed
 - [ ] Member 2: one test for a reports query's numeric correctness
 - [ ] Member 3: one test for `schedule_truck_delivery` conflict rejection
 - [ ] Member 4: one test for `receive_goods_at_store` quantity math
@@ -169,7 +177,25 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 ### Everyone
 - [ ] Run through the Schema v4 §10 manual Deployment Checklist together
 - [ ] Final review of `07_content-copy.md` against actual rendered pages — fix any copy drift
-- [ ] Confirm optional `docker-compose.yml` (whole-project self-host) still starts cleanly, if built
+- [x] ~~Confirm optional `docker-compose.yml` (whole-project self-host) still starts cleanly~~ — superseded: the repository now has `docker-compose.prod.yml` for the production server (see the deployment section below); there is no separate local Docker setup
+
+---
+
+## 🚀 Production deployment (outside the five-member phases)
+
+Owner: Member 1. Architecture and decisions: `03_architecture.md` §12 and §19; runbook: `10_local-setup.md` §12.
+
+- [x] `Dockerfile`, `.dockerignore`, `output: "standalone"` in `next.config.ts` (the first image build failed because `.dockerignore` excluded `context/`, which holds `AuthContext.tsx`; fixed)
+- [x] `docker-compose.prod.yml` and `Caddyfile` (Caddy replaces nginx; the older app on the same server is kept by IP over HTTP)
+- [x] `.github/workflows/deploy.yml`: build → GHCR → SSH deploy with automatic rollback, running after CI passes on `main`
+- [x] EC2 prepared (Elastic IP, security group, swap, Docker, `deploy` user and key), Cloudflare DNS (DNS only), GitHub Environment `production` secrets
+- [x] First release deployed; site live at `https://dinethnimsara.dpdns.org`
+- [x] `development` → `main` histories re-linked with one real merge commit (a squash merge had split them)
+- [ ] Protect `main` with a required pull-request review and passing CI checks
+- [ ] Add upcoming train trips (seeded trips have all departed, so orders cannot be placed yet)
+- [ ] Raise the Caddy HSTS `max-age` (currently one day) once HTTPS has been stable
+- [ ] Decide whether production keeps sharing the development database, Redis and `JWT_SECRET` (documented exception, `03_architecture.md` §19) or gets its own before real users
+- [ ] Optional: turn on the Cloudflare proxy (SSL mode *Full (strict)*); make the older PM2 app survive reboots (`pm2 startup` and `pm2 save`)
 
 ---
 

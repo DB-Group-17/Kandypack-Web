@@ -15,6 +15,7 @@ import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { UserAccountItem } from '../types';
 import { getRoleDisplayLabel, getRoleBadgeStyles } from '../mockData';
+import { formatDate } from '@/lib/format';
 
 interface UsersTableProps {
   /** Array of user items to display on the current page */
@@ -45,25 +46,6 @@ function getInitials(name: string): string {
     return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
-}
-
-/**
- * Helper to format an ISO date string into a user-friendly format (e.g. "Feb 01, 2026").
- *
- * @param isoString - Date string in ISO format
- * @returns Formatted date string
- */
-function formatDate(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return isoString;
-  }
 }
 
 /**
@@ -167,20 +149,20 @@ export const UsersTable: React.FC<UsersTableProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-[18px] font-bold text-[#121C2C] mb-1">No user accounts found</h3>
-        <p className="text-[14px] text-[#474554] max-w-md mx-auto mb-6">
+        <h3 className="text-lg font-bold text-[#121C2C] mb-1">No user accounts found</h3>
+        <p className="text-sm text-[#474554] max-w-md mx-auto mb-6">
           Try adjusting your search query or filters, or create a new user account to get started.
         </p>
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={onResetFilters}
-            className="px-4 py-2 bg-[#F5F5FA] hover:bg-[#EBE9FE] text-[#474554] hover:text-[#4132C7] rounded-full text-[13px] font-semibold transition-colors"
+            className="px-4 py-2 bg-[#F5F5FA] hover:bg-[#EBE9FE] text-[#474554] hover:text-[#4132C7] rounded-full text-sm font-semibold transition-colors"
           >
             Clear Filters
           </button>
           <button
             onClick={onOpenAddModal}
-            className="px-5 py-2 bg-[#4132C7] hover:bg-[#5A4FE0] text-white rounded-full text-[13px] font-semibold transition-all shadow-sm flex items-center gap-1.5"
+            className="px-5 py-2 bg-[#4132C7] hover:bg-[#5A4FE0] text-white rounded-full text-sm font-semibold transition-all shadow-sm flex items-center gap-1.5"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -207,7 +189,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               <th className="py-3.5 px-6 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#C8C4D7]/30 text-[14px]">
+          <tbody className="divide-y divide-[#C8C4D7]/30 text-sm">
             {users.map((user) => {
               const roleBadge = getRoleBadgeStyles(user.app_role);
               const initials = getInitials(user.display_name);
@@ -224,7 +206,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-3">
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ring-2 ring-white shadow-xs ${
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ring-2 ring-white shadow-xs ${
                           user.is_active
                             ? 'bg-[#EDE9FE] text-[#4132C7]'
                             : 'bg-[#F1F1F5] text-[#777586]'
@@ -234,7 +216,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                       </div>
                       <div>
                         <p
-                          className={`font-semibold text-[14px] leading-tight flex items-center gap-1.5 ${
+                          className={`font-semibold text-sm leading-tight flex items-center gap-1.5 ${
                             user.is_active
                               ? 'text-[#121C2C] group-hover:text-[#4132C7]'
                               : 'text-[#777586] line-through decoration-[#777586]/60'
@@ -242,12 +224,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                         >
                           <span>{user.display_name}</span>
                           {isSelf && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EDE9FE] text-[#5A4FE0] uppercase tracking-wider">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-[#EDE9FE] text-[#5A4FE0] uppercase tracking-wider">
                               You
                             </span>
                           )}
                         </p>
-                        <p className="text-[12px] text-[#474554] mt-0.5">
+                        <p className="text-xs text-[#474554] mt-0.5">
                           {user.department_or_title}
                           {user.home_store_name && (
                             <span className="text-[#777586]"> • {user.home_store_name}</span>
@@ -259,7 +241,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
                   {/* Email */}
                   <td className="py-4 px-6">
-                    <span className="text-[13px] font-mono text-[#121C2C]">
+                    <span className="text-sm tabular-nums text-[#121C2C]">
                       {user.email}
                     </span>
                   </td>
@@ -267,7 +249,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   {/* Role Pill Badge */}
                   <td className="py-4 px-6">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
+                      className={`inline-flex items-center whitespace-nowrap px-3 py-1 rounded-full text-xs font-semibold border ${roleBadge.bg} ${roleBadge.text} ${roleBadge.border}`}
                     >
                       {getRoleDisplayLabel(user.app_role)}
                     </span>
@@ -276,12 +258,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   {/* Status Indicator */}
                   <td className="py-4 px-6">
                     {user.is_active ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#E6F6F4] text-[#00B69B]">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#E6F6F4] text-[#00B69B]">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#00B69B]" />
                         Active
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-semibold bg-[#FFF0F0] text-[#F93C65]">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#FFF0F0] text-[#F93C65]">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#F93C65]" />
                         Deactivated
                       </span>
@@ -289,7 +271,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   </td>
 
                   {/* Created At Date */}
-                  <td className="py-4 px-6 text-[13px] text-[#474554]">
+                  <td className="py-4 px-6 text-sm text-[#474554]">
                     {formatDate(user.created_at)}
                   </td>
 
@@ -299,7 +281,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                       {/* Edit Details */}
                       <button
                         onClick={() => onEditUser(user)}
-                        className="px-3 py-1.5 text-[12px] font-semibold text-[#474554] hover:text-[#4132C7] hover:bg-[#EDE9FE] rounded-lg transition-colors flex items-center gap-1"
+                        className="px-3 py-1.5 text-xs font-semibold text-[#474554] hover:text-[#4132C7] hover:bg-[#EDE9FE] rounded-lg transition-colors flex items-center gap-1"
                         aria-label={`Edit ${user.display_name}`}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,7 +299,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                       {isSelf && user.is_active ? (
                         <button
                           disabled
-                          className="px-3 py-1.5 text-[12px] font-semibold text-[#777586] bg-[#F1F1F5] rounded-lg cursor-not-allowed opacity-60"
+                          className="px-3 py-1.5 text-xs font-semibold text-[#777586] bg-[#F1F1F5] rounded-lg cursor-not-allowed opacity-60"
                           title="You cannot deactivate your own administrative account"
                           aria-label="Deactivate disabled for own account"
                         >
@@ -326,7 +308,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                       ) : (
                         <button
                           onClick={() => onToggleStatus(user)}
-                          className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors ${
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
                             user.is_active
                               ? 'text-[#F93C65] hover:bg-[#FFF0F0]'
                               : 'text-[#00B69B] hover:bg-[#E6F6F4]'
@@ -365,7 +347,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                       user.is_active
                         ? 'bg-[#EDE9FE] text-[#4132C7]'
                         : 'bg-[#F1F1F5] text-[#777586]'
@@ -375,18 +357,18 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                   </div>
                   <div>
                     <p
-                      className={`font-semibold text-[14px] flex items-center gap-1.5 ${
+                      className={`font-semibold text-sm flex items-center gap-1.5 ${
                         user.is_active ? 'text-[#121C2C]' : 'text-[#777586] line-through'
                       }`}
                     >
                       <span>{user.display_name}</span>
                       {isSelf && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#EDE9FE] text-[#5A4FE0] uppercase tracking-wider">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold bg-[#EDE9FE] text-[#5A4FE0] uppercase tracking-wider">
                           You
                         </span>
                       )}
                     </p>
-                    <p className="text-[12px] text-[#474554]">{user.department_or_title}</p>
+                    <p className="text-xs text-[#474554]">{user.department_or_title}</p>
                   </div>
                 </div>
 
@@ -405,10 +387,10 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               </div>
 
               {/* Email and Meta */}
-              <div className="text-[12px] space-y-1 pt-1">
+              <div className="text-xs space-y-1 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[#474554]">Email:</span>
-                  <span className="font-mono text-[#121C2C]">{user.email}</span>
+                  <span className="tabular-nums text-[#121C2C]">{user.email}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#474554]">Role:</span>
@@ -434,14 +416,14 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#C8C4D7]/20">
                 <button
                   onClick={() => onEditUser(user)}
-                  className="px-3 py-1.5 text-[12px] font-semibold text-[#474554] bg-[#F5F5FA] rounded-lg"
+                  className="px-3 py-1.5 text-xs font-semibold text-[#474554] bg-[#F5F5FA] rounded-lg"
                 >
                   Edit Details
                 </button>
                 {isSelf && user.is_active ? (
                   <button
                     disabled
-                    className="px-3 py-1.5 text-[12px] font-semibold text-[#777586] bg-[#F1F1F5] rounded-lg cursor-not-allowed opacity-60"
+                    className="px-3 py-1.5 text-xs font-semibold text-[#777586] bg-[#F1F1F5] rounded-lg cursor-not-allowed opacity-60"
                     title="You cannot deactivate your own administrative account"
                   >
                     Deactivate
@@ -449,7 +431,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                 ) : (
                   <button
                     onClick={() => onToggleStatus(user)}
-                    className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg ${
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${
                       user.is_active
                         ? 'text-[#F93C65] bg-[#FFF0F0]'
                         : 'text-[#00B69B] bg-[#E6F6F4]'

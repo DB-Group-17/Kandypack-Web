@@ -9,6 +9,11 @@
  * - Provides live capacity utilization bars (booked cargo space vs. remaining cargo capacity).
  * - Enables authorized staff (Logistics Managers and System Admins) to add new train trips.
  * - Submits new trips via `POST /api/train-trips` with chronological and capacity constraint validation.
+ * - Moves a trip along Scheduled → Departed → Arrived with `PATCH /api/train-trips/:id` (smoke-test
+ *   gap G2). Each trip shows one "Mark departed" / "Mark arrived" action, which opens a
+ *   confirmation dialog because the change cannot be undone. Departing a trip also moves its
+ *   Pending orders to In Transit on the server; the success toast reports how many moved. Both
+ *   roles that can open this page (logistics manager, administrator) may use the action.
  * - Supports filtering by destination city and status, with dynamic view toggle (Card/Grid vs. Table view).
  * - Implements loading skeletons, error states with retry, empty state notifications, and 4-second auto-dismiss toasts.
  * 
@@ -18,6 +23,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useId } from "react";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * TrainTrip represents the data structure of a scheduled railway cargo transport.
@@ -73,6 +79,17 @@ export default function TrainSchedulePage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // --- Trip Status Change (Mark departed / Mark arrived) States ---
+  /** The trip and target status awaiting confirmation; null when the dialog is closed. */
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    trip: TrainTrip;
+    target: "Departed" | "Arrived";
+  } | null>(null);
+  /** True while the PATCH request is in flight (disables the dialog buttons). */
+  const [isChangingStatus, setIsChangingStatus] = useState<boolean>(false);
+  /** Error message from a rejected status change, shown inside the dialog. */
+  const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
 
   // --- Accessible Form Element IDs ---
   const citySelectId = useId();
@@ -206,22 +223,96 @@ export default function TrainSchedulePage() {
   }, [selectedCity, selectedStatus]);
 
   /**
-   * Helper function to format an ISO datetime string into human-readable date & time.
+   * Returns the single status change that is allowed for a trip, or null when none is left.
+   * Mirrors the server's state machine: Scheduled → Departed → Arrived.
    *
-   * @param {string} isoString - ISO formatted datetime string.
-   * @returns {string} Formatted date and time (e.g. "Sep 02, 2026 at 08:00 AM").
+   * @param {TrainTrip} trip - The trip being rendered.
+   * @returns {"Departed" | "Arrived" | null} The next status, or null for Arrived/Cancelled trips.
    */
-  const formatDateTime = (isoString: string): string => {
-    if (!isoString) return "";
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return isoString;
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  const getNextTripStatus = (trip: TrainTrip): "Departed" | "Arrived" | null => {
+    if (trip.status === "Scheduled") return "Departed";
+    if (trip.status === "Departed") return "Arrived";
+    return null;
+  };
+
+  /**
+   * Renders the "Mark departed" / "Mark arrived" button for a trip, or nothing when the trip has
+   * no further status. Clicking it opens the confirmation dialog; nothing is sent yet.
+   *
+   * @param {TrainTrip} trip - The trip to render the action for.
+   * @returns {React.ReactNode} A tonal pill button, or null.
+   */
+  const renderStatusAction = (trip: TrainTrip): React.ReactNode => {
+    const next = getNextTripStatus(trip);
+    if (!next) return null;
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setStatusChangeError(null);
+          setPendingStatusChange({ trip, target: next });
+        }}
+        className="h-9 px-4 rounded-full bg-[#F0F3FF] text-[#4132C7] text-xs font-semibold hover:bg-[#DEE8FF] transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#4132C7] cursor-pointer"
+      >
+        {next === "Departed" ? "Mark departed" : "Mark arrived"}
+      </button>
+    );
+  };
+
+  /**
+   * Sends the confirmed status change via PATCH /api/train-trips/:id.
+   * On success: closes the dialog, refreshes the trips and shows a toast (for a departure it
+   * says how many Pending orders were moved to In Transit). On failure the server's message is
+   * shown inside the dialog and the trip is left unchanged.
+   */
+  const handleConfirmStatusChange = async (): Promise<void> => {
+    if (!pendingStatusChange) return;
+    const { trip, target } = pendingStatusChange;
+
+    setIsChangingStatus(true);
+    setStatusChangeError(null);
+
+    try {
+      const response = await fetch(`/api/train-trips/${trip.trip_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: target }),
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result.error?.message || "Couldn't change the trip status. Please try again."
+        );
+      }
+
+      setPendingStatusChange(null);
+      await fetchTrips();
+
+      // Toast wording: departures report the orders that moved to In Transit.
+      const moved = Number(result.orders_advanced ?? 0);
+      if (target === "Departed") {
+        setToastMessage(
+          `Trip #${trip.trip_id} marked as departed. ${moved} ${
+            moved === 1 ? "order" : "orders"
+          } moved to In Transit.`
+        );
+      } else {
+        setToastMessage(`Trip #${trip.trip_id} marked as arrived.`);
+      }
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 4000);
+    } catch (err: unknown) {
+      console.error("Error changing train trip status:", err);
+      setStatusChangeError(
+        err instanceof Error
+          ? err.message
+          : "Couldn't change the trip status. Please try again."
+      );
+    } finally {
+      setIsChangingStatus(false);
+    }
   };
 
   /**
@@ -398,7 +489,7 @@ export default function TrainSchedulePage() {
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          <span>+ Add Trip</span>
+          <span>Add Trip</span>
         </button>
       </div>
 
@@ -573,20 +664,12 @@ export default function TrainSchedulePage() {
                   )
                 : 0;
             const isFull = trip.remaining_capacity <= 0;
-            const isOverflowTest = trip.total_capacity === 50;
 
             return (
               <div
                 key={trip.trip_id}
                 className="bg-white rounded-2xl border border-[#C8C4D7]/50 p-5 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between relative overflow-hidden"
               >
-                {/* Visual badge for 50-unit capacity test trips per seed spec §8 */}
-                {isOverflowTest && (
-                  <div className="absolute top-0 right-0 bg-[#FFB800]/15 text-[#835400] text-[10px] font-bold px-3 py-0.5 rounded-bl-lg border-l border-b border-[#FFB800]/30">
-                    Test Capacity (50u)
-                  </div>
-                )}
-
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
@@ -659,6 +742,11 @@ export default function TrainSchedulePage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Status action: one step forward, with a confirmation dialog (G2) */}
+                {getNextTripStatus(trip) && (
+                  <div className="mt-4 flex justify-end">{renderStatusAction(trip)}</div>
+                )}
               </div>
             );
           })}
@@ -677,6 +765,7 @@ export default function TrainSchedulePage() {
                   <th className="px-5 py-3.5">Capacity Usage</th>
                   <th className="px-5 py-3.5">Remaining</th>
                   <th className="px-5 py-3.5 text-right">Status</th>
+                  <th className="px-5 py-3.5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F0F3FF] text-xs">
@@ -690,7 +779,7 @@ export default function TrainSchedulePage() {
                       : 0;
                   return (
                     <tr key={trip.trip_id} className="hover:bg-[#F9F9FF] transition-colors">
-                      <td className="px-5 py-4 font-mono font-medium text-[#4132C7]">
+                      <td className="px-5 py-4 tabular-nums font-medium text-[#4132C7]">
                         #{trip.trip_id}
                       </td>
                       <td className="px-5 py-4 font-semibold text-[#121C2C]">
@@ -728,6 +817,7 @@ export default function TrainSchedulePage() {
                       <td className="px-5 py-4 text-right">
                         {getStatusBadge(trip.status)}
                       </td>
+                      <td className="px-5 py-4 text-right">{renderStatusAction(trip)}</td>
                     </tr>
                   );
                 })}
@@ -755,7 +845,7 @@ export default function TrainSchedulePage() {
           <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-xl border border-[#C8C4D7]/50 p-6 md:p-8 z-10 animate-scale-up">
             <div className="flex items-center justify-between pb-4 border-b border-[#F0F3FF]">
               <div>
-                <h2 id="modal-title" className="text-xl font-bold text-[#121C2C]">
+                <h2 id="modal-title" className="text-lg font-bold text-[#121C2C]">
                   Add Trip
                 </h2>
                 <p className="text-xs text-[#474554] mt-0.5">
@@ -884,6 +974,67 @@ export default function TrainSchedulePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Status Change Dialog (Mark departed / Mark arrived). The change cannot be undone,
+          so it needs an explicit confirmation (Docs/11_ui-rules.md §9). */}
+      {pendingStatusChange && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="status-change-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs"
+            onClick={() => !isChangingStatus && setPendingStatusChange(null)}
+          />
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-xl border border-[#C8C4D7]/50 p-6 z-10">
+            <h2 id="status-change-title" className="text-lg font-bold text-[#121C2C]">
+              {pendingStatusChange.target === "Departed"
+                ? `Mark trip #${pendingStatusChange.trip.trip_id} as departed?`
+                : `Mark trip #${pendingStatusChange.trip.trip_id} as arrived?`}
+            </h2>
+            <p className="text-sm text-[#474554] mt-2">
+              {pendingStatusChange.target === "Departed"
+                ? `Kandy → ${pendingStatusChange.trip.destination_city}. Orders booked on this trip that are still Pending will move to In Transit. This cannot be undone.`
+                : `Kandy → ${pendingStatusChange.trip.destination_city}. The goods can then be received at the store. This cannot be undone.`}
+            </p>
+
+            {statusChangeError && (
+              <div
+                role="alert"
+                className="mt-4 p-3 rounded-xl bg-[#FFF0F0] border border-[#F93C65]/30 text-[#F93C65] text-xs font-medium"
+              >
+                {statusChangeError}
+              </div>
+            )}
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                disabled={isChangingStatus}
+                onClick={() => setPendingStatusChange(null)}
+                className="px-5 py-2.5 rounded-full text-xs font-semibold text-[#474554] hover:bg-[#F0F3FF] transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isChangingStatus}
+                onClick={() => {
+                  void handleConfirmStatusChange();
+                }}
+                className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white text-xs font-semibold hover:bg-[#3427A8] transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
+              >
+                {isChangingStatus && (
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
+                <span>{isChangingStatus ? "Saving…" : "Confirm"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

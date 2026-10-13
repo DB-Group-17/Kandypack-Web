@@ -109,6 +109,22 @@ export interface CreateTruckSchedulePayload {
 }
 
 /**
+ * One order that can be attached to a new truck schedule ("Orders to deliver" list).
+ * Aligns with GET /api/truck-schedules/eligible-orders response items. An order is eligible when
+ * it is At Store, on the schedule's route, and has no active delivery.
+ */
+export interface EligibleOrderItem {
+  order_id: number;
+  customer_name: string;
+  delivery_area: string;
+  delivery_address: string;
+  /** Customer's requested delivery date, `YYYY-MM-DD`. */
+  expected_delivery_date: string;
+  /** Total cargo space the order needs, in space units. */
+  total_space_required: number;
+}
+
+/**
  * Represents an individual customer delivery record.
  * Aligns with GET /api/deliveries response DTO.
  */

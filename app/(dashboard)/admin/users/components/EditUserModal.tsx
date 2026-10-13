@@ -109,8 +109,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#C8C4D7]/30">
           <div>
-            <h3 className="text-[18px] font-bold text-[#121C2C]">Edit User Account</h3>
-            <p className="text-[12px] text-[#474554] mt-0.5">
+            <h3 className="text-lg font-bold text-[#121C2C]">Edit User Account</h3>
+            <p className="text-xs text-[#474554] mt-0.5">
               Update application role and account status
             </p>
           </div>
@@ -128,7 +128,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
         {/* Backend Validation / API Error Banner */}
         {errorMessage && (
-          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-[12px] text-[#F93C65] flex items-start gap-2">
+          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-xs text-[#F93C65] flex items-start gap-2">
             <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -139,20 +139,20 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           {/* Readonly Account Details */}
           <div className="p-3.5 bg-[#F5F5FA] rounded-xl border border-[#C8C4D7]/30 space-y-1.5">
-            <div className="flex items-center justify-between text-[13px]">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-[#474554]">Display Name:</span>
               <span className="font-semibold text-[#121C2C]">{user.display_name}</span>
             </div>
-            <div className="flex items-center justify-between text-[12px]">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-[#474554]">Email:</span>
               <span className="font-medium text-[#121C2C]">{user.email}</span>
             </div>
-            <div className="flex items-center justify-between text-[12px]">
+            <div className="flex items-center justify-between text-xs">
               <span className="text-[#474554]">Current Department:</span>
               <span className="text-[#121C2C]">{user.department_or_title}</span>
             </div>
             {user.home_store_name && (
-              <div className="flex items-center justify-between text-[12px]">
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-[#474554]">Assigned Store:</span>
                 <span className="text-[#121C2C]">{user.home_store_name}</span>
               </div>
@@ -164,14 +164,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
           {/* Application Role Select */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#121C2C] mb-1">
+            <label className="block text-sm font-semibold text-[#121C2C] mb-1">
               Application Role
             </label>
             <select
               value={appRole}
               onChange={(e) => setAppRole(e.target.value as AppRole)}
               disabled={isSubmitting || (isSelf && user.app_role === 'system_administrator')}
-              className="w-full h-10 px-3.5 text-[14px] bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-10 px-3.5 text-sm bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="system_administrator">System Administrator</option>
               <option value="logistics_manager">Logistics Manager</option>
@@ -188,7 +188,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
 
           {/* Status Toggle */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#121C2C] mb-1">
+            <label className="block text-sm font-semibold text-[#121C2C] mb-1">
               Account Status
             </label>
             <div className="flex items-center gap-3">
@@ -208,7 +208,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                   }`}
                 />
               </button>
-              <span className="text-[13px] font-medium text-[#121C2C]">
+              <span className="text-sm font-medium text-[#121C2C]">
                 {isActive ? 'Active (Can sign in)' : 'Deactivated (Login blocked)'}
               </span>
             </div>
@@ -225,14 +225,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-[13px] font-semibold text-[#474554] hover:bg-[#F5F5FA] rounded-full transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-sm font-semibold text-[#474554] hover:bg-[#F5F5FA] rounded-full transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 text-[13px] font-bold bg-[#4132C7] hover:bg-[#5A4FE0] text-white rounded-full transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 flex items-center gap-2"
+              className="px-5 py-2 text-sm font-bold bg-[#4132C7] hover:bg-[#5A4FE0] text-white rounded-full transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 flex items-center gap-2"
             >
               {isSubmitting && (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

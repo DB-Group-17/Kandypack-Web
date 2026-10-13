@@ -38,7 +38,7 @@ export const AuditLogPagination: React.FC<AuditLogPaginationProps> = ({
 
   return (
     <div className="bg-[#F0F3FF] px-6 py-4 rounded-b-2xl border-t border-[#DEE8FF] flex flex-col sm:flex-row items-center justify-between gap-4 mt-[-1px]">
-      <p className="text-[14px] text-[#474554]">
+      <p className="text-sm text-[#474554]">
         Showing <span className="font-medium text-[#121C2C]">{startRecord}</span>–
         <span className="font-medium text-[#121C2C]">{endRecord}</span> of{' '}
         <span className="font-medium text-[#121C2C]">{totalCount.toLocaleString()}</span> records
@@ -49,7 +49,7 @@ export const AuditLogPagination: React.FC<AuditLogPaginationProps> = ({
           type="button"
           disabled={!canGoPrevious}
           onClick={() => onPageChange(currentPage - 1)}
-          className="px-4 py-2 rounded-full text-[13px] font-semibold text-[#474554] hover:text-[#121C2C] hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#C8C4D7]"
+          className="px-4 py-2 rounded-full text-sm font-semibold text-[#474554] hover:text-[#121C2C] hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#C8C4D7]"
         >
           Previous
         </button>
@@ -57,7 +57,7 @@ export const AuditLogPagination: React.FC<AuditLogPaginationProps> = ({
           type="button"
           disabled={!canGoNext}
           onClick={() => onPageChange(currentPage + 1)}
-          className="px-4 py-2 rounded-full text-[13px] font-semibold text-[#474554] hover:text-[#121C2C] hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#C8C4D7]"
+          className="px-4 py-2 rounded-full text-sm font-semibold text-[#474554] hover:text-[#121C2C] hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer border border-transparent hover:border-[#C8C4D7]"
         >
           Next
         </button>

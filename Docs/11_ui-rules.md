@@ -26,6 +26,7 @@ Visual tokens live in the root [`DESIGN.md`](../DESIGN.md). Component decisions 
 - **Padding:** 16px horizontal minimum for compact buttons; 24px for prominent actions.
 - **Icon buttons:** 40px square, circular when utility-only; provide an accessible label or tooltip.
 - **Interaction:** 150–200ms transition; optional `translateY(-1px)` or shadow lift on hover.
+- **Cursor:** `app/globals.css` gives every enabled button, link, summary, label, select, checkbox, radio and date input a pointer cursor, and disabled controls a not-allowed cursor. Do not add `cursor-pointer` per button. A non-button element that handles clicks (for example a table row) still needs its own `cursor-pointer`, and should have a keyboard-accessible control inside it.
 
 ## 3. Cards and Surfaces
 
@@ -46,6 +47,7 @@ Visual tokens live in the root [`DESIGN.md`](../DESIGN.md). Component decisions 
 - Search fields may use pill radius when they are global or toolbar-level search controls.
 - Selects, date fields, text fields, and filters share the same border/focus vocabulary.
 - Group related fields in a responsive 2-column grid that collapses to one column on mobile.
+- **Dropdowns:** keep native `<select>` elements. `app/globals.css` themes the open option list with `appearance: base-select` (white panel, 12px radius, violet hover and selected state with a tick). Chrome and Edge 135+ show the themed list; other browsers fall back to their native list, with the same closed box. Do not build custom dropdown components or restyle the open list per page.
 
 ## 5. Status Badges and Icon Containers
 
@@ -107,3 +109,31 @@ Visual tokens live in the root [`DESIGN.md`](../DESIGN.md). Component decisions 
 1. `train_schedule` uses the main Kandypack violet theme.
 2. `reports` and `audit_log` may use the deeper violet accent variant.
 3. Responsive dense tables use card-layout transformations on narrow screens.
+
+## 12. Typography scale
+
+Every page uses Plus Jakarta Sans (loaded in `app/layout.tsx`, mapped to `font-sans` in `app/globals.css`) and the named Tailwind sizes below, taken from `app/(dashboard)/orders/new/page.tsx`. Do not use arbitrary pixel sizes such as `text-[13px]`, except the 11px caption size.
+
+| Role | Classes |
+|---|---|
+| Page title | `text-2xl md:text-3xl font-bold tracking-tight` |
+| Subtitle, body, inputs, table cells | `text-sm` |
+| Card or section title | `text-base font-semibold` |
+| Modal title | `text-lg font-bold` |
+| Labels, helper text, badges | `text-xs` |
+| Table header, captions | `text-[11px] font-semibold` |
+
+Table cells, IDs, SKUs, plates, emails and report numbers use Plus Jakarta Sans. Use `tabular-nums` on number columns so digits line up. `font-mono` is reserved for code-like content: the audit log JSON diff and one-time temporary passwords.
+
+## 13. Date and time format
+
+Every date comes from `lib/format.ts`; pages must not write their own formatter.
+
+| Use | Helper | Example |
+|---|---|---|
+| Calendar date | `formatDate` | `Oct 12, 2026` |
+| Date and time | `formatDateTime` | `Oct 12, 2026, 01:30 PM` |
+| Time only | `formatTime` | `01:30 PM` |
+
+Times are shown in the viewer's own timezone on a 12-hour clock. The database stores UTC; MySQL-style `YYYY-MM-DD HH:MM:SS` strings are read as UTC, and date-only values are never shifted. Inside server components use `components/LocalDateTime.tsx`, which switches to the viewer's timezone after hydration. Empty values show an em dash.
+
