@@ -3,7 +3,7 @@
 > Status: Active
 > Authority: Supporting implementation tracker
 > Primary source: `Docs/03_architecture.md`
-> Last reviewed: 2026-10-11
+> Last reviewed: 2026-10-12
 
 Companion to `08_workload-division.md`. Use this as a literal checklist (paste into GitHub Projects / Trello / Notion as a Kanban board if preferred — the structure below maps 1:1 to columns). **The Phase Gates are not optional** — nobody starts the next phase's tasks until the gate criteria are checked off.
 
@@ -138,7 +138,7 @@ Items that came out of the Phase 2 reviews and belong to Member 1's files (`db/m
 
 ## 🔗 PHASE 3 — Integration (Days 13–14)
 
-- [ ] Member 5: `/dashboard` page built and wired (last, since it pulls from every other module)
+- [x] Member 5: `/dashboard` page built and wired (last, since it pulls from every other module) — `GET /api/dashboard/summary` (Redis-cached, store-scoped, 7/7 API tests passing) and `app/(dashboard)/dashboard/page.tsx` (four KPI cards, two lists, loading/error states, 60-second refresh). Not yet verified: live numbers against the full smoke test, which closes the Phase 3 gate item "Dashboard shows correct live numbers"
 - [x] Member 2: PDF export button on `/reports` wired to Member 5's direct PDF endpoint — direct binary stream download, client-side validation, 429 rate-limiting handling, and active generation spinners verified
 - [x] Member 4: `/admin/audit-log` page wired
 - [ ] **Full cross-module smoke test** (everyone, together): place an order → confirm train booking → receive goods at destination store → schedule a truck → mark delivery complete → confirm it appears correctly in Reports and Dashboard Run it with `14_smoke-test-guide.md`, which gives the exact steps, expected results and the five-member split. Run order: Stage 0, orders, logistics, receive goods, fleet, reports, users and master data, audit and dashboard, production.
