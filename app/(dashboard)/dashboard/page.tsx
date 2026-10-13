@@ -44,7 +44,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AlertCircle, ClipboardList, Loader2, MapPin, Package, TrainFront, Truck, TriangleAlert } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { canAccessRoute } from '@/lib/rbac';
 import type { DashboardSummary } from '@/app/api/dashboard/summary/route';
+import { formatTime } from '@/lib/format';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -77,20 +79,19 @@ interface KpiCardConfig {
 // ─── Components ─────────────────────────────────────────────────────────────
 
 /**
- * Renders one KPI card as a link to its module.
+ * Renders one KPI card. When the signed-in role can open the card's module it is a link with a
+ * "View all →" hint; otherwise it is a plain, non-interactive box showing the same numbers.
  *
- * @param props.card - Card definition with the derived value and copy
- * @returns A focusable card with the number, a status line and the "View all →" link text
+ * @param props.card    - Card definition with the derived value and copy
+ * @param props.canOpen - Whether the current role may open `card.href` (from `canAccessRoute`)
+ * @returns A focusable link card, or a static card with no link when the role has no access
  */
-function KpiCard({ card }: { card: KpiCardConfig }): React.JSX.Element {
+function KpiCard({ card, canOpen }: { card: KpiCardConfig; canOpen: boolean }): React.JSX.Element {
   const isEmpty = card.value === 0;
+  const baseClass = 'flex flex-col rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)]';
 
-  return (
-    <Link
-      id={`dashboard-card-${card.id}`}
-      href={card.href}
-      className="group flex flex-col rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] transition-all duration-150 hover:-translate-y-px hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4132C7]"
-    >
+  const content = (
+    <>
       <div className="mb-4 flex items-center gap-3">
         <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${card.iconClass}`} aria-hidden="true">
           {card.icon}
@@ -99,21 +100,30 @@ function KpiCard({ card }: { card: KpiCardConfig }): React.JSX.Element {
       </div>
       <p className="text-[32px] font-semibold leading-10 text-[#121C2C]">{card.value}</p>
       <p className="mt-2 text-xs font-medium text-[#474554]">{isEmpty ? card.emptyLabel : card.label}</p>
-      <span className="mt-4 text-xs font-semibold text-[#4132C7] group-hover:underline">View all →</span>
+      {canOpen && (
+        <span className="mt-4 text-xs font-semibold text-[#4132C7] group-hover:underline">View all →</span>
+      )}
+    </>
+  );
+
+  // No access: render a static box so there is no link, hover lift or pointer cursor
+  if (!canOpen) {
+    return (
+      <div id={`dashboard-card-${card.id}`} className={baseClass}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      id={`dashboard-card-${card.id}`}
+      href={card.href}
+      className={`group ${baseClass} transition-all duration-150 hover:-translate-y-px hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#4132C7]`}
+    >
+      {content}
     </Link>
   );
-}
-
-/**
- * Formats an ISO departure timestamp as a short local time, e.g. "10:30 AM".
- *
- * @param iso - ISO 8601 timestamp from the API
- * @returns Localised time, or the raw text when it cannot be parsed
- */
-function formatDepartureTime(iso: string): string {
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return iso;
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -186,6 +196,17 @@ export default function DashboardPage(): React.JSX.Element {
     setError(null);
     requestRefresh();
   };
+
+  /**
+   * Tells whether the signed-in role may open a module page, so "View all →" is only offered
+   * where the destination is reachable. Uses the same rules as the sidebar and the Proxy
+   * (`canAccessRoute`); a query string such as `?status=Pending` is ignored for the check.
+   *
+   * @param href - Destination path, optionally with a query string
+   * @returns True when a role is known and may open the page
+   */
+  const canOpen = (href: string): boolean =>
+    user?.role ? canAccessRoute(user.role, href.split('?')[0]) : false;
 
   // Loading until the first response; error only when there is no earlier data to show
   const showLoading = !summary && !error;
@@ -284,7 +305,7 @@ export default function DashboardPage(): React.JSX.Element {
           {/* 2. KPI cards: 4 equal columns on desktop, 2 on tablet, 1 on mobile */}
           <section aria-label="Summary" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {cards.map((card) => (
-              <KpiCard key={card.id} card={card} />
+              <KpiCard key={card.id} card={card} canOpen={canOpen(card.href)} />
             ))}
           </section>
 
@@ -298,9 +319,11 @@ export default function DashboardPage(): React.JSX.Element {
                 <h2 id="dashboard-departures-heading" className="text-xl font-semibold text-[#121C2C]">
                   Today&apos;s departures
                 </h2>
-                <Link href="/train-schedule" className="text-xs font-semibold text-[#4132C7] hover:underline">
-                  View all →
-                </Link>
+                {canOpen('/train-schedule') && (
+                  <Link href="/train-schedule" className="text-xs font-semibold text-[#4132C7] hover:underline">
+                    View all →
+                  </Link>
+                )}
               </div>
               {summary.todays_departures.length === 0 ? (
                 <p className="py-6 text-center text-sm text-[#474554]">No departures scheduled today</p>
@@ -315,7 +338,7 @@ export default function DashboardPage(): React.JSX.Element {
                         <MapPin className="h-5 w-5" />
                       </span>
                       <p className="text-sm font-semibold text-[#121C2C]">
-                        {trip.destination_city} — departs {formatDepartureTime(trip.departure_datetime)}
+                        {trip.destination_city} — departs {formatTime(trip.departure_datetime)}
                       </p>
                     </li>
                   ))}
@@ -331,9 +354,11 @@ export default function DashboardPage(): React.JSX.Element {
                 <h2 id="dashboard-low-stock-heading" className="text-xl font-semibold text-[#121C2C]">
                   Low stock alerts
                 </h2>
-                <Link href="/inventory" className="text-xs font-semibold text-[#4132C7] hover:underline">
-                  View all →
-                </Link>
+                {canOpen('/inventory') && (
+                  <Link href="/inventory" className="text-xs font-semibold text-[#4132C7] hover:underline">
+                    View all →
+                  </Link>
+                )}
               </div>
               {summary.low_stock_alerts.length === 0 ? (
                 <p className="py-6 text-center text-sm text-[#474554]">All stock levels healthy</p>

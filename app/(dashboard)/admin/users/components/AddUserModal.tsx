@@ -205,8 +205,8 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#C8C4D7]/30">
           <div>
-            <h2 className="text-[20px] font-bold text-[#121C2C]">Create User Account</h2>
-            <p className="text-[13px] text-[#474554] mt-0.5">
+            <h2 className="text-xl font-bold text-[#121C2C]">Create User Account</h2>
+            <p className="text-sm text-[#474554] mt-0.5">
               Provision a new staff login and assign operational role
             </p>
           </div>
@@ -224,7 +224,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
 
         {/* Top API Error Alert */}
         {apiError && (
-          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-[12px] text-[#F93C65] flex items-start gap-2">
+          <div className="mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl text-xs text-[#F93C65] flex items-start gap-2">
             <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -236,7 +236,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           {/* Email field */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#121C2C] mb-1">
+            <label className="block text-sm font-semibold text-[#121C2C] mb-1">
               Email <span className="text-[#F93C65]">*</span>
             </label>
             <input
@@ -249,20 +249,20 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 if (apiError) setApiError(null);
               }}
               placeholder="staff@kandypack.lk"
-              className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
+              className={`w-full h-11 px-3.5 text-sm bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
                 errors.email
                   ? 'border-[#F93C65] focus:border-[#F93C65] focus:ring-[#F93C65]'
                   : 'border-[#C8C4D7]/60 focus:border-[#4132C7] focus:ring-[#4132C7]'
               }`}
             />
             {errors.email && (
-              <p className="text-[12px] text-[#F93C65] mt-1">{errors.email}</p>
+              <p className="text-xs text-[#F93C65] mt-1">{errors.email}</p>
             )}
           </div>
 
           {/* Role select */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#121C2C] mb-1">
+            <label className="block text-sm font-semibold text-[#121C2C] mb-1">
               Role <span className="text-[#F93C65]">*</span>
             </label>
             <select
@@ -272,7 +272,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                 setAppRole(e.target.value as AppRole);
                 if (errors.app_role) setErrors((prev) => ({ ...prev, app_role: '' }));
               }}
-              className="w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60"
+              className="w-full h-11 px-3.5 text-sm bg-[#F5F5FA] border border-[#C8C4D7]/60 rounded-xl font-medium text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60"
             >
               <option value="system_administrator">System Administrator</option>
               <option value="logistics_manager">Logistics Manager</option>
@@ -281,20 +281,20 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               <option value="order_entry_clerk">Order Entry Clerk</option>
             </select>
             {errors.app_role && (
-              <p className="text-[12px] text-[#F93C65] mt-1">{errors.app_role}</p>
+              <p className="text-xs text-[#F93C65] mt-1">{errors.app_role}</p>
             )}
           </div>
 
           {/* Link to Employee (Optional) */}
           <div>
-            <label className="block text-[13px] font-semibold text-[#121C2C] mb-1">
+            <label className="block text-sm font-semibold text-[#121C2C] mb-1">
               Link to Employee
             </label>
             <select
               value={selectedEmployeeId}
               disabled={isSubmitting}
               onChange={(e) => handleEmployeeChange(e.target.value)}
-              className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60 ${
+              className={`w-full h-11 px-3.5 text-sm bg-[#F5F5FA] border rounded-xl text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] cursor-pointer disabled:opacity-60 ${
                 errors.employee_id ? 'border-[#F93C65]' : 'border-[#C8C4D7]/60'
               }`}
             >
@@ -306,7 +306,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               ))}
             </select>
             {errors.employee_id ? (
-              <p className="text-[12px] text-[#F93C65] mt-1">{errors.employee_id}</p>
+              <p className="text-xs text-[#F93C65] mt-1">{errors.employee_id}</p>
             ) : (
               <p className="text-[11px] text-[#474554] mt-1">
                 Linking attaches the employee&apos;s verified name and store affiliation.
@@ -317,7 +317,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           {/* Display Name Override (Visible when no employee linked) */}
           {!selectedEmployeeId && (
             <div>
-              <label className="block text-[13px] font-semibold text-[#121C2C] mb-1">
+              <label className="block text-sm font-semibold text-[#121C2C] mb-1">
                 Display Name <span className="text-[#F93C65]">*</span>
               </label>
               <input
@@ -331,14 +331,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   }
                 }}
                 placeholder="e.g. Operations Service Lead"
-                className={`w-full h-11 px-3.5 text-[14px] bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
+                className={`w-full h-11 px-3.5 text-sm bg-[#F5F5FA] border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
                   errors.displayNameOverride
                     ? 'border-[#F93C65] focus:border-[#F93C65] focus:ring-[#F93C65]'
                     : 'border-[#C8C4D7]/60 focus:border-[#4132C7] focus:ring-[#4132C7]'
                 }`}
               />
               {errors.displayNameOverride && (
-                <p className="text-[12px] text-[#F93C65] mt-1">
+                <p className="text-xs text-[#F93C65] mt-1">
                   {errors.displayNameOverride}
                 </p>
               )}
@@ -348,14 +348,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
           {/* Temporary Password */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-[13px] font-semibold text-[#121C2C]">
+              <label className="block text-sm font-semibold text-[#121C2C]">
                 Temporary Password <span className="text-[#F93C65]">*</span>
               </label>
               <button
                 type="button"
                 disabled={isSubmitting}
                 onClick={() => setTempPassword(generateRandomPassword())}
-                className="text-[12px] font-semibold text-[#4132C7] hover:text-[#5A4FE0] hover:underline disabled:opacity-50"
+                className="text-xs font-semibold text-[#4132C7] hover:text-[#5A4FE0] hover:underline disabled:opacity-50"
               >
                 Generate Random
               </button>
@@ -372,7 +372,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
                   }
                 }}
                 placeholder="Enter temporary password"
-                className={`w-full h-11 pl-3.5 pr-10 text-[14px] bg-[#F5F5FA] font-mono border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
+                className={`w-full h-11 pl-3.5 pr-10 text-sm bg-[#F5F5FA] font-mono border rounded-xl focus:outline-none focus:ring-1 transition-all disabled:opacity-60 ${
                   errors.tempPassword
                     ? 'border-[#F93C65] focus:border-[#F93C65] focus:ring-[#F93C65]'
                     : 'border-[#C8C4D7]/60 focus:border-[#4132C7] focus:ring-[#4132C7]'
@@ -413,7 +413,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               </button>
             </div>
             {errors.tempPassword ? (
-              <p className="text-[12px] text-[#F93C65] mt-1">{errors.tempPassword}</p>
+              <p className="text-xs text-[#F93C65] mt-1">{errors.tempPassword}</p>
             ) : (
               <p className="text-[11px] text-[#474554] mt-1">
                 Share this with the user securely — it won&apos;t be shown again.
@@ -427,14 +427,14 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-full text-[13px] font-semibold text-[#474554] hover:bg-[#F5F5FA] transition-colors disabled:opacity-50"
+              className="px-5 py-2.5 rounded-full text-sm font-semibold text-[#474554] hover:bg-[#F5F5FA] transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-full text-[13px] font-bold bg-[#4132C7] hover:bg-[#5A4FE0] text-white transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-full text-sm font-bold bg-[#4132C7] hover:bg-[#5A4FE0] text-white transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 flex items-center gap-2"
             >
               {isSubmitting && (
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

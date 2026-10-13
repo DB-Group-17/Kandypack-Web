@@ -166,13 +166,13 @@ export default function TruckScheduleFilters() {
       className="bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-[16px] px-5 py-4 flex flex-wrap items-end gap-3"
     >
       {/* ── Filter icon + active count ── */}
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-[#474554] self-center shrink-0 mr-1">
+      <div className="flex items-center gap-2 text-sm font-semibold text-[#474554] self-center shrink-0 mr-1">
         <Filter className="w-4 h-4 text-[#4132C7]" aria-hidden="true" />
         Filters
         {activeCount > 0 && (
           <span
             aria-label={`${activeCount} active filter${activeCount > 1 ? 's' : ''}`}
-            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#4132C7] text-white text-[10px] font-bold"
+            className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#4132C7] text-white text-[11px] font-bold"
           >
             {activeCount}
           </span>
@@ -195,7 +195,7 @@ export default function TruckScheduleFilters() {
           onChange={handleChange}
           /* Prevent nonsensical ranges: "from" cannot be after "to" */
           max={filters.date_to || undefined}
-          className="h-10 px-3 rounded-[8px] border border-[#C8C4D7] bg-white text-[13px] text-[#121C2C]
+          className="h-10 px-3 rounded-[8px] border border-[#C8C4D7] bg-white text-sm text-[#121C2C]
                      focus:outline-none focus:ring-2 focus:ring-[#4132C7]/30 focus:border-[#4132C7]
                      transition-colors"
         />
@@ -217,7 +217,7 @@ export default function TruckScheduleFilters() {
           onChange={handleChange}
           /* "to" cannot be before "from" */
           min={filters.date_from || undefined}
-          className="h-10 px-3 rounded-[8px] border border-[#C8C4D7] bg-white text-[13px] text-[#121C2C]
+          className="h-10 px-3 rounded-[8px] border border-[#C8C4D7] bg-white text-sm text-[#121C2C]
                      focus:outline-none focus:ring-2 focus:ring-[#4132C7]/30 focus:border-[#4132C7]
                      transition-colors"
         />
@@ -236,7 +236,7 @@ export default function TruckScheduleFilters() {
           name="status"
           value={filters.status}
           onChange={handleChange}
-          className="h-10 px-3 rounded-[8px] border border-[#C8C4D7] bg-white text-[13px] text-[#121C2C]
+          className="h-10 px-3 rounded-[8px] border border-[#C8C4D7] bg-white text-sm text-[#121C2C]
                      focus:outline-none focus:ring-2 focus:ring-[#4132C7]/30 focus:border-[#4132C7]
                      transition-colors appearance-none cursor-pointer"
         >
@@ -268,7 +268,7 @@ export default function TruckScheduleFilters() {
             placeholder="Search by driver name…"
             value={filters.driver_name}
             onChange={handleChange}
-            className="h-10 w-full pl-9 pr-3 rounded-[8px] border border-[#C8C4D7] bg-white text-[13px] text-[#121C2C]
+            className="h-10 w-full pl-9 pr-3 rounded-[8px] border border-[#C8C4D7] bg-white text-sm text-[#121C2C]
                        placeholder:text-[#777586]
                        focus:outline-none focus:ring-2 focus:ring-[#4132C7]/30 focus:border-[#4132C7]
                        transition-colors"
@@ -281,7 +281,7 @@ export default function TruckScheduleFilters() {
         <button
           id="btn-apply-truck-filters"
           type="submit"
-          className="h-10 px-5 rounded-full bg-[#4132C7] hover:bg-[#5A4FE0] text-white text-[13px] font-semibold
+          className="h-10 px-5 rounded-full bg-[#4132C7] hover:bg-[#5A4FE0] text-white text-sm font-semibold
                      transition-colors duration-150 shadow-sm"
         >
           Apply
@@ -295,7 +295,7 @@ export default function TruckScheduleFilters() {
             onClick={handleClear}
             aria-label="Clear all filters"
             className="h-10 px-4 rounded-full border border-[#C8C4D7] bg-white hover:bg-[#F0F3FF]
-                       text-[13px] font-semibold text-[#474554] transition-colors duration-150
+                       text-sm font-semibold text-[#474554] transition-colors duration-150
                        flex items-center gap-1.5"
           >
             <X className="w-3.5 h-3.5" aria-hidden="true" />

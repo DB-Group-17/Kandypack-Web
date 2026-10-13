@@ -118,8 +118,8 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
               </svg>
             </div>
             <div>
-              <h3 className="text-[17px] font-bold text-[#121C2C]">Add Customer</h3>
-              <p className="text-[12px] text-[#474554]">
+              <h3 className="text-lg font-bold text-[#121C2C]">Add Customer</h3>
+              <p className="text-xs text-[#474554]">
                 Register a new retail store or wholesale distributor
               </p>
             </div>
@@ -137,7 +137,7 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
 
         {/* Error Alert */}
         {errorMessage && (
-          <div className="mx-6 mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center gap-2 text-[13px] text-[#F93C65]">
+          <div className="mx-6 mt-4 p-3 bg-[#FFF0F0] border border-[#F93C65]/30 rounded-xl flex items-center gap-2 text-sm text-[#F93C65]">
             <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
@@ -154,7 +154,7 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Customer Name */}
           <div>
-            <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
               Customer Name <span className="text-[#F93C65]">*</span>
             </label>
             <input
@@ -163,21 +163,21 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="e.g. Galle Coastal Supermarket"
               required
-              className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+              className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Customer Type Radio Selection */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Customer Type <span className="text-[#F93C65]">*</span>
               </label>
               <div className="grid grid-cols-2 gap-2 h-11">
                 <button
                   type="button"
                   onClick={() => setCustomerType('retail')}
-                  className={`flex items-center justify-center rounded-lg border text-[13px] font-semibold transition-all ${
+                  className={`flex items-center justify-center rounded-lg border text-sm font-semibold transition-all ${
                     customerType === 'retail'
                       ? 'bg-[#E0F2FF] border-[#0047CC] text-[#0047CC]'
                       : 'bg-[#F9F9FF] border-[#C8C4D7]/50 text-[#474554]'
@@ -188,7 +188,7 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
                 <button
                   type="button"
                   onClick={() => setCustomerType('wholesale')}
-                  className={`flex items-center justify-center rounded-lg border text-[13px] font-semibold transition-all ${
+                  className={`flex items-center justify-center rounded-lg border text-sm font-semibold transition-all ${
                     customerType === 'wholesale'
                       ? 'bg-[#EBE9FE] border-[#4132C7] text-[#4132C7]'
                       : 'bg-[#F9F9FF] border-[#C8C4D7]/50 text-[#474554]'
@@ -201,13 +201,13 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
 
             {/* Registered City */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Registered City <span className="text-[#F93C65]">*</span>
               </label>
               <select
                 value={cityId}
                 onChange={(e) => setCityId(Number(e.target.value))}
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               >
                 {cities.length === 0 ? (
                   <option value={0}>No cities available</option>
@@ -227,7 +227,7 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Phone */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Phone <span className="text-[#F93C65]">*</span>
               </label>
               <input
@@ -236,13 +236,13 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="e.g. 077-8899000"
                 required
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
                 Email (Optional)
               </label>
               <input
@@ -250,14 +250,14 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="e.g. orders@gallemart.lk"
-                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
+                className="w-full h-11 px-3.5 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7]"
               />
             </div>
           </div>
 
           {/* Address Line */}
           <div>
-            <label className="block text-[12px] font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-[#121C2C] uppercase tracking-wider mb-1.5">
               Delivery Address <span className="text-[#F93C65]">*</span>
             </label>
             <textarea
@@ -266,7 +266,7 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
               onChange={(e) => setAddressLine(e.target.value)}
               placeholder="e.g. No. 44, Matara Road, Galle Fort"
               required
-              className="w-full p-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-[13px] text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] resize-none"
+              className="w-full p-3 bg-[#F9F9FF] border border-[#C8C4D7]/50 rounded-lg text-sm text-[#121C2C] focus:outline-none focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] resize-none"
             />
           </div>
 
@@ -275,14 +275,14 @@ const AddCustomerModalContent: React.FC<Omit<AddCustomerModalProps, 'isOpen'>> =
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[#474554] font-semibold text-[13px] hover:bg-[#F5F5FA] transition-colors"
+              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[#474554] font-semibold text-sm hover:bg-[#F5F5FA] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-[13px] hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white font-semibold text-sm hover:bg-[#3527a8] transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>

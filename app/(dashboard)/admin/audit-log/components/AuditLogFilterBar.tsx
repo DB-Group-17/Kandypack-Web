@@ -81,7 +81,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
           <label
             htmlFor="audit-filter-table"
-            className="text-[12px] font-semibold text-[#474554] tracking-wide"
+            className="text-xs font-semibold text-[#474554] tracking-wide"
           >
             Table
           </label>
@@ -90,7 +90,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               id="audit-filter-table"
               value={filters.tableName}
               onChange={handleTableChange}
-              className="w-full appearance-none bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-4 py-2.5 text-[14px] text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
+              className="w-full appearance-none bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-4 py-2.5 text-sm text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
             >
               {!tableOptions.some((table) => table.value === '') && (
                 <option value="">All Tables</option>
@@ -113,7 +113,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
         <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
           <label
             htmlFor="audit-filter-user"
-            className="text-[12px] font-semibold text-[#474554] tracking-wide"
+            className="text-xs font-semibold text-[#474554] tracking-wide"
           >
             User
           </label>
@@ -122,7 +122,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               id="audit-filter-user"
               value={filters.user}
               onChange={handleUserChange}
-              className="w-full appearance-none bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-4 py-2.5 text-[14px] text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
+              className="w-full appearance-none bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-4 py-2.5 text-sm text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
             >
               {!userOptions.some((u) => u.value === '') && (
                 <option value="">All Users</option>
@@ -143,7 +143,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
 
         {/* Date Range Inputs */}
         <div className="flex flex-col gap-1.5 flex-1 min-w-[280px]">
-          <label className="text-[12px] font-semibold text-[#474554] tracking-wide">
+          <label className="text-xs font-semibold text-[#474554] tracking-wide">
             Date range
           </label>
           <div className="flex items-center gap-2">
@@ -152,7 +152,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               aria-label="From date"
               value={filters.dateFrom}
               onChange={handleDateFromChange}
-              className="flex-1 bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-3 py-2.5 text-[14px] text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
+              className="flex-1 bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-3 py-2.5 text-sm text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
             />
             <span className="text-[#777586] font-medium">–</span>
             <input
@@ -160,7 +160,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
               aria-label="To date"
               value={filters.dateTo}
               onChange={handleDateToChange}
-              className="flex-1 bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-3 py-2.5 text-[14px] text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
+              className="flex-1 bg-[#F9F9FF] border border-[#C8C4D7] rounded-lg px-3 py-2.5 text-sm text-[#121C2C] focus:outline-none focus:border-[#5A4FE0] focus:ring-1 focus:ring-[#5A4FE0] transition-colors"
             />
           </div>
         </div>
@@ -171,7 +171,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
             <button
               type="button"
               onClick={onResetFilters}
-              className="h-[44px] px-4 rounded-full text-[14px] font-medium text-[#777586] hover:text-[#121C2C] hover:bg-[#F0F3FF] transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="h-[44px] px-4 rounded-full text-sm font-medium text-[#777586] hover:text-[#121C2C] hover:bg-[#F0F3FF] transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -188,7 +188,7 @@ export const AuditLogFilterBar: React.FC<AuditLogFilterBarProps> = ({
           <button
             type="button"
             onClick={onApplyFilters}
-            className="h-[44px] px-6 rounded-full text-[14px] font-semibold bg-[#F0F3FF] text-[#4132C7] hover:bg-[#DEE8FF] transition-all duration-150 flex items-center gap-2 cursor-pointer shadow-sm"
+            className="h-[44px] px-6 rounded-full text-sm font-semibold bg-[#F0F3FF] text-[#4132C7] hover:bg-[#DEE8FF] transition-all duration-150 flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

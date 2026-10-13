@@ -32,6 +32,15 @@
  *    - Yellow dot: hours_remaining ≤ 4 (approaching driver weekly limit BR-006).
  *    - Red dot: hours_remaining === 0 (assistant limit exceeded BR-007).
  *
+ * 6. "Orders to deliver" (optional, smoke-test gap G1, Docs/13 §7 "Delivery assignment"):
+ *    - Whenever the route changes, GET /api/truck-schedules/eligible-orders?route_id= lists the
+ *      orders that are At Store, on that route and not already on an active delivery.
+ *    - The supervisor ticks the orders this run will carry; their IDs go to POST /api/truck-schedules
+ *      as `order_ids`. The server creates the schedule and one Scheduled delivery per order in a
+ *      single transaction, so a rejected order (400, message names the order) saves nothing.
+ *    - Leaving every box unticked creates the schedule on its own, exactly as before.
+ *    - Changing the route clears the selection because the list belongs to one route.
+ *
  * Page-specific logic notes:
  * - The conflicts endpoint derives end_time from route.max_delivery_time_hours server-side;
  *   the client does not compute or send end_time.
@@ -54,7 +63,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, AlertTriangle } from 'lucide-react';
-import type { TruckItem, DriverItem, AssistantItem, RouteItem } from '@/types/fleet';
+import type {
+  TruckItem,
+  DriverItem,
+  AssistantItem,
+  RouteItem,
+  EligibleOrderItem,
+} from '@/types/fleet';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -161,6 +176,17 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
     start_time: '',
   });
 
+  // ─── Orders To Deliver State (G1) ──────────────────────────────────────────
+
+  /** Orders eligible for the selected route (At Store, same route, no active delivery). */
+  const [eligibleOrders, setEligibleOrders] = useState<EligibleOrderItem[]>([]);
+  /** True while the eligible-orders request for the current route is in flight. */
+  const [eligibleLoading, setEligibleLoading] = useState(false);
+  /** Message shown when the eligible-orders request fails; null when it succeeded. */
+  const [eligibleError, setEligibleError] = useState<string | null>(null);
+  /** IDs of the orders the supervisor has ticked for this run. */
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+
   // ─── Conflict Pre-Check State ──────────────────────────────────────────────
 
   /** True while the debounced conflict request is in-flight. */
@@ -219,6 +245,69 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
     };
     void load();
   }, []); // runs once on mount
+
+  // ─── Eligible Orders For The Selected Route ───────────────────────────────
+
+  /**
+   * Loads the orders that can ride on this route whenever the route changes. The selection is
+   * cleared first because a ticked order from the previous route is no longer eligible. A
+   * `cancelled` flag drops the response if the route changes again before it arrives, so a slow
+   * request can never overwrite the list for a newer route.
+   */
+  useEffect(() => {
+    const routeId = fields.route_id;
+    let cancelled = false;
+
+    // Clears the list, the selection and any error; `loading` says whether a request follows.
+    const reset = (loading: boolean) => {
+      setSelectedOrderIds([]);
+      setEligibleOrders([]);
+      setEligibleError(null);
+      setEligibleLoading(loading);
+    };
+
+    if (routeId === '') {
+      reset(false);
+      return;
+    }
+
+    reset(true);
+    fetch(`/api/truck-schedules/eligible-orders?route_id=${routeId}`)
+      .then(async (res) => {
+        const data = (await res.json()) as {
+          items?: EligibleOrderItem[];
+          error?: { message?: string };
+        };
+        if (cancelled) return;
+        if (!res.ok) {
+          setEligibleError(data.error?.message ?? 'Couldn’t load the orders for this route.');
+          return;
+        }
+        setEligibleOrders(data.items ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setEligibleError('Couldn’t load the orders for this route.');
+      })
+      .finally(() => {
+        if (!cancelled) setEligibleLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fields.route_id]);
+
+  /**
+   * Ticks or unticks one order in the "Orders to deliver" list.
+   *
+   * @param orderId - The order whose checkbox changed
+   */
+  const toggleOrder = useCallback((orderId: number) => {
+    setSubmitError(null);
+    setSelectedOrderIds((prev) =>
+      prev.includes(orderId) ? prev.filter((id) => id !== orderId) : [...prev, orderId]
+    );
+  }, []);
 
   // ─── Debounced Conflict Pre-Check ─────────────────────────────────────────
 
@@ -413,6 +502,8 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
           route_id: fields.route_id,
           // Send in MySQL DATETIME format; API will validate and call the procedure
           start_time: toMysqlDatetime(fields.start_time),
+          // Ticked orders become Scheduled deliveries in the same transaction (omitted when none)
+          ...(selectedOrderIds.length > 0 ? { order_ids: selectedOrderIds } : {}),
         }),
       });
 
@@ -466,7 +557,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
           <ArrowLeft className="w-5 h-5 text-[#474554]" />
         </Link>
         <div>
-          <h1 className="text-[24px] font-semibold text-[#121C2C]">New truck schedule</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#121C2C]">New truck schedule</h1>
           <p className="text-sm text-[#474554]">
             Assign truck, driver, and assistant for a daily delivery route
           </p>
@@ -505,7 +596,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
             <div className="space-y-2">
               <label
                 htmlFor="route_id"
-                className="text-[12px] font-semibold text-[#474554] tracking-wide block"
+                className="text-xs font-semibold text-[#474554] tracking-wide block"
               >
                 Select Route
               </label>
@@ -514,7 +605,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
                 value={fields.route_id}
                 onChange={(e) => handleFieldChange('route_id', e.target.value)}
                 disabled={routesLoading || isSubmitting}
-                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-[14px] bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
+                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-sm bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
               >
                 {routesLoading ? (
                   <option value="">Loading routes…</option>
@@ -537,7 +628,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
             <div className="space-y-2">
               <label
                 htmlFor="start_time"
-                className="text-[12px] font-semibold text-[#474554] tracking-wide block"
+                className="text-xs font-semibold text-[#474554] tracking-wide block"
               >
                 Scheduled Date &amp; Time
               </label>
@@ -548,7 +639,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
                 min={getTodayMinDatetime()}
                 onChange={(e) => handleFieldChange('start_time', e.target.value)}
                 disabled={isSubmitting}
-                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-[14px] disabled:bg-[#F5F5FA] disabled:text-[#777586]"
+                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-sm disabled:bg-[#F5F5FA] disabled:text-[#777586]"
               />
             </div>
 
@@ -556,7 +647,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
             <div className="space-y-2">
               <label
                 htmlFor="truck_id"
-                className="text-[12px] font-semibold text-[#474554] tracking-wide block"
+                className="text-xs font-semibold text-[#474554] tracking-wide block"
               >
                 Select Truck
               </label>
@@ -565,7 +656,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
                 value={fields.truck_id}
                 onChange={(e) => handleFieldChange('truck_id', e.target.value)}
                 disabled={trucksLoading || isSubmitting}
-                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-[14px] bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
+                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-sm bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
               >
                 {trucksLoading ? (
                   <option value="">Loading trucks…</option>
@@ -588,7 +679,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
             <div className="space-y-2">
               <label
                 htmlFor="driver_id"
-                className="text-[12px] font-semibold text-[#474554] tracking-wide block"
+                className="text-xs font-semibold text-[#474554] tracking-wide block"
               >
                 Assign Driver
               </label>
@@ -597,7 +688,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
                 value={fields.driver_id}
                 onChange={(e) => handleFieldChange('driver_id', e.target.value)}
                 disabled={driversLoading || isSubmitting}
-                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-[14px] bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
+                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-sm bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
               >
                 {driversLoading ? (
                   <option value="">Loading drivers…</option>
@@ -634,7 +725,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
             <div className="space-y-2">
               <label
                 htmlFor="assistant_id"
-                className="text-[12px] font-semibold text-[#474554] tracking-wide block"
+                className="text-xs font-semibold text-[#474554] tracking-wide block"
               >
                 Assign Assistant
               </label>
@@ -643,7 +734,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
                 value={fields.assistant_id}
                 onChange={(e) => handleFieldChange('assistant_id', e.target.value)}
                 disabled={assistantsLoading || isSubmitting}
-                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-[14px] bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
+                className="w-full h-12 px-4 rounded-lg border border-[#C8C4D7] focus:border-[#4132C7] focus:ring-1 focus:ring-[#4132C7] outline-none text-sm bg-white disabled:bg-[#F5F5FA] disabled:text-[#777586]"
               >
                 {assistantsLoading ? (
                   <option value="">Loading assistants…</option>
@@ -677,9 +768,77 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
             </div>
           </div>
 
+          {/* ── Orders to deliver (optional) ──
+              Eligible orders for the chosen route. Ticked orders are created as Scheduled
+              deliveries together with the schedule (one transaction on the server). */}
+          <fieldset className="space-y-3" aria-describedby="orders-to-deliver-help">
+            <legend className="text-xs font-semibold text-[#474554] tracking-wide">
+              Orders to deliver (optional)
+            </legend>
+            <p id="orders-to-deliver-help" className="text-xs text-[#777586]">
+              Orders that have reached the store and are on this route. Leave all unticked to create
+              the schedule without orders.
+            </p>
+
+            {fields.route_id === '' ? (
+              <p className="text-sm text-[#777586]">
+                Select a route to see the orders that are ready for delivery.
+              </p>
+            ) : eligibleLoading ? (
+              <p className="text-sm text-[#777586]">Loading orders…</p>
+            ) : eligibleError ? (
+              <p className="text-sm text-[#F93C65]" role="alert">
+                {eligibleError}
+              </p>
+            ) : eligibleOrders.length === 0 ? (
+              <p className="text-sm text-[#777586]">
+                No orders at the store are waiting for this route.
+              </p>
+            ) : (
+              <>
+                <ul className="divide-y divide-[#DEE8FF] rounded-lg border border-[#C8C4D7] max-h-72 overflow-y-auto">
+                  {eligibleOrders.map((order) => {
+                    const inputId = `order-to-deliver-${order.order_id}`;
+                    return (
+                      <li key={order.order_id}>
+                        <label
+                          htmlFor={inputId}
+                          className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-[#F9F9FF]"
+                        >
+                          <input
+                            id={inputId}
+                            type="checkbox"
+                            checked={selectedOrderIds.includes(order.order_id)}
+                            onChange={() => toggleOrder(order.order_id)}
+                            disabled={isSubmitting}
+                            className="mt-1 h-4 w-4 accent-[#4132C7]"
+                          />
+                          <span className="text-sm text-[#121C2C]">
+                            <span className="font-semibold">Order #{order.order_id}</span>
+                            {' · '}
+                            {order.customer_name}
+                            <span className="block text-xs text-[#474554]">
+                              {order.delivery_area} · {order.delivery_address}
+                            </span>
+                            <span className="block text-xs text-[#777586]">
+                              Needed by {order.expected_delivery_date} · {order.total_space_required} space units
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="text-xs text-[#474554]" aria-live="polite">
+                  {selectedOrderIds.length} of {eligibleOrders.length} selected
+                </p>
+              </>
+            )}
+          </fieldset>
+
           {/* Conflict checking indicator — subtle spinner under the fields */}
           {conflictChecking && (
-            <p className="text-[12px] text-[#777586] flex items-center gap-1.5">
+            <p className="text-xs text-[#777586] flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
@@ -691,7 +850,7 @@ export default function NewTruckSchedulePage(): React.JSX.Element {
           {/* Inline submit error — shown on 400/423/network failure */}
           {submitError && (
             <div
-              className="px-4 py-3 bg-[#FFF0F0] border border-[#F93C65]/20 rounded-xl flex items-start gap-3 text-[#F93C65] text-[13px]"
+              className="px-4 py-3 bg-[#FFF0F0] border border-[#F93C65]/20 rounded-xl flex items-start gap-3 text-[#F93C65] text-sm"
               role="alert"
             >
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />

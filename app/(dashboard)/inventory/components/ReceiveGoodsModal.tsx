@@ -15,6 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Store, ArrivedTrainBooking, ReceiveGoodsItemInput, ApiArrivedBookingsResponse } from '../types';
+import { formatDateTime } from '@/lib/format';
 
 /**
  * Props accepted by the ReceiveGoodsModal component.
@@ -40,30 +41,6 @@ interface ReceiveGoodsModalProps {
     bookingId: number,
     items?: ReceiveGoodsItemInput[]
   ) => Promise<{ success: boolean; error?: string; updated_products?: number }> | void;
-}
-
-/**
- * Formats an ISO datetime string into human-readable date and time.
- *
- * @param isoStr - ISO date string
- * @returns Clean localized datetime string (e.g. "Aug 31, 2026, 08:30")
- */
-function formatArrivalDateTime(isoStr: string): string {
-  if (!isoStr) return '';
-  try {
-    const d = new Date(isoStr);
-    if (isNaN(d.getTime())) return isoStr;
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  } catch {
-    return isoStr;
-  }
 }
 
 /**
@@ -229,10 +206,10 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-[#E7EEFF] flex items-center justify-between bg-[#F9F9FF]/80">
           <div>
-            <h2 id="receive-goods-title" className="text-[20px] font-bold text-[#121C2C]">
+            <h2 id="receive-goods-title" className="text-xl font-bold text-[#121C2C]">
               Receive goods
             </h2>
-            <p className="text-[13px] text-[#474554] mt-0.5">
+            <p className="text-sm text-[#474554] mt-0.5">
               Receiving cargo at{' '}
               <strong className="text-[#4132C7] font-semibold">{activeStore.store_name}</strong>
             </p>
@@ -272,7 +249,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                   />
                 </svg>
-                <div className="text-[13px] font-medium leading-relaxed">{errorMessage}</div>
+                <div className="text-sm font-medium leading-relaxed">{errorMessage}</div>
               </div>
             )}
 
@@ -285,7 +262,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                 <svg className="w-5 h-5 text-[#F93C65] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <div className="text-[13px] font-medium leading-relaxed">{bookingsFetchError}</div>
+                <div className="text-sm font-medium leading-relaxed">{bookingsFetchError}</div>
               </div>
             )}
 
@@ -293,7 +270,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
             <div>
               <label
                 htmlFor="train-booking-select"
-                className="block text-[12px] font-bold uppercase tracking-wider text-[#474554] mb-1.5"
+                className="block text-xs font-bold uppercase tracking-wider text-[#474554] mb-1.5"
               >
                 Train booking <span className="text-[#F93C65]">*</span>
               </label>
@@ -306,7 +283,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                     setSelectedBookingId(e.target.value);
                     if (errorMessage) setErrorMessage(null);
                   }}
-                  className="w-full bg-[#F9F9FF] border border-[#C8C4D7]/80 rounded-lg px-4 py-2.5 text-[14px] text-[#121C2C] font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7] focus:border-[#4132C7] transition-all disabled:opacity-60 shadow-2xs cursor-pointer"
+                  className="w-full bg-[#F9F9FF] border border-[#C8C4D7]/80 rounded-lg px-4 py-2.5 text-sm text-[#121C2C] font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4132C7] focus:border-[#4132C7] transition-all disabled:opacity-60 shadow-2xs cursor-pointer"
                 >
                   <option value="">Select an arrived booking</option>
                   {isLoadingBookings ? (
@@ -321,13 +298,13 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                     arrivedBookings.map((b) => (
                       <option key={b.booking_id} value={b.booking_id}>
                         Booking #{b.booking_id} — Order #{b.order_id} (Trip #{b.trip_id}
-                        {b.arrival_datetime ? `, Arrived: ${formatArrivalDateTime(b.arrival_datetime)}` : ''})
+                        {b.arrival_datetime ? `, Arrived: ${formatDateTime(b.arrival_datetime)}` : ''})
                       </option>
                     ))
                   )}
                 </select>
               </div>
-              <p className="text-[12px] text-[#777586] mt-1.5">
+              <p className="text-xs text-[#777586] mt-1.5">
                 Choose an arrived booking to inspect cargo items and confirm receipt into store stock.
               </p>
             </div>
@@ -335,11 +312,11 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
             {/* Selected Booking Items Table */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-bold uppercase tracking-wider text-[#474554]">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#474554]">
                   Cargo Manifest Items
                 </span>
                 {selectedBooking && (
-                  <span className="text-[12px] text-[#777586]">
+                  <span className="text-xs text-[#777586]">
                     {selectedBooking.items.length} {selectedBooking.items.length === 1 ? 'product' : 'products'} listed
                   </span>
                 )}
@@ -366,18 +343,18 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                         {selectedBooking.items.map((item) => (
                           <tr key={item.booking_item_id ?? item.product_id} className="hover:bg-[#F0F3FF]/40 transition-colors">
                             <td className="py-2.5 px-4">
-                              <div className="font-semibold text-[13px] text-[#121C2C]">
+                              <div className="font-semibold text-sm text-[#121C2C]">
                                 {item.product_name}
                               </div>
-                              <span className="font-mono text-[11px] text-[#777586] bg-[#F5F5FA] px-1.5 py-0.5 rounded border border-[#C8C4D7]/40">
+                              <span className="tabular-nums text-[11px] text-[#777586] bg-[#F5F5FA] px-1.5 py-0.5 rounded border border-[#C8C4D7]/40">
                                 {item.sku}
                               </span>
                             </td>
-                            <td className="py-2.5 px-4 text-right text-[13px] font-medium text-[#474554] whitespace-nowrap">
+                            <td className="py-2.5 px-4 text-right text-sm font-medium text-[#474554] whitespace-nowrap">
                               {item.expected_quantity.toLocaleString()}
                             </td>
                             <td className="py-2.5 px-4 text-right whitespace-nowrap">
-                              <span className="font-bold text-[13px] text-[#00B69B] bg-[#E6F6F4] px-2.5 py-1 rounded-md">
+                              <span className="font-bold text-sm text-[#00B69B] bg-[#E6F6F4] px-2.5 py-1 rounded-md">
                                 {item.expected_quantity.toLocaleString()}
                               </span>
                             </td>
@@ -392,7 +369,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                 </div>
               ) : (
                 <div className="border border-dashed border-[#C8C4D7] rounded-xl p-6 text-center bg-[#F9F9FF]">
-                  <p className="text-[13px] text-[#777586]">
+                  <p className="text-sm text-[#777586]">
                     Select an arrived booking above to review expected and received product quantities.
                   </p>
                 </div>
@@ -411,7 +388,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                   />
                 </svg>
               </div>
-              <div className="text-[12px] leading-relaxed text-[#474554]">
+              <div className="text-xs leading-relaxed text-[#474554]">
                 <strong className="text-[#121C2C] font-semibold block mb-0.5">
                   Automated Manifest Verification
                 </strong>
@@ -427,14 +404,14 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
               type="button"
               onClick={handleClose}
               disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-[13px] font-semibold text-[#474554] hover:bg-white hover:text-[#121C2C] disabled:opacity-50 transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-full border border-[#C8C4D7] text-sm font-semibold text-[#474554] hover:bg-white hover:text-[#121C2C] disabled:opacity-50 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!selectedBookingId || isSubmitting || isLoadingBookings}
-              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#5A4FE0] active:scale-98 shadow-sm disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#5A4FE0] active:scale-98 shadow-sm disabled:opacity-50 disabled:pointer-events-none transition-all flex items-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

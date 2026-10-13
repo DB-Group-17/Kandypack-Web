@@ -57,10 +57,10 @@ export const UserStatsBento: React.FC<UserStatsBentoProps> = ({
             </svg>
           </div>
           <div>
-            <p className="text-[12px] font-semibold text-[#474554] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-[#474554] uppercase tracking-wider">
               Total Users
             </p>
-            <p className="text-[26px] font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
+            <p className="text-2xl font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
               {stats.totalUsers.toLocaleString()}
             </p>
           </div>
@@ -88,10 +88,10 @@ export const UserStatsBento: React.FC<UserStatsBentoProps> = ({
             </svg>
           </div>
           <div>
-            <p className="text-[12px] font-semibold text-[#474554] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-[#474554] uppercase tracking-wider">
               Active Now
             </p>
-            <p className="text-[26px] font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
+            <p className="text-2xl font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
               {stats.activeUsers.toLocaleString()}
             </p>
           </div>
@@ -119,10 +119,10 @@ export const UserStatsBento: React.FC<UserStatsBentoProps> = ({
             </svg>
           </div>
           <div>
-            <p className="text-[12px] font-semibold text-[#474554] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-[#474554] uppercase tracking-wider">
               Deactivated
             </p>
-            <p className="text-[26px] font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
+            <p className="text-2xl font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
               {stats.deactivatedUsers.toLocaleString()}
             </p>
           </div>
@@ -150,10 +150,10 @@ export const UserStatsBento: React.FC<UserStatsBentoProps> = ({
             </svg>
           </div>
           <div>
-            <p className="text-[12px] font-semibold text-[#474554] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-[#474554] uppercase tracking-wider">
               Admins
             </p>
-            <p className="text-[26px] font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
+            <p className="text-2xl font-bold text-[#121C2C] tracking-tight leading-tight mt-0.5">
               {stats.adminUsers.toLocaleString()}
             </p>
           </div>

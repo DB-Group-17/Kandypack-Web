@@ -3,7 +3,7 @@
 /**
  * @file CustomersTab.tsx
  * @description Tabular view of Retail & Wholesale Customer Accounts for the Master Data module.
- * Columns: Customer Name, Customer Type (Retail/Wholesale), Phone / Email, Registered City, Delivery Address, Status, and Actions.
+ * Columns: Customer Name, Customer Type (Retail/Wholesale), Phone / Email, Registered City, Delivery Address, Status.
  * Conforms to Docs/07_content-copy.md §391 and UI/master_data/code.html.
  */
 
@@ -15,8 +15,6 @@ interface CustomersTabProps {
   items: CustomerItem[];
   /** Callback to trigger opening the Add Customer modal */
   onAddClick: () => void;
-  /** Optional callback to edit a customer */
-  onEditClick?: (item: CustomerItem) => void;
 }
 
 /**
@@ -25,7 +23,6 @@ interface CustomersTabProps {
 export const CustomersTab: React.FC<CustomersTabProps> = ({
   items,
   onAddClick,
-  onEditClick,
 }) => {
   if (items.length === 0) {
     return (
@@ -40,15 +37,15 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
             />
           </svg>
         </div>
-        <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+        <h3 className="text-base font-semibold text-[#121C2C] mb-1">
           No records yet.
         </h3>
-        <p className="text-[13px] text-[#474554] max-w-sm mx-auto mb-5">
+        <p className="text-sm text-[#474554] max-w-sm mx-auto mb-5">
           No customer accounts match your search filters or have been created in this store network.
         </p>
         <button
           onClick={onAddClick}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-[13px] font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#4132C7] text-white text-sm font-semibold hover:bg-[#3527a8] transition-colors shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
@@ -70,10 +67,9 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
             <th className="py-3.5 px-5">Registered City</th>
             <th className="py-3.5 px-5">Delivery Address</th>
             <th className="py-3.5 px-5 text-center">Status</th>
-            <th className="py-3.5 px-5 text-right">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#C8C4D7]/20 text-[13px] text-[#121C2C]">
+        <tbody className="divide-y divide-[#C8C4D7]/20 text-sm text-[#121C2C]">
           {items.map((cust) => (
             <tr
               key={cust.customer_id}
@@ -100,7 +96,7 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
                   </div>
                   <div>
                     <p className="font-semibold text-[#121C2C]">{cust.customer_name}</p>
-                    <p className="text-[11px] font-mono text-[#777586]">
+                    <p className="text-[11px] tabular-nums text-[#777586]">
                       CUS-{String(cust.customer_id).padStart(3, '0')}
                     </p>
                   </div>
@@ -130,14 +126,14 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
 
               {/* Registered City */}
               <td className="py-4 px-5">
-                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-[12px] font-medium text-[#121C2C]">
+                <span className="inline-block px-2.5 py-0.5 rounded-md bg-[#F1F1F5] text-xs font-medium text-[#121C2C]">
                   {cust.registered_city_name}
                 </span>
               </td>
 
               {/* Address */}
               <td className="py-4 px-5 text-[#474554] max-w-xs">
-                <p className="line-clamp-2 text-[12px]">{cust.address_line}</p>
+                <p className="line-clamp-2 text-xs">{cust.address_line}</p>
               </td>
 
               {/* Status */}
@@ -151,25 +147,6 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
                 >
                   {cust.status}
                 </span>
-              </td>
-
-              {/* Actions */}
-              <td className="py-4 px-5 text-right">
-                <button
-                  onClick={() => onEditClick?.(cust)}
-                  className="p-1.5 rounded-lg text-[#777586] hover:text-[#4132C7] hover:bg-[#EBE9FE]/50 transition-colors"
-                  title="Edit customer"
-                  aria-label={`Edit ${cust.customer_name}`}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                    />
-                  </svg>
-                </button>
               </td>
             </tr>
           ))}

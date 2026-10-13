@@ -174,6 +174,19 @@ Conventions used throughout:
 - **Response 200:** `{ "trip_id", "total_capacity", "booked_space", "remaining_capacity" }`
 - **Business logic:** calls `get_available_capacity(trip_id)`; used by the UI for live display, and internally referenced by `place_order`.
 
+### `PATCH /api/train-trips/:id`
+- **Roles:** logistics_manager, system_administrator (`train_trips:update`)
+- **Request body:** `{ "status": "Departed" | "Arrived" }`
+- **Response 200:** `{ "trip_id", "status", "orders_advanced" }` (`orders_advanced` is how many orders moved to `In Transit`; always `0` for an arrival)
+- **Response 400:** `INVALID_TRIP_ID`; `INVALID_STATUS` (any value other than `Departed` or `Arrived`, including `Cancelled`); `INVALID_TRANSITION` (see below); malformed JSON
+- **Response 403:** role not allowed; **404:** `TRIP_NOT_FOUND`
+- **Business logic** (`app/api/train-trips/[id]/service.ts`, one explicit transaction):
+  1. Lock the trip row (`SELECT … FOR UPDATE`) so two requests cannot apply the same transition.
+  2. Only one step forward is legal: `Scheduled → Departed` and `Departed → Arrived`. Skipping, going back, repeating a status, or changing an `Arrived`/`Cancelled` trip is `INVALID_TRANSITION`.
+  3. On **departure**, every order with a booking on this trip that is still `Pending` becomes `In Transit` in the same transaction. An order split across two trips moves when its **first** trip departs. Orders already past `Pending`, and cancelled orders, are untouched. `trg_log_order_status_change` records the history row with the acting user.
+  4. On **arrival**, no order changes. The store manager still receives the goods; `receive_goods_at_store` moves the order to `At Store` once **every** booking of the order has arrived (§A6).
+- **Known gap (accepted):** `train_trips` has no audit trigger, so the trip's own status change is not written to `audit_log`. The order status-history rows are (`03_architecture.md` §19).
+
 ---
 
 ## A6. Store Inventory
@@ -227,15 +240,23 @@ Conventions used throughout:
 
 ### `POST /api/truck-schedules`
 - **Roles:** fleet_supervisor, system_administrator
-- **Request body:** `{ truck_id, driver_id, assistant_id, route_id, start_time }`
-- **Response 201:** created schedule (`end_time` is derived server-side, not supplied by the caller)
-- **Response 400:** roster/overlap violation, with the specific rule named (`BR-004` through `BR-008`)
+- **Request body:** `{ truck_id, driver_id, assistant_id, route_id, start_time, order_ids? }`
+  - `order_ids` (optional, at most 50 distinct positive integers) attaches orders to the new schedule: one `Scheduled` delivery is created per order **in the same transaction as the schedule**, so either everything is saved or nothing is. Without `order_ids` the schedule is created on its own (unchanged behaviour).
+  - Each order must be **`At Store`**, on **this route** (`orders.route_id = route_id`), and have **no active delivery** (`Scheduled` or `In Progress`). The rules are re-checked under row locks inside the transaction; `trg_check_active_delivery_on_insert` remains the database backstop.
+- **Response 201:** `{ "schedule_id", "delivery_ids": number[] }` (`end_time` is derived server-side, not supplied by the caller; `delivery_ids` is empty when no orders were attached)
+- **Response 400:** roster/overlap violation, with the specific rule named (`BR-004` through `BR-008`); or `INVALID_ORDER` (field `order_ids`) when an order cannot be attached, with a message naming the order and the rule it broke. A rejected order rolls the whole request back, so no schedule is left behind. `order_ids` that is not an array of positive integers is a plain 400.
 - **Business logic:**
   1. Acquire Redis lock on `truck_id` + `driver_id` + `assistant_id` for the duration of the check (fail-fast on contention)
   2. `CALL schedule_truck_delivery(truck_id, driver_id, assistant_id, route_id, start_time, @out_schedule_id)`
   3. Procedure checks: no overlapping time slot for truck/driver/assistant (`BR-008`), driver not on 2 consecutive deliveries without a 2-hour break (`BR-004`), assistant not on a 3rd consecutive route (`BR-005`), driver ≤ 40 hrs/week (`BR-006`), assistant ≤ 60 hrs/week (`BR-007`), operating hours 06:00–20:00 same day
   4. `trg_validate_truck_schedule` is the DB-level backstop even if the app-layer check is somehow bypassed
   5. Release Redis lock; return `@out_schedule_id`
+
+### `GET /api/truck-schedules/eligible-orders`
+- **Roles:** fleet_supervisor, system_administrator (the roles that may create schedules)
+- **Query params:** `route_id` (required, positive integer; otherwise 400)
+- **Response 200:** `{ "items": [{ order_id, customer_name, delivery_area, delivery_address, expected_delivery_date, total_space_required }], "total": number }`, at most 200 rows, ordered by expected delivery date then order id
+- **Business logic:** lists orders that are `At Store`, on this route, and without an active delivery: the same rules `POST /api/truck-schedules` enforces for `order_ids`. It feeds the "Orders to deliver" list on `/truck-schedule/new`; it is a convenience, never the source of truth.
 
 ### `GET /api/truck-schedules/conflicts`
 - **Roles:** fleet_supervisor, system_administrator
@@ -259,6 +280,8 @@ Conventions used throughout:
 - **Query params:** `status?` (`Scheduled`, `In Progress`, `Completed`, `Failed`, `Cancelled`; any other value is a 400), `date_from?`, `date_to?` (`YYYY-MM-DD`, malformed is a 400; both filter on the delivery's **creation** date, because `delivered_at` is null until completion)
 - **Response 200:** `{ "items": [{ delivery_id, order_id, customer_name, truck_plate, driver_name, status, delivered_at, notes? }], "total": number }` (`delivered_at` is an ISO 8601 string or null)
 - **Response 401:** no session; **403:** role may not read deliveries
+
+> **How deliveries are created:** there is no standalone delivery endpoint. A `Scheduled` delivery is created for each order ticked in "Orders to deliver" when a truck schedule is created (`POST /api/truck-schedules` with `order_ids`, §A7). Only `At Store` orders on the schedule's route can be attached.
 
 ### `PATCH /api/deliveries/:id/complete`
 - **Roles:** fleet_supervisor, system_administrator, logistics_manager (the `/deliveries` page itself is limited to fleet_supervisor and system_administrator)
@@ -404,19 +427,21 @@ For each page: which API routes it calls, and the interaction flow.
 - **Flow:** loads full order + items + status history + linked train booking + delivery info in one call. Status-change dropdown only rendered for `logistics_manager`/`system_administrator`; submitting calls the PATCH and refetches.
 
 ## `/train-schedule`
-- **Calls:** `GET /api/train-trips`, `POST /api/train-trips` (add-trip form), `GET /api/train-trips/:id/capacity`
+- **Calls:** `GET /api/train-trips`, `POST /api/train-trips` (add-trip form), `PATCH /api/train-trips/:id` (status), `GET /api/train-trips/:id/capacity`
 - **Flow:** calendar view fetches trips for the visible date range; each trip cell shows booked/remaining capacity from the list response directly (capacity endpoint is mainly for the Orders page's live display, not re-fetched per cell here). "Add Trip" opens a form → `POST /api/train-trips` → refetch the calendar.
+- **Status actions:** a `Scheduled` trip shows **Mark departed** and a `Departed` trip shows **Mark arrived** (nothing for `Arrived`/`Cancelled`). Clicking opens a confirmation dialog (the change cannot be undone) → `PATCH /api/train-trips/:id` → refetch. A departure toast reports how many Pending orders moved to In Transit; a rejected change shows the server message inside the dialog and leaves the trip unchanged.
 
 ## `/truck-schedule` (List)
 - **Calls:** `GET /api/truck-schedules`
 - **Flow:** filterable table (date range, status, driver); row click could expand to show conflict/roster status inline (already part of the list response). "New Schedule" links to `/truck-schedule/new`.
 
 ## `/truck-schedule/new`
-- **Calls:** `GET /api/trucks`, `GET /api/drivers`, `GET /api/assistants`, `GET /api/routes`, `GET /api/truck-schedules/conflicts` (live pre-check), `POST /api/truck-schedules` (submit)
+- **Calls:** `GET /api/trucks`, `GET /api/drivers`, `GET /api/assistants`, `GET /api/routes`, `GET /api/truck-schedules/conflicts` (live pre-check), `GET /api/truck-schedules/eligible-orders` (orders for the chosen route), `POST /api/truck-schedules` (submit)
 - **Flow:**
   1. Dropdowns populated from trucks/drivers/assistants/routes lists (driver/assistant dropdowns show `hours_remaining` inline, from the same list response)
   2. As soon as truck + driver + assistant + route + start time are all selected, fire the conflict pre-check (`GET /api/truck-schedules/conflicts?truck_id=…&driver_id=…&assistant_id=…&route_id=…&start_time=…`) — debounced — to show live warnings before submit. `end_time` is derived server-side; the client only sends `route_id` and `start_time`.
-  3. Submit calls `POST /api/truck-schedules`; on 400, show the specific rule violated; on 201, redirect to `/truck-schedule`
+  3. **Orders to deliver (optional).** When a route is chosen the page loads `GET /api/truck-schedules/eligible-orders?route_id=…` and lists the orders that are At Store on that route as checkboxes. Changing the route clears the ticks. Leaving all unticked creates the schedule alone.
+  4. Submit calls `POST /api/truck-schedules` (with `order_ids` when any are ticked, which creates one Scheduled delivery per order in the same transaction); on 400, show the specific rule violated or the order that was rejected (nothing is saved); on 201, redirect to `/truck-schedule`
 
 ## `/deliveries`
 - **Calls:** `GET /api/deliveries`, `PATCH /api/deliveries/:id/complete`

@@ -72,8 +72,8 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
   if (!hasDifferences && item.old_data !== null && item.new_data !== null) {
     return (
       <div className="p-6 ml-6 md:ml-12 bg-white border-l-4 border-[#6c61e8] my-3 mr-6 rounded-r-xl shadow-sm">
-        <h4 className="text-[14px] font-semibold text-[#121C2C] mb-1">Field Changes</h4>
-        <p className="text-[13px] text-[#777586] italic">No field-level changes recorded.</p>
+        <h4 className="text-sm font-semibold text-[#121C2C] mb-1">Field Changes</h4>
+        <p className="text-sm text-[#777586] italic">No field-level changes recorded.</p>
       </div>
     );
   }
@@ -91,10 +91,10 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
       {/* Header with Title and Mode Toggle */}
       <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#F0F3FF]">
         <div>
-          <h4 className="text-[14px] font-bold text-[#121C2C] tracking-tight">
+          <h4 className="text-sm font-bold text-[#121C2C] tracking-tight">
             Field-Level Changes
           </h4>
-          <p className="text-[12px] text-[#777586]">
+          <p className="text-xs text-[#777586]">
             Inspecting record modifications for <span className="font-mono text-[#5A4FE0] font-semibold">{item.record_id}</span>
           </p>
         </div>
@@ -103,7 +103,7 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
         <button
           type="button"
           onClick={() => setShowRawJson(!showRawJson)}
-          className="text-[12px] font-semibold text-[#5A4FE0] hover:text-[#251297] px-3 py-1 rounded-full bg-[#F0F3FF] hover:bg-[#DEE8FF] transition-colors cursor-pointer"
+          className="text-xs font-semibold text-[#5A4FE0] hover:text-[#251297] px-3 py-1 rounded-full bg-[#F0F3FF] hover:bg-[#DEE8FF] transition-colors cursor-pointer"
         >
           {showRawJson ? 'Show Friendly View' : 'Show Raw JSON'}
         </button>
@@ -116,7 +116,7 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#777586] mb-2">
               Before
             </p>
-            <pre className="bg-[#F9F9FF] border border-[#DEE8FF] rounded-lg p-3 font-mono text-[12px] text-[#474554] overflow-x-auto whitespace-pre">
+            <pre className="bg-[#F9F9FF] border border-[#DEE8FF] rounded-lg p-3 font-mono text-xs text-[#474554] overflow-x-auto whitespace-pre">
               {item.old_data ? JSON.stringify(item.old_data, null, 2) : 'No previous record'}
             </pre>
           </div>
@@ -124,7 +124,7 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#777586] mb-2">
               After
             </p>
-            <pre className="bg-[#F9F9FF] border border-[#DEE8FF] rounded-lg p-3 font-mono text-[12px] text-[#474554] overflow-x-auto whitespace-pre">
+            <pre className="bg-[#F9F9FF] border border-[#DEE8FF] rounded-lg p-3 font-mono text-xs text-[#474554] overflow-x-auto whitespace-pre">
               {item.new_data ? JSON.stringify(item.new_data, null, 2) : 'Record deleted'}
             </pre>
           </div>
@@ -152,10 +152,10 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
                       key={key}
                       className="bg-white rounded-lg p-2.5 border border-[#DEE8FF] flex flex-col sm:flex-row sm:items-center justify-between gap-1 shadow-2xs"
                     >
-                      <span className="text-[12px] font-semibold text-[#474554]">
+                      <span className="text-xs font-semibold text-[#474554]">
                         {formatFieldLabel(key)}
                       </span>
-                      <span className="text-[13px] font-medium text-[#121C2C] break-all">
+                      <span className="text-sm font-medium text-[#121C2C] break-all">
                         {formatValue(val)}
                       </span>
                     </div>
@@ -163,9 +163,9 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center bg-white rounded-lg border border-dashed border-[#C8C4D7] text-[13px] text-[#777586]">
+              <div className="p-4 text-center bg-white rounded-lg border border-dashed border-[#C8C4D7] text-sm text-[#777586]">
                 <p className="font-medium text-[#00B69B]">✨ New Record Created</p>
-                <p className="text-[12px] mt-0.5">No previous data existed.</p>
+                <p className="text-xs mt-0.5">No previous data existed.</p>
               </div>
             )}
           </div>
@@ -200,17 +200,17 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
                       }`}
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] font-semibold text-[#474554]">
+                        <span className="text-xs font-semibold text-[#474554]">
                           {formatFieldLabel(key)}
                         </span>
                         {isModified && (
-                          <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-[#5A4FE0] text-white tracking-wider">
+                          <span className="text-[11px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-[#5A4FE0] text-white tracking-wider">
                             Changed
                           </span>
                         )}
                       </div>
                       <span
-                        className={`text-[13px] break-all ${
+                        className={`text-sm break-all ${
                           isModified
                             ? 'font-bold text-[#251297]'
                             : 'font-medium text-[#121C2C]'
@@ -223,9 +223,9 @@ export const AuditLogRowDiff: React.FC<AuditLogRowDiffProps> = ({ item }) => {
                 })}
               </div>
             ) : (
-              <div className="p-4 text-center bg-white rounded-lg border border-dashed border-[#F93C65]/40 text-[13px] text-[#F93C65]">
+              <div className="p-4 text-center bg-white rounded-lg border border-dashed border-[#F93C65]/40 text-sm text-[#F93C65]">
                 <p className="font-semibold">🗑️ Record Permanently Deleted</p>
-                <p className="text-[12px] text-[#777586] mt-0.5">
+                <p className="text-xs text-[#777586] mt-0.5">
                   This item was removed from the active database.
                 </p>
               </div>

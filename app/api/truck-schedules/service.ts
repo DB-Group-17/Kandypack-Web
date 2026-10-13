@@ -1,3 +1,4 @@
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { query } from '@/lib/db';
 import type { TruckScheduleItem } from '@/types/fleet';
 
@@ -103,4 +104,85 @@ export async function fetchTruckSchedulesFromDB(filters: {
     end_time:       formatDatetime(row.end_time),
     status:         row.status,
   }));
+}
+
+// ─── Order assignment (G1) ───────────────────────────────────────────────────
+
+/** Upper bound on orders attached to a single schedule, so one request cannot lock an unbounded set of rows. */
+export const MAX_ORDERS_PER_SCHEDULE = 50;
+
+/**
+ * Error raised inside the creation transaction when an order cannot be attached to the schedule.
+ * The handler rolls the whole transaction back (so no schedule is left behind) and answers 400
+ * with the message, which names the order and the rule it broke.
+ */
+export class OrderAssignmentError extends Error {}
+
+/**
+ * Attaches orders to a freshly created schedule by inserting one `Scheduled` delivery per order.
+ * Must run inside the caller's open transaction.
+ *
+ * Re-validates every order under a row lock (`FOR UPDATE`) so the rules hold even if the order
+ * changed after the form's list was loaded or another supervisor is attaching it at the same time:
+ *   - the order exists,
+ *   - its status is `At Store`,
+ *   - its route is the schedule's route, and
+ *   - it has no active (Scheduled or In Progress) delivery.
+ * `trg_check_active_delivery_on_insert` remains the database-level backstop for the last rule.
+ *
+ * @param conn - Connection with an open transaction and the caller's user context
+ * @param scheduleId - The schedule just created by schedule_truck_delivery()
+ * @param routeId - The schedule's route, which every order must share
+ * @param orderIds - Distinct, validated order IDs to attach (non-empty)
+ * @returns The new delivery IDs, in the same order as `orderIds`
+ * @throws OrderAssignmentError when any order breaks a rule (nothing is inserted for any order)
+ */
+export async function attachOrdersToSchedule(
+  conn: PoolConnection,
+  scheduleId: number,
+  routeId: number,
+  orderIds: number[]
+): Promise<number[]> {
+  const placeholders = orderIds.map(() => '?').join(', ');
+  const [rows] = await conn.execute<RowDataPacket[]>(
+    `SELECT o.order_id, o.status, o.route_id,
+            (SELECT COUNT(*) FROM deliveries d
+              WHERE d.order_id = o.order_id AND d.status IN ('Scheduled', 'In Progress')) AS active_deliveries
+       FROM orders o
+      WHERE o.order_id IN (${placeholders})
+        FOR UPDATE`,
+    orderIds
+  );
+  const byId = new Map(rows.map((row) => [Number(row.order_id), row]));
+
+  // Check every order before inserting anything, reporting the first problem found.
+  for (const orderId of orderIds) {
+    const order = byId.get(orderId);
+    if (!order) {
+      throw new OrderAssignmentError(`Order #${orderId} was not found.`);
+    }
+    if (order.status !== 'At Store') {
+      throw new OrderAssignmentError(
+        `Order #${orderId} is ${order.status}; only orders that are At Store can be assigned to a delivery.`
+      );
+    }
+    if (Number(order.route_id) !== routeId) {
+      throw new OrderAssignmentError(
+        `Order #${orderId} is on a different delivery route than this schedule.`
+      );
+    }
+    if (Number(order.active_deliveries) > 0) {
+      throw new OrderAssignmentError(`Order #${orderId} already has an active delivery.`);
+    }
+  }
+
+  const deliveryIds: number[] = [];
+  for (const orderId of orderIds) {
+    const [inserted] = await conn.execute<ResultSetHeader>(
+      `INSERT INTO deliveries (order_id, truck_schedule_id, status) VALUES (?, ?, 'Scheduled')`,
+      [orderId, scheduleId]
+    );
+    deliveryIds.push(inserted.insertId);
+  }
+  return deliveryIds;
 }

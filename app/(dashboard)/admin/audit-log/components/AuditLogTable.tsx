@@ -9,34 +9,11 @@
 import React, { useState } from 'react';
 import { AuditLogItem, AuditActionType } from '../types';
 import { AuditLogRowDiff } from './AuditLogRowDiff';
+import { formatDateTime } from '@/lib/format';
 
 interface AuditLogTableProps {
   /** Array of audit log records to display in the table */
   items: AuditLogItem[];
-}
-
-/**
- * Helper function to format an ISO 8601 date string into a user-friendly timestamp.
- * Example: "2023-10-24T14:32:05Z" -> "Oct 24, 14:32:05"
- *
- * @param dateStr ISO timestamp string
- * @returns Formatted date string
- */
-function formatTimestamp(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-
-    const month = date.toLocaleString('en-US', { month: 'short' });
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-
-    return `${month} ${day}, ${hours}:${minutes}:${seconds}`;
-  } catch {
-    return dateStr;
-  }
 }
 
 /**
@@ -50,25 +27,25 @@ function renderActionBadge(action: AuditActionType): React.JSX.Element {
   switch (action) {
     case 'Created':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#e6f4ea] text-[#137333]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e6f4ea] text-[#137333]">
           Created
         </span>
       );
     case 'Updated':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#e7f0ff] text-[#0047cc]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#e7f0ff] text-[#0047cc]">
           Updated
         </span>
       );
     case 'Deleted':
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#fce8e6] text-[#c5221f]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#fce8e6] text-[#c5221f]">
           Deleted
         </span>
       );
     default:
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[12px] font-medium bg-[#f1f1f5] text-[#474553]">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#f1f1f5] text-[#474553]">
           {action}
         </span>
       );
@@ -130,10 +107,10 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
             />
           </svg>
         </div>
-        <h3 className="text-[16px] font-semibold text-[#121C2C] mb-1">
+        <h3 className="text-base font-semibold text-[#121C2C] mb-1">
           No audit records match these filters.
         </h3>
-        <p className="text-[14px] text-[#777586]">
+        <p className="text-sm text-[#777586]">
           Try adjusting or clearing your table, user, or date range filters to view records.
         </p>
       </div>
@@ -146,7 +123,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
       <div className="hidden xl:block overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
-            <tr className="bg-[#F0F3FF] border-b border-[#DEE8FF] text-[#474553] text-[12px] font-semibold tracking-normal">
+            <tr className="bg-[#F0F3FF] border-b border-[#DEE8FF] text-[#474553] text-xs font-semibold tracking-normal">
               <th className="px-6 py-4 w-12 text-center" aria-label="Expand column"></th>
               <th className="px-6 py-4 font-semibold">Timestamp</th>
               <th className="px-6 py-4 font-semibold">Table</th>
@@ -155,7 +132,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
               <th className="px-6 py-4 font-semibold">Changed By</th>
             </tr>
           </thead>
-          <tbody className="text-[14px] text-[#121C2C] divide-y divide-[#DEE8FF]">
+          <tbody className="text-sm text-[#121C2C] divide-y divide-[#DEE8FF]">
             {items.map((item) => {
               const isExpanded = expandedRowIds.has(item.log_id);
 
@@ -205,14 +182,14 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
 
                     {/* Timestamp */}
                     <td className="px-6 py-4 whitespace-nowrap text-[#474553]">
-                      {formatTimestamp(item.changed_at)}
+                      {formatDateTime(item.changed_at)}
                     </td>
 
                     {/* Table Name */}
                     <td className="px-6 py-4 text-[#121C2C]">{formatTableName(item.table_name)}</td>
 
                     {/* Record ID */}
-                    <td className="px-6 py-4 font-mono text-[13px] text-[#474553]">
+                    <td className="px-6 py-4 tabular-nums text-sm text-[#474553]">
                       {item.record_id}
                     </td>
 
@@ -222,7 +199,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
                     {/* Changed By User */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-[#DEE8FF] text-[#251297] flex items-center justify-center text-[10px] font-bold tracking-tight">
+                        <div className="w-6 h-6 rounded-full bg-[#DEE8FF] text-[#251297] flex items-center justify-center text-[11px] font-bold tracking-tight">
                           {item.user_initials}
                         </div>
                         <span className="text-[#121C2C]">{item.user_name}</span>
@@ -254,19 +231,19 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
             <div key={item.log_id} className="p-4 space-y-3">
               {/* Header: Timestamp and Action Status Badge */}
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[12px] font-medium text-[#474553]">
-                  {formatTimestamp(item.changed_at)}
+                <span className="text-xs font-medium text-[#474553]">
+                  {formatDateTime(item.changed_at)}
                 </span>
                 {renderActionBadge(item.action)}
               </div>
 
               {/* Table / Resource Name & Optional Record ID */}
               <div className="flex items-baseline justify-between gap-2">
-                <h4 className="text-[15px] font-semibold text-[#121C2C]">
+                <h4 className="text-base font-semibold text-[#121C2C]">
                   {formatTableName(item.table_name)}
                 </h4>
                 {item.record_id && (
-                  <span className="font-mono text-[12px] text-[#474553] bg-[#F0F3FF] px-2 py-0.5 rounded">
+                  <span className="tabular-nums text-xs text-[#474553] bg-[#F0F3FF] px-2 py-0.5 rounded">
                     ID: {item.record_id}
                   </span>
                 )}
@@ -274,10 +251,10 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
 
               {/* Changed By User Metadata */}
               <div className="flex items-center gap-2 pt-0.5">
-                <div className="w-6 h-6 rounded-full bg-[#DEE8FF] text-[#251297] flex items-center justify-center text-[10px] font-bold tracking-tight shrink-0">
+                <div className="w-6 h-6 rounded-full bg-[#DEE8FF] text-[#251297] flex items-center justify-center text-[11px] font-bold tracking-tight shrink-0">
                   {item.user_initials}
                 </div>
-                <span className="text-[13px] text-[#121C2C]">{item.user_name}</span>
+                <span className="text-sm text-[#121C2C]">{item.user_name}</span>
               </div>
 
               {/* Accessible Expand/Collapse Button for Mobile */}
@@ -292,7 +269,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
                       ? `Hide changes for log ${item.log_id}`
                       : `Show changes for log ${item.log_id}`
                   }
-                  className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg bg-[#F0F3FF] hover:bg-[#DEE8FF]/60 text-[#251297] text-[13px] font-medium transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#4132C7] focus-visible:ring-offset-2 cursor-pointer"
+                  className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg bg-[#F0F3FF] hover:bg-[#DEE8FF]/60 text-[#251297] text-sm font-medium transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-[#4132C7] focus-visible:ring-offset-2 cursor-pointer"
                 >
                   <span>{isExpanded ? 'Hide changes' : 'Show changes'}</span>
                   <svg
