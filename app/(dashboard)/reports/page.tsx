@@ -989,9 +989,9 @@ export default function ReportsPage() {
                       <tr key={`${row.sales_year}-Q${row.sales_quarter}`} className="hover:bg-[#F9F9FF] transition-colors">
                         <td className="px-6 py-4 font-semibold text-[#121C2C]">{row.sales_year}</td>
                         <td className="px-6 py-4 font-medium text-[#4132C7]">Q{row.sales_quarter}</td>
-                        <td className="px-6 py-4 text-center font-mono">{row.num_orders}</td>
-                        <td className="px-6 py-4 text-right font-mono">{row.total_volume.toFixed(2)} units</td>
-                        <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                        <td className="px-6 py-4 text-center tabular-nums">{row.num_orders}</td>
+                        <td className="px-6 py-4 text-right tabular-nums">{row.total_volume.toFixed(2)} units</td>
+                        <td className="px-6 py-4 text-right tabular-nums font-bold text-[#121C2C]">
                           {formatCurrency(row.total_value)}
                         </td>
                       </tr>
@@ -1004,8 +1004,8 @@ export default function ReportsPage() {
                       <td colSpan={3} className="px-6 py-3.5">
                         Totals: {formatCurrency(quarterlyTotals.value)} · {quarterlyTotals.volume.toFixed(2)} units
                       </td>
-                      <td className="px-6 py-3.5 text-right font-mono">{quarterlyTotals.volume.toFixed(2)} units</td>
-                      <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
+                      <td className="px-6 py-3.5 text-right tabular-nums">{quarterlyTotals.volume.toFixed(2)} units</td>
+                      <td className="px-6 py-3.5 text-right tabular-nums text-[#4132C7]">
                         {formatCurrency(quarterlyTotals.value)}
                       </td>
                     </tr>
@@ -1049,10 +1049,10 @@ export default function ReportsPage() {
                     mostOrderedItems.map((item) => (
                       <tr key={item.product_id} className="hover:bg-[#F9F9FF] transition-colors">
                         <td className="px-6 py-4 font-bold text-[#4132C7]">#{item.quantity_rank}</td>
-                        <td className="px-6 py-4 font-mono text-[#474554]">{item.product_id}</td>
+                        <td className="px-6 py-4 tabular-nums text-[#474554]">{item.product_id}</td>
                         <td className="px-6 py-4 font-semibold text-[#121C2C]">{item.product_name}</td>
-                        <td className="px-6 py-4 text-right font-mono font-medium">{item.total_quantity.toLocaleString()}</td>
-                        <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                        <td className="px-6 py-4 text-right tabular-nums font-medium">{item.total_quantity.toLocaleString()}</td>
+                        <td className="px-6 py-4 text-right tabular-nums font-bold text-[#121C2C]">
                           {formatCurrency(item.total_value)}
                         </td>
                       </tr>
@@ -1065,8 +1065,8 @@ export default function ReportsPage() {
                       <td colSpan={3} className="px-6 py-3.5">
                         Totals: {formatCurrency(mostOrderedTotals.val)} · {mostOrderedTotals.qty.toLocaleString()} units
                       </td>
-                      <td className="px-6 py-3.5 text-right font-mono">{mostOrderedTotals.qty.toLocaleString()}</td>
-                      <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
+                      <td className="px-6 py-3.5 text-right tabular-nums">{mostOrderedTotals.qty.toLocaleString()}</td>
+                      <td className="px-6 py-3.5 text-right tabular-nums text-[#4132C7]">
                         {formatCurrency(mostOrderedTotals.val)}
                       </td>
                     </tr>
@@ -1111,9 +1111,9 @@ export default function ReportsPage() {
                       <tr key={idx} className="hover:bg-[#F9F9FF] transition-colors">
                         <td className="px-6 py-4 font-semibold text-[#121C2C]">{row.city_name}</td>
                         <td className="px-6 py-4 text-[#474554]">{row.route_name || "Direct / Unassigned"}</td>
-                        <td className="px-6 py-4 text-center font-mono">{row.num_orders}</td>
-                        <td className="px-6 py-4 text-right font-mono">{row.total_volume.toFixed(2)} units</td>
-                        <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                        <td className="px-6 py-4 text-center tabular-nums">{row.num_orders}</td>
+                        <td className="px-6 py-4 text-right tabular-nums">{row.total_volume.toFixed(2)} units</td>
+                        <td className="px-6 py-4 text-right tabular-nums font-bold text-[#121C2C]">
                           {formatCurrency(row.total_value)}
                         </td>
                       </tr>
@@ -1126,8 +1126,8 @@ export default function ReportsPage() {
                       <td colSpan={3} className="px-6 py-3.5">
                         Totals: {formatCurrency(cityRouteTotals.value)} · {cityRouteTotals.volume.toFixed(2)} units
                       </td>
-                      <td className="px-6 py-3.5 text-right font-mono">{cityRouteTotals.volume.toFixed(2)} units</td>
-                      <td className="px-6 py-3.5 text-right font-mono text-[#4132C7]">
+                      <td className="px-6 py-3.5 text-right tabular-nums">{cityRouteTotals.volume.toFixed(2)} units</td>
+                      <td className="px-6 py-3.5 text-right tabular-nums text-[#4132C7]">
                         {formatCurrency(cityRouteTotals.value)}
                       </td>
                     </tr>
@@ -1188,8 +1188,8 @@ export default function ReportsPage() {
                         return (
                           <tr key={d.person_id} className="hover:bg-[#F9F9FF]">
                             <td className="px-5 py-3.5 font-semibold text-[#121C2C]">{d.full_name}</td>
-                            <td className="px-5 py-3.5 text-right font-mono">{d.total_hours.toFixed(1)}h</td>
-                            <td className="px-5 py-3.5 text-right font-mono font-medium">{d.remaining_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-right tabular-nums">{d.total_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-right tabular-nums font-medium">{d.remaining_hours.toFixed(1)}h</td>
                             <td className="px-5 py-3.5 text-center">
                               {nearCap ? (
                                 <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
@@ -1245,8 +1245,8 @@ export default function ReportsPage() {
                         return (
                           <tr key={a.person_id} className="hover:bg-[#F9F9FF]">
                             <td className="px-5 py-3.5 font-semibold text-[#121C2C]">{a.full_name}</td>
-                            <td className="px-5 py-3.5 text-right font-mono">{a.total_hours.toFixed(1)}h</td>
-                            <td className="px-5 py-3.5 text-right font-mono font-medium">{a.remaining_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-right tabular-nums">{a.total_hours.toFixed(1)}h</td>
+                            <td className="px-5 py-3.5 text-right tabular-nums font-medium">{a.remaining_hours.toFixed(1)}h</td>
                             <td className="px-5 py-3.5 text-center">
                               {nearCap ? (
                                 <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#FFF9E6] text-[#FFB800]">
@@ -1302,11 +1302,11 @@ export default function ReportsPage() {
                   ) : (
                     truckUsage.map((t) => (
                       <tr key={t.truck_id} className="hover:bg-[#F9F9FF] transition-colors">
-                        <td className="px-6 py-4 font-mono text-[#474554]">#{t.truck_id}</td>
-                        <td className="px-6 py-4 font-mono font-bold text-[#4132C7]">{t.plate_number}</td>
+                        <td className="px-6 py-4 tabular-nums text-[#474554]">#{t.truck_id}</td>
+                        <td className="px-6 py-4 tabular-nums font-bold text-[#4132C7]">{t.plate_number}</td>
                         <td className="px-6 py-4 text-[#121C2C]">{t.usage_month}</td>
-                        <td className="px-6 py-4 text-center font-mono font-semibold">{t.num_schedules}</td>
-                        <td className="px-6 py-4 text-right font-mono font-medium">{t.total_hours.toFixed(1)} hrs</td>
+                        <td className="px-6 py-4 text-center tabular-nums font-semibold">{t.num_schedules}</td>
+                        <td className="px-6 py-4 text-right tabular-nums font-medium">{t.total_hours.toFixed(1)} hrs</td>
                         <td className="px-6 py-4 text-center">
                           <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#E0F2FF] text-[#0047CC]">
                             {t.distinct_routes_covered} routes
@@ -1382,7 +1382,7 @@ export default function ReportsPage() {
                       const isCancelled = ord.status === "Cancelled";
                       return (
                         <tr key={ord.order_id} className="hover:bg-[#F9F9FF] transition-colors">
-                          <td className="px-6 py-4 font-mono font-bold text-[#4132C7]">#{ord.order_id}</td>
+                          <td className="px-6 py-4 tabular-nums font-bold text-[#4132C7]">#{ord.order_id}</td>
                           <td className="px-6 py-4 text-[#474554]">
                             {typeof ord.order_placed_at === "string" ? ord.order_placed_at.split("T")[0] : ord.order_placed_at}
                           </td>
@@ -1395,7 +1395,7 @@ export default function ReportsPage() {
                           <td className="px-6 py-4 text-[#121C2C] font-medium">
                             {ord.truck_plate ? `${ord.truck_plate} (${ord.driver_name || "Assigned"})` : "Not scheduled"}
                           </td>
-                          <td className="px-6 py-4 text-right font-mono font-bold text-[#121C2C]">
+                          <td className="px-6 py-4 text-right tabular-nums font-bold text-[#121C2C]">
                             {formatCurrency(ord.total_value)}
                           </td>
                           <td className="px-6 py-4 text-right">

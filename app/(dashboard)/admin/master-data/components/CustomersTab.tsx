@@ -96,7 +96,7 @@ export const CustomersTab: React.FC<CustomersTabProps> = ({
                   </div>
                   <div>
                     <p className="font-semibold text-[#121C2C]">{cust.customer_name}</p>
-                    <p className="text-[11px] font-mono text-[#777586]">
+                    <p className="text-[11px] tabular-nums text-[#777586]">
                       CUS-{String(cust.customer_id).padStart(3, '0')}
                     </p>
                   </div>

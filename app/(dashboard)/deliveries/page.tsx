@@ -50,6 +50,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertCircle, CheckCircle2, Loader2, MessageSquare, Truck, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import type { DeliveryItem, DeliveryStatus } from '@/types/fleet';
+import { formatDateTime } from '@/lib/format';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -106,26 +107,6 @@ function getDeliveryBadgeClass(status: DeliveryStatus): string {
  */
 function isCompletable(status: DeliveryStatus): boolean {
   return status === 'In Progress' || status === 'Scheduled';
-}
-
-/**
- * Formats an ISO 8601 timestamp from the API for display in the viewer's locale.
- * Falls back to the raw text if it cannot be parsed, and to an em dash when empty.
- *
- * @param iso - ISO timestamp string or null/undefined
- * @returns Human-readable date and time, or "—"
- */
-function formatDeliveredAt(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 /** Shape of one fetch outcome, tagged with the query it answers. */
@@ -402,7 +383,7 @@ export default function DeliveriesPage(): React.JSX.Element {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-[#474554]">
-                        {formatDeliveredAt(d.delivered_at)}
+                        {formatDateTime(d.delivered_at)}
                       </td>
                       <td className="px-6 py-4">
                         {isCompletable(d.status) ? (
@@ -440,7 +421,7 @@ export default function DeliveriesPage(): React.JSX.Element {
                     {d.truck_plate} · Driver: {d.driver_name}
                   </p>
                   <p className="text-sm text-[#777586]">
-                    Delivered on: {formatDeliveredAt(d.delivered_at)}
+                    Delivered on: {formatDateTime(d.delivered_at)}
                   </p>
                   {d.notes && (
                     <p className="flex items-start gap-1.5 text-xs text-[#777586]">

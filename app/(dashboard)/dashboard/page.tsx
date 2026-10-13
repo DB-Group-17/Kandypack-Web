@@ -46,6 +46,7 @@ import { AlertCircle, ClipboardList, Loader2, MapPin, Package, TrainFront, Truck
 import { useAuth } from '@/context/AuthContext';
 import { canAccessRoute } from '@/lib/rbac';
 import type { DashboardSummary } from '@/app/api/dashboard/summary/route';
+import { formatTime } from '@/lib/format';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -123,18 +124,6 @@ function KpiCard({ card, canOpen }: { card: KpiCardConfig; canOpen: boolean }): 
       {content}
     </Link>
   );
-}
-
-/**
- * Formats an ISO departure timestamp as a short local time, e.g. "10:30 AM".
- *
- * @param iso - ISO 8601 timestamp from the API
- * @returns Localised time, or the raw text when it cannot be parsed
- */
-function formatDepartureTime(iso: string): string {
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return iso;
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -349,7 +338,7 @@ export default function DashboardPage(): React.JSX.Element {
                         <MapPin className="h-5 w-5" />
                       </span>
                       <p className="text-sm font-semibold text-[#121C2C]">
-                        {trip.destination_city} — departs {formatDepartureTime(trip.departure_datetime)}
+                        {trip.destination_city} — departs {formatTime(trip.departure_datetime)}
                       </p>
                     </li>
                   ))}

@@ -15,6 +15,7 @@
 
 import React from 'react';
 import { StockItem, PaginationState } from '../types';
+import { formatDateTime } from '@/lib/format';
 
 /**
  * Props accepted by the StockLevelsTable component.
@@ -42,28 +43,6 @@ interface StockLevelsTableProps {
   searchQuery?: string;
   /** Callback to clear search filter */
   onClearSearch?: () => void;
-}
-
-/**
- * Formats an ISO timestamp or date string into a clean, human-readable format.
- *
- * @param dateStr - Raw timestamp string from database/API
- * @returns Formatted date string (e.g., '2026-08-30 14:15')
- */
-function formatDisplayDate(dateStr: string): string {
-  if (!dateStr) return '—';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
-  } catch {
-    return dateStr;
-  }
 }
 
 /**
@@ -199,7 +178,7 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
                     {item.product_name}
                   </td>
                   <td className="py-4 px-6">
-                    <span className="font-mono text-xs text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
+                    <span className="tabular-nums text-xs text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
                       {item.sku}
                     </span>
                   </td>
@@ -207,7 +186,7 @@ export const StockLevelsTable: React.FC<StockLevelsTableProps> = ({
                     {renderQuantity(item)}
                   </td>
                   <td className="py-4 px-6 text-right text-[#474554] whitespace-nowrap">
-                    {formatDisplayDate(item.updated_at)}
+                    {formatDateTime(item.updated_at)}
                   </td>
                 </tr>
               ))

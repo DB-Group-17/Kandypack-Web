@@ -139,7 +139,7 @@ const EditProductModalContent: React.FC<Omit<EditProductModalProps, 'isOpen'> & 
             <div>
               <h3 className="text-lg font-bold text-[#121C2C]">Edit Product</h3>
               <p className="text-xs text-[#474554]">
-                Update specifications for SKU <span className="font-mono font-semibold text-[#4132C7]">{product.sku}</span>
+                Update specifications for SKU <span className="tabular-nums font-semibold text-[#4132C7]">{product.sku}</span>
               </p>
             </div>
           </div>
@@ -181,7 +181,7 @@ const EditProductModalContent: React.FC<Omit<EditProductModalProps, 'isOpen'> & 
                 type="text"
                 value={product.sku}
                 disabled
-                className="w-full h-11 px-3.5 bg-[#F1F1F5] border border-[#C8C4D7]/40 rounded-lg text-sm text-[#777586] font-mono cursor-not-allowed select-none"
+                className="w-full h-11 px-3.5 bg-[#F1F1F5] border border-[#C8C4D7]/40 rounded-lg text-sm text-[#777586] tabular-nums cursor-not-allowed select-none"
               />
               <span className="text-[11px] text-[#777586] mt-1 block">SKU cannot be modified.</span>
             </div>

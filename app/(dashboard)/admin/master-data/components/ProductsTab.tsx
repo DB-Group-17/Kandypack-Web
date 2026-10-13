@@ -109,7 +109,7 @@ export const ProductsTab: React.FC<ProductsTabProps> = ({
               className="hover:bg-[#F9F9FF] transition-colors group"
             >
               {/* SKU */}
-              <td className="py-4 px-5 font-mono text-xs font-medium text-[#4132C7]">
+              <td className="py-4 px-5 tabular-nums text-xs font-medium text-[#4132C7]">
                 {product.sku}
               </td>
 

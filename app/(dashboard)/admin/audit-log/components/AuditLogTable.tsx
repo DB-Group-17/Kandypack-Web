@@ -9,34 +9,11 @@
 import React, { useState } from 'react';
 import { AuditLogItem, AuditActionType } from '../types';
 import { AuditLogRowDiff } from './AuditLogRowDiff';
+import { formatDateTime } from '@/lib/format';
 
 interface AuditLogTableProps {
   /** Array of audit log records to display in the table */
   items: AuditLogItem[];
-}
-
-/**
- * Helper function to format an ISO 8601 date string into a user-friendly timestamp.
- * Example: "2023-10-24T14:32:05Z" -> "Oct 24, 14:32:05"
- *
- * @param dateStr ISO timestamp string
- * @returns Formatted date string
- */
-function formatTimestamp(dateStr: string): string {
-  try {
-    const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-
-    const month = date.toLocaleString('en-US', { month: 'short' });
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-
-    return `${month} ${day}, ${hours}:${minutes}:${seconds}`;
-  } catch {
-    return dateStr;
-  }
 }
 
 /**
@@ -205,14 +182,14 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
 
                     {/* Timestamp */}
                     <td className="px-6 py-4 whitespace-nowrap text-[#474553]">
-                      {formatTimestamp(item.changed_at)}
+                      {formatDateTime(item.changed_at)}
                     </td>
 
                     {/* Table Name */}
                     <td className="px-6 py-4 text-[#121C2C]">{formatTableName(item.table_name)}</td>
 
                     {/* Record ID */}
-                    <td className="px-6 py-4 font-mono text-sm text-[#474553]">
+                    <td className="px-6 py-4 tabular-nums text-sm text-[#474553]">
                       {item.record_id}
                     </td>
 
@@ -255,7 +232,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
               {/* Header: Timestamp and Action Status Badge */}
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-medium text-[#474553]">
-                  {formatTimestamp(item.changed_at)}
+                  {formatDateTime(item.changed_at)}
                 </span>
                 {renderActionBadge(item.action)}
               </div>
@@ -266,7 +243,7 @@ export const AuditLogTable: React.FC<AuditLogTableProps> = ({ items }) => {
                   {formatTableName(item.table_name)}
                 </h4>
                 {item.record_id && (
-                  <span className="font-mono text-xs text-[#474553] bg-[#F0F3FF] px-2 py-0.5 rounded">
+                  <span className="tabular-nums text-xs text-[#474553] bg-[#F0F3FF] px-2 py-0.5 rounded">
                     ID: {item.record_id}
                   </span>
                 )}

@@ -15,6 +15,7 @@ import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { UserAccountItem } from '../types';
 import { getRoleDisplayLabel, getRoleBadgeStyles } from '../mockData';
+import { formatDate } from '@/lib/format';
 
 interface UsersTableProps {
   /** Array of user items to display on the current page */
@@ -45,25 +46,6 @@ function getInitials(name: string): string {
     return `${parts[0].charAt(0)}${parts[1].charAt(0)}`.toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
-}
-
-/**
- * Helper to format an ISO date string into a user-friendly format (e.g. "Feb 01, 2026").
- *
- * @param isoString - Date string in ISO format
- * @returns Formatted date string
- */
-function formatDate(isoString: string): string {
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: '2-digit',
-      year: 'numeric',
-    });
-  } catch {
-    return isoString;
-  }
 }
 
 /**
@@ -259,7 +241,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
                   {/* Email */}
                   <td className="py-4 px-6">
-                    <span className="text-sm font-mono text-[#121C2C]">
+                    <span className="text-sm tabular-nums text-[#121C2C]">
                       {user.email}
                     </span>
                   </td>
@@ -408,7 +390,7 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               <div className="text-xs space-y-1 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-[#474554]">Email:</span>
-                  <span className="font-mono text-[#121C2C]">{user.email}</span>
+                  <span className="tabular-nums text-[#121C2C]">{user.email}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[#474554]">Role:</span>

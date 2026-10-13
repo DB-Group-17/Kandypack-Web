@@ -48,6 +48,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { hasPermission } from "@/lib/rbac";
+import { formatDate, formatDateTime } from "@/lib/format";
 
 /**
  * Canonical order status values, matching the `orders.status` enum in the database
@@ -200,44 +201,6 @@ interface OrderDetail {
  */
 const INACCESSIBLE_MESSAGE =
   "This order doesn't exist or you don't have access to it.";
-
-/**
- * Formats an ISO datetime string as a short calendar date, e.g. "Oct 24, 2023".
- * Returns an em dash for missing values and the raw string if parsing fails, so
- * malformed data degrades gracefully rather than crashing the card.
- *
- * @param {string | null} value - ISO date or datetime string from the API.
- * @returns {string} Formatted calendar date.
- */
-function formatDate(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-}
-
-/**
- * Formats an ISO datetime string as date plus time, e.g. "Oct 24, 2023, 09:15 AM".
- *
- * @param {string | null} value - ISO datetime string from the API.
- * @returns {string} Formatted date and time.
- */
-function formatDateTime(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 /**
  * Formats a decimal string as Sri Lankan Rupees. DECIMAL columns arrive as strings
@@ -761,7 +724,7 @@ function OrderDetailPageContent() {
                         <div className="font-medium text-[#121C2C]">
                           {item.product_name}
                         </div>
-                        <div className="text-[11px] text-[#474554] font-mono">
+                        <div className="text-[11px] text-[#474554] tabular-nums">
                           {item.sku}
                         </div>
                       </td>
@@ -1039,7 +1002,7 @@ function OrderDetailPageContent() {
                 <dl className="space-y-2 text-xs">
                   <div className="flex justify-between gap-2">
                     <dt className="text-[#474554]">Truck</dt>
-                    <dd className="font-medium text-[#121C2C] font-mono">
+                    <dd className="font-medium text-[#121C2C] tabular-nums">
                       {order.delivery.schedule.truck_plate}
                     </dd>
                   </div>

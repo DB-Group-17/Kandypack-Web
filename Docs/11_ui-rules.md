@@ -123,5 +123,17 @@ Every page uses Plus Jakarta Sans (loaded in `app/layout.tsx`, mapped to `font-s
 | Labels, helper text, badges | `text-xs` |
 | Table header, captions | `text-[11px] font-semibold` |
 
-`font-mono` is for identifiers and technical values only.
+Table cells, IDs, SKUs, plates, emails and report numbers use Plus Jakarta Sans. Use `tabular-nums` on number columns so digits line up. `font-mono` is reserved for code-like content: the audit log JSON diff and one-time temporary passwords.
+
+## 13. Date and time format
+
+Every date comes from `lib/format.ts`; pages must not write their own formatter.
+
+| Use | Helper | Example |
+|---|---|---|
+| Calendar date | `formatDate` | `Oct 12, 2026` |
+| Date and time | `formatDateTime` | `Oct 12, 2026, 01:30 PM` |
+| Time only | `formatTime` | `01:30 PM` |
+
+Times are shown in the viewer's own timezone on a 12-hour clock. The database stores UTC; MySQL-style `YYYY-MM-DD HH:MM:SS` strings are read as UTC, and date-only values are never shifted. Inside server components use `components/LocalDateTime.tsx`, which switches to the viewer's timezone after hydration. Empty values show an em dash.
 

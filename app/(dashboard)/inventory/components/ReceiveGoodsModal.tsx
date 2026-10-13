@@ -15,6 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Store, ArrivedTrainBooking, ReceiveGoodsItemInput, ApiArrivedBookingsResponse } from '../types';
+import { formatDateTime } from '@/lib/format';
 
 /**
  * Props accepted by the ReceiveGoodsModal component.
@@ -40,30 +41,6 @@ interface ReceiveGoodsModalProps {
     bookingId: number,
     items?: ReceiveGoodsItemInput[]
   ) => Promise<{ success: boolean; error?: string; updated_products?: number }> | void;
-}
-
-/**
- * Formats an ISO datetime string into human-readable date and time.
- *
- * @param isoStr - ISO date string
- * @returns Clean localized datetime string (e.g. "Aug 31, 2026, 08:30")
- */
-function formatArrivalDateTime(isoStr: string): string {
-  if (!isoStr) return '';
-  try {
-    const d = new Date(isoStr);
-    if (isNaN(d.getTime())) return isoStr;
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-  } catch {
-    return isoStr;
-  }
 }
 
 /**
@@ -321,7 +298,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                     arrivedBookings.map((b) => (
                       <option key={b.booking_id} value={b.booking_id}>
                         Booking #{b.booking_id} — Order #{b.order_id} (Trip #{b.trip_id}
-                        {b.arrival_datetime ? `, Arrived: ${formatArrivalDateTime(b.arrival_datetime)}` : ''})
+                        {b.arrival_datetime ? `, Arrived: ${formatDateTime(b.arrival_datetime)}` : ''})
                       </option>
                     ))
                   )}
@@ -369,7 +346,7 @@ export const ReceiveGoodsModal: React.FC<ReceiveGoodsModalProps> = ({
                               <div className="font-semibold text-sm text-[#121C2C]">
                                 {item.product_name}
                               </div>
-                              <span className="font-mono text-[11px] text-[#777586] bg-[#F5F5FA] px-1.5 py-0.5 rounded border border-[#C8C4D7]/40">
+                              <span className="tabular-nums text-[11px] text-[#777586] bg-[#F5F5FA] px-1.5 py-0.5 rounded border border-[#C8C4D7]/40">
                                 {item.sku}
                               </span>
                             </td>

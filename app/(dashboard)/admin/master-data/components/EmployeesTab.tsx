@@ -118,7 +118,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                   </div>
                   <div>
                     <p className="font-semibold text-[#121C2C]">{emp.full_name}</p>
-                    <p className="text-[11px] font-mono text-[#777586]">
+                    <p className="text-[11px] tabular-nums text-[#777586]">
                       EMP-{String(emp.employee_id).padStart(3, '0')}
                     </p>
                   </div>
@@ -126,7 +126,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
               </td>
 
               {/* NIC */}
-              <td className="py-4 px-5 font-mono text-xs text-[#474554]">
+              <td className="py-4 px-5 tabular-nums text-xs text-[#474554]">
                 {emp.nic_number}
               </td>
 
@@ -148,7 +148,7 @@ export const EmployeesTab: React.FC<EmployeesTabProps> = ({
                   {emp.employee_type_label}
                 </span>
                 {emp.license_number && (
-                  <p className="text-[11px] font-mono text-[#777586] mt-0.5">
+                  <p className="text-[11px] tabular-nums text-[#777586] mt-0.5">
                     Lic: {emp.license_number}
                   </p>
                 )}

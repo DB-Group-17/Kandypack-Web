@@ -74,7 +74,7 @@ export const CitiesTab: React.FC<CitiesTabProps> = ({ items }) => {
                 className="hover:bg-[#F9F9FF] transition-colors group"
               >
                 {/* ID */}
-                <td className="py-4 px-5 font-mono text-xs text-[#474554]">
+                <td className="py-4 px-5 tabular-nums text-xs text-[#474554]">
                   #{city.city_id}
                 </td>
 

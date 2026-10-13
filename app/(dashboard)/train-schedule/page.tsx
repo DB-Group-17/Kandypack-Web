@@ -23,6 +23,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useId } from "react";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * TrainTrip represents the data structure of a scheduled railway cargo transport.
@@ -220,25 +221,6 @@ export default function TrainSchedulePage() {
       ignore = true;
     };
   }, [selectedCity, selectedStatus]);
-
-  /**
-   * Helper function to format an ISO datetime string into human-readable date & time.
-   *
-   * @param {string} isoString - ISO formatted datetime string.
-   * @returns {string} Formatted date and time (e.g. "Sep 02, 2026 at 08:00 AM").
-   */
-  const formatDateTime = (isoString: string): string => {
-    if (!isoString) return "";
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return isoString;
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   /**
    * Returns the single status change that is allowed for a trip, or null when none is left.
@@ -797,7 +779,7 @@ export default function TrainSchedulePage() {
                       : 0;
                   return (
                     <tr key={trip.trip_id} className="hover:bg-[#F9F9FF] transition-colors">
-                      <td className="px-5 py-4 font-mono font-medium text-[#4132C7]">
+                      <td className="px-5 py-4 tabular-nums font-medium text-[#4132C7]">
                         #{trip.trip_id}
                       </td>
                       <td className="px-5 py-4 font-semibold text-[#121C2C]">

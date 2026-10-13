@@ -41,6 +41,7 @@ import { Plus } from 'lucide-react';
 import type { TruckScheduleItem, TruckScheduleStatus } from '@/types/fleet';
 import TruckScheduleFilters from './TruckScheduleFilters';
 import ScheduleCreatedToast from './ScheduleCreatedToast';
+import LocalDateTime from '@/components/LocalDateTime';
 import { fetchTruckSchedulesFromDB } from '@/app/api/truck-schedules/service';
 
 /**
@@ -148,7 +149,7 @@ export default async function TruckSchedulesPage({
       )}
 
       {/* ── Schedule table ── */}
-      <div className="bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-hidden border border-[#C8C4D7]/40">
+      <div className="bg-white rounded-[16px] shadow-[0_4px_20px_rgba(0,0,0,0.04)] overflow-x-auto border border-[#C8C4D7]/40">
         {items.length === 0 && !error ? (
           <div className="py-16 text-center text-sm text-[#474554]">
             No truck schedules for this period.
@@ -168,17 +169,12 @@ export default async function TruckSchedulesPage({
             </thead>
             <tbody className="divide-y divide-[#C8C4D7]">
               {items.map((schedule) => {
-                // Extract date and time portions from the YYYY-MM-DD HH:MM:SS strings
-                const datePart  = schedule.start_time.slice(0, 10);
-                const startTime = schedule.start_time.slice(11, 16);
-                const endTime   = schedule.end_time.slice(11, 16);
-
                 return (
                   <tr
                     key={schedule.schedule_id}
                     className="hover:bg-[#F0F3FF]/50 transition-colors h-[56px]"
                   >
-                    <td className="px-6 py-4 text-sm text-[#121C2C] font-mono">
+                    <td className="px-6 py-4 text-sm text-[#121C2C] whitespace-nowrap">
                       {schedule.truck_plate}
                     </td>
                     <td className="px-6 py-4 text-sm text-[#121C2C]">
@@ -190,11 +186,11 @@ export default async function TruckSchedulesPage({
                     <td className="px-6 py-4 text-sm font-medium text-[#121C2C]">
                       {schedule.route_name}
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#474554]">
-                      {datePart} {startTime}
+                    <td className="px-6 py-4 text-sm text-[#474554] whitespace-nowrap">
+                      <LocalDateTime value={schedule.start_time} />
                     </td>
-                    <td className="px-6 py-4 text-sm text-[#474554]">
-                      {datePart} {endTime}
+                    <td className="px-6 py-4 text-sm text-[#474554] whitespace-nowrap">
+                      <LocalDateTime value={schedule.end_time} />
                     </td>
                     <td className="px-6 py-4">
                       <span

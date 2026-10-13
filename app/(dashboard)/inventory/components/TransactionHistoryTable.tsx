@@ -15,6 +15,7 @@
 
 import React from 'react';
 import { InventoryTransaction, TransactionFilters, PaginationState, TransactionType } from '../types';
+import { formatDateTime } from '@/lib/format';
 
 /**
  * Props accepted by the TransactionHistoryTable component.
@@ -38,29 +39,6 @@ interface TransactionHistoryTableProps {
   error?: string | null;
   /** Retry callback if fetching failed */
   onRetry?: () => void;
-}
-
-/**
- * Formats an ISO timestamp or date string into a clean, human-readable format.
- *
- * @param dateStr - Raw timestamp string from database/API
- * @returns Formatted date string (e.g., '2026-08-30 14:15:30')
- */
-function formatDisplayDateTime(dateStr: string): string {
-  if (!dateStr) return '—';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const seconds = String(d.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  } catch {
-    return dateStr;
-  }
 }
 
 /**
@@ -300,7 +278,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
                     >
                       {/* Timestamp */}
                       <td className="py-4 px-6 text-sm text-[#474554] whitespace-nowrap">
-                        {formatDisplayDateTime(txn.created_at)}
+                        {formatDateTime(txn.created_at)}
                       </td>
 
                       {/* Product Name */}
@@ -310,7 +288,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
 
                       {/* SKU */}
                       <td className="py-4 px-6">
-                        <span className="font-mono text-xs text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
+                        <span className="tabular-nums text-xs text-[#474554] bg-[#F5F5FA] px-2 py-0.5 rounded border border-[#C8C4D7]/40">
                           {txn.sku}
                         </span>
                       </td>
@@ -331,7 +309,7 @@ export const TransactionHistoryTable: React.FC<TransactionHistoryTableProps> = (
 
                       {/* Reference Document */}
                       <td className="py-4 px-6 whitespace-nowrap">
-                        <span className="font-mono text-xs font-semibold text-[#4132C7] bg-[#DEE8FF] px-2.5 py-1 rounded-md">
+                        <span className="tabular-nums text-xs font-semibold text-[#4132C7] bg-[#DEE8FF] px-2.5 py-1 rounded-md">
                           {txn.reference_code}
                         </span>
                       </td>
