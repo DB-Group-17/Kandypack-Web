@@ -55,10 +55,13 @@ Conventions used throughout:
   }
   ```
 - **Business logic:**
-  1. Check Redis cache key `dashboard:summary:<role>:<store_id>` (TTL ~30–60s)
-  2. On miss: run 4 lightweight aggregate queries (`orders WHERE status='Pending'`, `train_trips WHERE DATE(departure_datetime)=CURDATE()`, `truck_schedules WHERE status IN ('Scheduled','In Progress')`, `store_inventory WHERE quantity_on_hand < threshold`)
-  3. `store_manager` role scopes all four to their own `store_id`
+  1. Check Redis cache key `dashboard:summary:<role>:<store_id>` (built: `REDIS_KEYS.CACHE_DASHBOARD_SUMMARY`, TTL 30s)
+  2. On miss: run 4 lightweight aggregate queries (`orders WHERE status='Pending'`, `train_trips WHERE DATE(departure_datetime)=CURDATE()` excluding `Cancelled` trips, `truck_schedules WHERE status IN ('Scheduled','In Progress')`, `store_inventory WHERE quantity_on_hand < LOW_STOCK_THRESHOLD` (20, `lib/business-rules.ts`))
+  3. `store_manager` role scopes all four to their own `store_id`: orders and departures through the store's city (`orders.destination_city_id` / `train_trips.destination_city_id`), truck schedules through the store's routes (`routes.store_id`), stock by `store_id`. A store manager with no assigned store receives 403
   4. Cache result, return
+- **Known limits (version one):**
+  - "Today" is the database's `CURDATE()`, which is UTC on the shared database. A trip departing between 00:00 and 05:30 Sri Lanka time therefore counts as the previous day's departure. Accepted for version one; no timezone conversion is applied.
+  - `low_stock_alerts` lists at most 100 rows, lowest quantity first, so the dashboard card count stops at 100.
 
 ---
 
