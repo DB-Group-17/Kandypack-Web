@@ -2,8 +2,6 @@
 
 Kandypack is a database-driven logistics platform for a mid-sized FMCG manufacturer in Kandy, Sri Lanka. It replaces Excel tracking for the full flow of goods: orders are placed at least 7 days ahead, booked onto train trips with limited cargo capacity, received at stores near railway stations, and delivered to customers by truck on predefined routes with driver and assistant rosters. Management reports cover sales, top products, city and route breakdowns, working hours, truck usage and customer history.
 
-This is a 3rd semester university database project (Group 17).
-
 **Live site:** https://dinethnimsara.dpdns.org
 
 ## Key features
@@ -102,7 +100,8 @@ The planned split is in [`Docs/08_workload-division.md`](Docs/08_workload-divisi
 - **Testing and CI**
   - `.github/workflows/ci.yml` (lint, typecheck, tests, migration check) and the unit, API and integration suites in `tests/`.
 - **Dashboard**
-  - Planned (summary cards with Redis caching) but not built yet, so `/dashboard` does not exist and login currently lands on a not-found page.
+  - Backend: `/api/dashboard/summary` (pending orders, today's departures, active truck schedules, low-stock alerts; scoped to the store for store managers and cached in Redis for 30 seconds).
+  - Frontend: `/dashboard` (four summary cards and two lists).
 
 ## Test accounts for evaluators
 
@@ -120,6 +119,54 @@ Notes:
 
 - Login is limited to 5 attempts per 15 minutes per IP address, so avoid repeated wrong passwords.
 
+## Roles and access
+
+| Role | Pages |
+|---|---|
+| System administrator | All pages, including Users, Master data and Audit log |
+| Logistics manager | Dashboard, Orders, Train schedule, Inventory (read), Reports (with CSV and PDF export) |
+| Order entry clerk | Dashboard, Orders (place and view) |
+| Store manager | Dashboard, Orders and Inventory for their own store and city only; receives goods |
+| Fleet supervisor | Dashboard, Truck schedule, Deliveries, Reports (driver hours and truck usage) |
+
+Access is enforced twice: by the Proxy and the role map in `lib/rbac.ts` for pages, and again inside every API route.
+
+## How an order travels
+
+1. **Order entry clerk** places the order on `/orders/new`. The `place_order` procedure matches the route and books train space. Status: **Pending**.
+2. **Logistics manager** marks the train trip departed on `/train-schedule`. Status: **In Transit**. Marking it arrived changes only the trip.
+3. **Store manager** receives the goods on `/inventory`. Stock goes up. Status: **At store**.
+4. **Fleet supervisor** schedules a truck with the order on `/truck-schedule/new`. Conflicts and roster limits are checked.
+5. **Fleet supervisor** marks the delivery complete on `/deliveries`. Stock goes down. Status: **Delivered**.
+
+A logistics manager or administrator can set an order to **Cancelled** from its detail page.
+
+## Database
+
+The schema lives in `db/migrations/` as 26 numbered files that are applied once each and recorded; fixes are new migrations, never edits to old ones.
+
+- **23 tables** with primary keys, foreign keys, check and unique constraints, and soft delete where needed.
+- **About 35 indexes**, mostly composite, for example trip lookup by destination and departure, truck, driver and assistant overlap checks by time, and audit log lookups.
+- **8 functions**, for example `calculate_order_space`, `get_available_capacity` and the weekly-hours functions.
+- **Stored procedures:** `place_order`, `receive_goods_at_store`, `schedule_truck_delivery` and `complete_delivery`, each running as one transaction.
+- **About 70 triggers** that enforce the 7-day rule, train capacity, truck and roster conflicts, stock before dispatch, order totals and price snapshots, and the audit log.
+- **6 views** that back the management reports.
+
+Full detail is in [`Docs/04_database-schema-v4.md`](Docs/04_database-schema-v4.md).
+
+## Project structure
+
+| Path | Contents |
+|---|---|
+| `app/(dashboard)/` | Pages for each module |
+| `app/api/` | API routes |
+| `lib/` | Database pool, auth, role map, Redis, rate limiting, reports, export and shared formatting |
+| `components/` | Shared components |
+| `db/migrations/` | Schema, functions, triggers, procedures and views |
+| `scripts/` | Migration runner and seed scripts |
+| `tests/` | Unit, API and integration tests |
+| `Docs/` | Requirements, architecture, schema and operation guides |
+
 ## Running locally
 
 ```bash
@@ -129,6 +176,26 @@ npm run db:migrate       # apply db/migrations
 npm run db:seed          # master data and the first admin
 npm run dev              # http://localhost:3000
 ```
+
+Checks:
+
+```bash
+npm run lint             # ESLint
+npx tsc --noEmit         # type check
+npm test                 # Vitest (unit, API and integration tests)
+npm run build            # production build
+```
+
+The integration tests use the configured database and roll back their changes. Point `DATABASE_URL` at a disposable database rather than the shared one.
+
+## Known limitations
+
+- Trip departure and arrival are recorded by hand, and a delivery is marked complete by the fleet supervisor; there is no live rail feed or proof of delivery.
+- There is no customer portal or public sign-up. Clerks enter orders for customers, and the administrator creates staff accounts.
+- There is no password change or reset flow.
+- Master data can add records, but only products can be edited.
+- Reports are cached for up to an hour, so recent changes may appear after a delay.
+- "Today" on the dashboard follows the database's UTC date.
 
 
 ## Documentation
